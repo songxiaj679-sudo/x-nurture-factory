@@ -64,7 +64,7 @@ function selectEditorialArchetype({ recentJobs = [], topics = [], radarAvailable
   return { archetype, topic, focusTopicId: topic && topic.id || '' };
 }
 
-function archetypePromptLines({ archetype, topic, signals, isEn, thread = false }) {
+function archetypePromptLines({ archetype, topic, signals, isEn, thread = false, recentTexts = [] }) {
   const card = topic ? JSON.stringify(topic).slice(0, 900) : '';
   const live = Array.isArray(signals) && signals.length
     ? (isEn
@@ -73,27 +73,37 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false 
     : '';
   const threadLine = thread
     ? (isEn
-      ? 'This is an honest two-tweet thread. Tweet 1 opens a genuine curiosity gap or the weak version. Tweet 2, the self-reply, gives the concrete rewrite or the three steps. No "see profile" bait and no shock headline.'
-      : '2本の連続ツリーにする。1本目は続きが気になる誠実な引きか、弱い例で止める。2本目の返信で書き直しか3つの手順を渡す。衝撃、続きはプロフへ、は禁止。')
+      ? 'This is an honest two-tweet thread. Tweet 1 opens a genuine curiosity gap. Tweet 2, the self-reply, gives the practical difference. No "see profile" bait and no shock headline.'
+      : '2本の連続ツリーにする。1本目は続きが気になる誠実な引き。2本目の返信で実務上の違いを渡す。衝撃、続きはプロフへ、は禁止。')
+    : '';
+  const choice = isEn
+    ? 'Choose the layout that makes this point easiest to scan: short paragraphs, a contrast, a short list, an arrow, a question, or a conversational rewrite. Do not force the same marks or the same line pattern every time. If recent posts used that pattern, choose a different one. Explain the practical difference in ordinary language.'
+    : '読みやすさは内容に合わせて選ぶ。短い段落、対比、短い列挙、矢印、問いかけ、会話のような言い換えのうち、この内容に一番合う形を自分で選ぶ。毎回同じ記号や同じ行の形にしない。直近の投稿と同じ見た目が続くときは別の形にする。理由は自然な日本語で書く。';
+  const recent = (Array.isArray(recentTexts) ? recentTexts : [])
+    .map(text => String(text || '').replace(/\s+/g, ' ').trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 2);
+  const recentLine = recent.length
+    ? (isEn ? `Recent openings to avoid copying: ${recent.join(' | ')}` : `直近の書き出し。同じ形を繰り返さない: ${recent.join(' | ')}`)
     : '';
   const lines = {
     before_after_rewrite: isEn
-      ? 'Archetype before_after_rewrite. Line 1 is a crisp hook about why the common phrasing fails, then a blank line. Put the contrast on its own lines, with a blank line before and after: Before: "..." then After: "...". You may use Weak: and Better: instead. Close with one plain-language sentence on why the second holds. The pair is an illustrative craft example, not a customer result and not a product tutorial.'
-      : '型は before_after_rewrite。1行目は、よくある言い方がなぜ届かないかを短く置く。空行のあと、対比は独立した行にする。空行、×「弱い一文」、改行、○「伝わる一文」、空行、なぜ後者が持つかを平易に1〜2行。製品の導入結果や顧客事例ではなく、作業文の見本である。',
+      ? 'Archetype before_after_rewrite. Line 1 says why the common phrasing fails. After a blank line, show the weaker wording and the clearer wording in the layout you chose. Close by explaining the practical difference in ordinary language. The pair is an illustrative craft example, not a customer result and not a product tutorial.'
+      : '型は before_after_rewrite。1行目は、よくある言い方がなぜ届かないかを短く置く。空行のあと、弱い言い方と伝わる言い方の違いが目で追える形を、選んだレイアウトで書く。違いは自然な日本語で説明する。製品の導入結果や顧客事例ではなく、作業文の見本である。',
     actionable_checklist: isEn
-      ? 'Archetype actionable_checklist. Line 1 says why this matters to the reader, then a blank line. Then exactly three short lines a human can scan in one glance: 1. ... 2. ... 3. ... Then a blank line and one boundary sentence. No product clicks, no outcomes, no counts beyond the three steps.'
-      : '型は actionable_checklist。1行目で読み手の作業に関係あることを言い、空行を置く。確認はちょうど3行で、・ か ① ② ③ を行頭にする。各行は一目で読める短さ。空行のあと、境界を1行。製品の操作案内や成果の数値は入れない。',
+      ? 'Archetype actionable_checklist. Line 1 says why this matters to the reader, then a blank line. Give a few short checks in the layout you chose. Then a blank line and one boundary sentence. No product clicks, no outcomes, and no invented counts.'
+      : '型は actionable_checklist。1行目で読み手の作業に関係あることを言い、空行を置く。確認は短い数行で、選んだレイアウトに載せる。空行のあと、境界を1行。製品の操作案内や成果の数値は入れない。',
     failure_autopsy: isEn
-      ? 'Archetype failure_autopsy. Line 1 opens an honest curiosity gap, then a blank line, a plain-language cause, a blank line, and one practical check on its own line starting with → or a bullet. No cheap clickbait and no invented customer story.'
-      : '型は failure_autopsy。1行目は「なぜ？」と自然に気になる誠実な引き。空行、平易な原因、空行、→ か ・ で今日できる確認を独立行にする。衝撃や続きはプロフへ、は禁止。顧客の成功談は作らない。',
+      ? 'Archetype failure_autopsy. Line 1 opens an honest curiosity gap. After a blank line, give the plain-language cause and one practical check in the layout you chose. No cheap clickbait and no invented customer story.'
+      : '型は failure_autopsy。1行目は誠実な引き。空行のあと、平易な原因と今日できる確認を、選んだレイアウトで分ける。衝撃や続きはプロフへ、は禁止。顧客の成功談は作らない。',
     live_trend_brief: isEn
-      ? 'Archetype live_trend_brief. Line 1 opens an honest curiosity gap, then a blank line, one plain stance, a blank line, and one evaluation check on its own line starting with → or a bullet. Do not quote a post or attach a number.'
-      : '型は live_trend_brief。1行目は続きが気になる誠実な引き。空行、平易な立場、空行、→ か ・ で見極める基準を独立行にする。投稿の引用や数値は付けない。衝撃や続きはプロフへ、は禁止。',
+      ? 'Archetype live_trend_brief. Line 1 opens an honest curiosity gap. After a blank line, give one plain stance and one way to judge it, in the layout you chose. Do not quote a post or attach a number.'
+      : '型は live_trend_brief。1行目は続きが気になる誠実な引き。空行のあと、平易な立場と見極める基準を、選んだレイアウトで書く。投稿の引用や数値は付けない。衝撃や続きはプロフへ、は禁止。',
     contrarian_sharp: isEn
-      ? 'Archetype contrarian_sharp. One lazy belief, one sharp correction, one concrete check. Stay under 240 characters. Keep the correction on its own line after a blank line.'
-      : '型は contrarian_sharp。怠い通念、鋭い訂正、具体的な確認を短く書く。180文字未満。訂正は空行の次の独立行。'
+      ? 'Archetype contrarian_sharp. One lazy belief, one sharp correction, one concrete check. Stay under 240 characters. Put the correction in its own breath after a blank line, using the layout you chose.'
+      : '型は contrarian_sharp。怠い通念、鋭い訂正、具体的な確認を短く書く。180文字未満。訂正は空行のあとに、選んだレイアウトで置く。'
   };
-  return [lines[archetype] || '', threadLine, card ? (isEn ? `Illustrative reader card, not a case study: ${card}` : `読者向けの見本カード。導入事例ではない: ${card}`) : '', live].filter(Boolean).join('\n');
+  return [lines[archetype] || '', choice, threadLine, recentLine, card ? (isEn ? `Illustrative reader card, not a case study: ${card}` : `読者向けの見本カード。導入事例ではない: ${card}`) : '', live].filter(Boolean).join('\n');
 }
 
 module.exports = {

@@ -4,24 +4,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 
-test('plain-text archetypes ask for a scannable contrast, a list, and an honest thread pull', () => {
+test('plain-text archetypes ask for a chosen layout and an honest thread pull', () => {
   const { archetypePromptLines } = require('../src/editorial_archetypes');
   const rewrite = archetypePromptLines({ archetype: 'before_after_rewrite', isEn: false, thread: true });
-  assert.match(rewrite, /×/);
-  assert.match(rewrite, /○/);
-  assert.match(rewrite, /2本目/);
+  assert.match(rewrite, /内容に合わせて選ぶ/);
+  assert.equal(rewrite.includes('なぜ後者が持つか'), false);
+  assert.equal(rewrite.includes('×'), false);
   const english = archetypePromptLines({ archetype: 'before_after_rewrite', isEn: true });
-  assert.match(english, /Before:/);
-  assert.match(english, /After:/);
+  assert.match(english, /Choose the layout/);
+  assert.equal(english.includes('Before:'), false);
   const checklist = archetypePromptLines({ archetype: 'actionable_checklist', isEn: false });
-  assert.match(checklist, /①/);
-  assert.match(checklist, /②/);
-  assert.match(checklist, /③/);
+  assert.equal(checklist.includes('①'), false);
   const englishList = archetypePromptLines({ archetype: 'actionable_checklist', isEn: true, thread: true });
-  assert.match(englishList, /1\. /);
-  assert.match(englishList, /2\. /);
-  assert.match(englishList, /3\. /);
   assert.match(englishList, /honest two-tweet thread/);
+  assert.equal(englishList.includes('1. '), false);
 });
 
 test('english dossier text stops on a word boundary', () => {

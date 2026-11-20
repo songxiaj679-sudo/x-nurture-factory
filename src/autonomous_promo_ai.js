@@ -428,11 +428,21 @@ async function retargetNextPendingJob(userId) {
             lang: accountState.lang,
             radar: user.contextRadarCache && user.contextRadarCache.signals
           });
+          const { decideNextPostMission } = require('./velox_master_core');
+          const masterPlan = decideNextPostMission({
+            accountState,
+            brandKnowledge: hasPage ? extracted.brandKnowledge : null,
+            audienceKnowledge: audienceCraft.audienceKnowledge,
+            recentJobs: posts,
+            portfolioPlan: safePlan
+          });
+          const isolated = masterPlan.isolateLpContext === true;
           const drafted = await draftNextPostWithMeta({
             audienceKnowledge: audienceCraft.audienceKnowledge,
-            archetype: audienceCraft.archetype,
-            focusTopic: audienceCraft.focusTopic,
-            focusPlaybook: rewritePlaybook,
+            archetype: masterPlan.archetype || audienceCraft.archetype,
+            focusTopic: masterPlan.focusTopic || audienceCraft.focusTopic,
+            masterPlan,
+            focusPlaybook: isolated ? null : rewritePlaybook,
             lang: accountState.lang,
             accountState,
             hypothesisText: formatHypothesis(choice, accountState.lang),
@@ -491,12 +501,25 @@ async function retargetNextPendingJob(userId) {
             genes,
             retargetAction: action,
             portfolioRole: safePlan.portfolioRole,
-            archetype: drafted.archetype || '',
-            focusTopicId: drafted.focusTopicId || '',
+            archetype: drafted.archetype || masterPlan.archetype || '',
+            focusTopicId: drafted.focusTopicId || (masterPlan.focusTopic && masterPlan.focusTopic.id) || '',
+            topicRing: masterPlan.topicRing || '',
+            masterMission: masterPlan.mission || '',
+            masterPhase: masterPlan.phase || '',
+            selectedTopicDomain: masterPlan.selectedTopicDomain || '',
             criticDegraded: drafted.criticDegraded === true,
             allowPromoUrl: safePlan.allowPromoUrl,
             recoveryMode,
-            visualCard: planVisualCard({ format: genes.format, portfolioRole: safePlan && safePlan.portfolioRole, focusPlaybook: rewritePlaybook, brandKnowledge: extracted && extracted.brandKnowledge, lang: accountState.lang }),
+            visualCard: planVisualCard({
+              format: genes.format,
+              portfolioRole: safePlan && safePlan.portfolioRole,
+              focusPlaybook: isolated ? null : rewritePlaybook,
+              brandKnowledge: extracted && extracted.brandKnowledge,
+              lang: accountState.lang,
+              archetype: masterPlan.archetype,
+              focusTopic: masterPlan.focusTopic,
+              isolateLpContext: masterPlan.isolateLpContext === true
+            }),
             qualityAudit
           });
         }

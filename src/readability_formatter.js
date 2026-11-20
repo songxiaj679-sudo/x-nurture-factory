@@ -5,11 +5,11 @@ function bodyLength(text) {
 }
 
 function auditReadability(tweets, { lang = 'ja', formatName = '' } = {}) {
-  if (formatName === 'micro_punch') return { ok: true, reasons: [] };
   const text = (Array.isArray(tweets) ? tweets : []).filter(Boolean).join('\n\n');
   const isEn = String(lang || '').toLowerCase().startsWith('en');
   const length = bodyLength(text);
   const floor = isEn ? 180 : 110;
+  if (formatName === 'micro_punch' && length < floor) return { ok: true, reasons: [] };
   if (length < floor) return { ok: true, reasons: [] };
   const reasons = [];
   const first = String(text.split('\n')[0] || '').trim();
