@@ -1124,6 +1124,67 @@ async function recoverStaleProcessingJobs(database = db, now = Date.now()) {
   return { recovered };
 }
 
+let outboundCursor = null;
+
+async function processOutboundReplyDiscovery() {
+  if (String(process.env.X_OUTBOUND_REPLY_DISCOVERY || 'true').toLowerCase() === 'false') return { saved: 0 };
+  const { searchRecentPublicTweets, decryptCredentials } = require('./official_api_client');
+  const { searchQueryFor, selectDiscoveryCard, discoverOutboundCandidates, discoveryStatusFromSearch, saveOutboundDiscovery } = require('./outbound_reply_queue');
+  const { completeWriter, completeCritic } = require('./llm_router');
+  const { isPaidAccount } = require('./plan_post_budget');
+  let query = db.collection('saas_users').orderBy('__name__').limit(20);
+  if (outboundCursor) query = query.startAfter(outboundCursor);
+  const snap = await query.get();
+  if (!snap.size) {
+    outboundCursor = null;
+    return { saved: 0 };
+  }
+  let saved = 0;
+  for (const doc of snap.docs) {
+    outboundCursor = doc;
+    const user = doc.data() || {};
+    const topics = user.audienceKnowledge && user.audienceKnowledge.audienceTopics;
+    const picked = selectDiscoveryCard(topics, user.outboundReplyDiscovery && user.outboundReplyDiscovery.nextCardCursor);
+    const card = picked.card;
+    if (!isPaidAccount(user) || user.autopilotPaused || user.xLinkHealthStatus === 'suspended' || !user.xOfficialCredentials || !card) continue;
+    const creds = decryptCredentials(user.xOfficialCredentials);
+    creds.saasUserId = doc.id;
+    const found = await searchRecentPublicTweets(creds, {
+      query: searchQueryFor(card, String(user.aiTargetLang || '').toLowerCase().startsWith('en') ? 'en' : 'ja')
+    });
+    let rows = [];
+    if (found.tweets.length) {
+      const [blockedSnap, existing] = await Promise.all([
+        db.collection('saas_users').doc(doc.id).collection('blocked_reply_authors').limit(20).get(),
+        db.collection('saas_users').doc(doc.id).collection('outbound_reply_candidates').limit(30).get()
+      ]);
+      const recentAuthorIds = Object.keys(user.autoReplyLastByAuthor || {}).filter(authorId => {
+        const at = new Date(user.autoReplyLastByAuthor[authorId]).getTime();
+        return Number.isFinite(at) && Date.now() - at < 24 * 60 * 60 * 1000;
+      });
+      rows = await discoverOutboundCandidates({
+        user,
+        tweets: found.tweets,
+        completeWriter,
+        completeCritic,
+        existingIds: existing.docs.map(item => item.id),
+        blockedAuthorIds: blockedSnap.docs.map(item => item.id),
+        recentAuthorIds
+      });
+      for (const row of rows) {
+        await db.collection('saas_users').doc(doc.id).collection('outbound_reply_candidates').doc(row.tweetId).set(row);
+        saved += 1;
+      }
+    }
+    const discovery = discoveryStatusFromSearch(found, rows.length);
+    await saveOutboundDiscovery(db.collection('saas_users').doc(doc.id), { ...discovery, lastRunAt: new Date().toISOString(), nextCardCursor: picked.nextCursor });
+    console.log(`[Outbound Reply Discovery] user=${doc.id} status=${discovery.lastStatus} http=${discovery.lastHttpStatus} matches=${discovery.lastMatchCount}`);
+    if (saved) break;
+  }
+  if (snap.size < 20) outboundCursor = null;
+  return { saved };
+}
+
 let autoReplyRunning = false;
 let autoReplyCooldownUntil = 0;
 let autoReplyCursor = null;
@@ -1365,6 +1426,9 @@ function startAutopilotJobRunner() {
   setInterval(() => processInboundAutoReplies().catch(err => {
     console.error('[Auto Reply Worker]:', err.message);
   }), 4 * 60 * 1000);
+  setInterval(() => processOutboundReplyDiscovery().catch(err => {
+    console.error('[Outbound Reply Discovery]:', err.message);
+  }), 10 * 60 * 1000);
   setTimeout(() => autoReplenishAllActiveQueues().catch(err => {
     console.error('[autoReplenishAllActiveQueues Error]:', err.message);
   }), 15 * 1000);
@@ -2950,6 +3014,123 @@ function registerHybridSaasRoutes(app, options = {}) {
     } catch (err) {
       const uiEn = resolveUiLang(req) === 'en';
       return res.status(500).json({ ok: false, error: uiEn ? 'Could not send the reply.' : '返信の送信に失敗しました。' });
+    }
+  });
+
+  app.get('/api/autopilot/outbound-replies', async (req, res) => {
+    try {
+      const sessionUser = await resolveSessionUser(db, req);
+      const uiEn = resolveUiLang(req) === 'en';
+      if (!sessionUser || !sessionUser.userId) return res.status(401).json({ ok: false, error: uiEn ? 'Sign in again.' : 'ログインセッションが無効です。' });
+      const userRef = db.collection('saas_users').doc(sessionUser.userId);
+      const [userSnap, snap] = await Promise.all([
+        userRef.get(),
+        userRef.collection('outbound_reply_candidates').limit(20).get()
+      ]);
+      const replies = snap.docs
+        .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
+        .filter(row => row.status === 'pending_approval' || row.status === 'held');
+      const stored = userSnap.exists ? (userSnap.data() || {}).outboundReplyDiscovery : null;
+      const discoveryStatus = stored && stored.lastStatus ? {
+        lastRunAt: stored.lastRunAt || null,
+        lastStatus: stored.lastStatus,
+        lastHttpStatus: typeof stored.lastHttpStatus === 'number' ? stored.lastHttpStatus : null,
+        lastMatchCount: typeof stored.lastMatchCount === 'number' ? stored.lastMatchCount : null,
+        nextCardCursor: typeof stored.nextCardCursor === 'number' ? stored.nextCardCursor : 0
+      } : null;
+      return res.json({ ok: true, replies, discoveryStatus });
+    } catch (_err) {
+      const uiEn = resolveUiLang(req) === 'en';
+      return res.status(500).json({ ok: false, error: uiEn ? 'Could not load outbound replies.' : '外向け返信を取得できませんでした。' });
+    }
+  });
+
+  async function loadOutboundCandidate(req) {
+    const uiEn = resolveUiLang(req) === 'en';
+    const say = (ja, en) => (uiEn ? en : ja);
+    const sessionUser = await resolveSessionUser(db, req);
+    if (!sessionUser || !sessionUser.userId) return { status: 401, error: say('ログインセッションが無効です。', 'Sign in again.') };
+    const userRef = db.collection('saas_users').doc(sessionUser.userId);
+    const ref = userRef.collection('outbound_reply_candidates').doc(req.params.tweetId);
+    const snap = await ref.get();
+    if (!snap.exists) return { status: 404, error: say('外向け返信が見つかりません。', 'That outbound reply was not found.') };
+    const userSnap = await userRef.get();
+    return { sessionUser, userRef, ref, candidate: snap.data() || {}, user: userSnap.exists ? (userSnap.data() || {}) : {}, say };
+  }
+
+  app.post('/api/autopilot/outbound-replies/:tweetId/hold', async (req, res) => {
+    const loaded = await loadOutboundCandidate(req);
+    if (loaded.status) return res.status(loaded.status).json({ ok: false, error: loaded.error });
+    if (loaded.candidate.status === 'approved_sent' || loaded.candidate.status === 'rejected') {
+      return res.status(409).json({ ok: false, error: loaded.say('この候補は操作できません。', 'This candidate can no longer be changed.') });
+    }
+    const heldAt = new Date().toISOString();
+    await loaded.ref.set({ status: 'held', heldAt, updatedAt: heldAt }, { merge: true });
+    return res.json({ ok: true, status: 'held' });
+  });
+
+  app.post('/api/autopilot/outbound-replies/:tweetId/reject', async (req, res) => {
+    const loaded = await loadOutboundCandidate(req);
+    if (loaded.status) return res.status(loaded.status).json({ ok: false, error: loaded.error });
+    if (loaded.candidate.status === 'approved_sent') {
+      return res.status(409).json({ ok: false, error: loaded.say('送信済みの返信は却下できません。', 'A sent reply cannot be rejected.') });
+    }
+    const rejectedAt = new Date().toISOString();
+    await loaded.ref.set({ status: 'rejected', rejectedAt, updatedAt: rejectedAt }, { merge: true });
+    return res.json({ ok: true, status: 'rejected' });
+  });
+
+  app.post('/api/autopilot/outbound-replies/:tweetId/approve', async (req, res) => {
+    try {
+      const loaded = await loadOutboundCandidate(req);
+      if (loaded.status) return res.status(loaded.status).json({ ok: false, error: loaded.error });
+      const { candidate, user, userRef, ref, say } = loaded;
+      if (candidate.status !== 'pending_approval' && candidate.status !== 'held') {
+        return res.status(409).json({ ok: false, error: say('承認待ちの候補だけ送信できます。', 'Only a waiting candidate can be sent.') });
+      }
+      const { detectOptOut, replyAllowedNow, replyPassesSafety, planReplyCap, replySentToday } = require('./auto_reply_policy');
+      const authorId = String(candidate.authorId || '');
+      if (detectOptOut(candidate.sourceText)) {
+        if (authorId) await userRef.collection('blocked_reply_authors').doc(authorId).set({ authorId, blockedAt: new Date(), reason: 'opt_out' }, { merge: true });
+        return res.status(403).json({ ok: false, code: 'opt_out', error: say('相手が返信を望んでいないため送信しません。', 'This person opted out, so the reply was not sent.') });
+      }
+      const blocked = authorId ? await userRef.collection('blocked_reply_authors').doc(authorId).get() : { exists: false };
+      if (!user.xOfficialCredentials) return res.status(403).json({ ok: false, error: say('X連携がありません。', 'X is not connected.') });
+      const creds = decryptCredentials(user.xOfficialCredentials);
+      creds.saasUserId = loaded.sessionUser.userId;
+      const selfTwitterId = String(user.twitterId || (/^\d+$/.test(String(creds.userId || '')) ? creds.userId : '') || creds.id || '');
+      const daily = replySentToday(user);
+      const decision = replyAllowedNow({
+        authorId,
+        selfTwitterId,
+        blocked: blocked.exists,
+        lastReplyAt: user.autoReplyLastByAuthor && user.autoReplyLastByAuthor[authorId],
+        sentToday: daily.sentToday,
+        dailyCap: planReplyCap(user),
+        cooldownHours: user.autoReplySettings && user.autoReplySettings.cooldownHoursPerAuthor
+      });
+      if (!decision.ok) {
+        const status = decision.reason === 'opt_out' ? 403 : decision.reason === 'self_or_empty' ? 409 : 429;
+        return res.status(status).json({ ok: false, code: decision.reason, error: say('この返信は今は送信できません。', 'This reply cannot be sent right now.') });
+      }
+      const text = candidate.draftText;
+      if (!replyPassesSafety(text, user.ngTopics)) {
+        return res.status(400).json({ ok: false, error: say('この返信は安全確認を通らないため送信できません。', 'This reply did not pass the safety checks.') });
+      }
+      if (!officialApiOperationAllowed(user, creds)) return res.status(403).json({ ok: false, error: say('このアカウントでは公式API送信が許可されていません。', 'Official posting is not enabled for this account.') });
+      const sent = await postOfficialTweet(creds, text, [], req.params.tweetId);
+      if (!sent || sent.ok === false) return res.status(502).json({ ok: false, error: sent && sent.error || say('返信を送信できませんでした。', 'The reply could not be sent.') });
+      const repliedAt = new Date().toISOString();
+      await userRef.set({
+        autoReplySentDate: daily.sentDate,
+        autoReplySentCount: daily.sentToday + 1,
+        autoReplyLastByAuthor: { ...(user.autoReplyLastByAuthor || {}), [authorId]: repliedAt }
+      }, { merge: true });
+      await ref.set({ status: 'approved_sent', repliedTweetId: sent.tweetId || sent.id || null, repliedAt, updatedAt: repliedAt }, { merge: true });
+      return res.json({ ok: true, status: 'approved_sent', replyTweetId: sent.tweetId || sent.id || null });
+    } catch (_err) {
+      const uiEn = resolveUiLang(req) === 'en';
+      return res.status(500).json({ ok: false, error: uiEn ? 'Could not send the outbound reply.' : '外向け返信の送信に失敗しました。' });
     }
   });
 

@@ -708,6 +708,14 @@
             <div id="autoReplyLog" class="mt-2 text-[11px] text-slate-600 font-bold" role="status" aria-live="polite"></div>
             </div>
           </details>
+          <div class="mt-4 pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+              <h3 class="font-bold text-slate-800" data-i18n="outbound_reply_title">外向け返信の承認</h3>
+              <button type="button" onclick="loadOutboundReplies()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold cursor-pointer" data-i18n="outbound_reply_refresh">一覧を更新</button>
+            </div>
+            <p class="mb-3 text-[11px] text-slate-600 leading-relaxed" data-i18n="outbound_reply_note">相手の投稿への返信案です。送信は、この一覧で1件ずつ承認したときだけ行います。</p>
+            <div id="outboundReplyList" class="text-xs text-slate-500" data-i18n="outbound_reply_empty">まだ読み込んでいません。</div>
+          </div>
         </div>
       </div>
     </details>
@@ -1315,6 +1323,10 @@
         profile_guide_highlights: "X有料プランでは、重要な投稿をハイライトに置けます。",
         profile_guide_automated: "通常の予約投稿と確認して送る返信なら、Automated ラベルも別アカウントも不要です。無人の自動返信を使う場合だけ、別の管理用アカウントが必要です。",
         mention_safe_note: "※ 通常の自動投稿と「Phase 1（確認して1クリック送信）」のみをお使いの場合、X の自動化（Automated）ラベルや別アカウントの設定は不要です。",
+        outbound_reply_title: "外向け返信の承認",
+        outbound_reply_refresh: "一覧を更新",
+        outbound_reply_note: "相手の投稿への返信案です。送信は、この一覧で1件ずつ承認したときだけ行います。",
+        outbound_reply_empty: "まだ読み込んでいません。",
         mention_phase1_note: "Phase 1 は、届いたメンションの下書きを確認してから1クリックで送ります。下の一覧が確認用です。",
         phase2_advanced_summary: "⚙️ 上級者オプション：受信メンションの完全自動返信（Phase 2 ※管理用の別 X アカウントをお持ちの場合のみ） ▶",
         ops_card_title: "🧭 現在のアカウント状態 ＆ VELOX AI の運用方針",
@@ -1560,6 +1572,10 @@
         profile_guide_highlights: "On a paid X plan, keep important posts in Highlights.",
         profile_guide_automated: "Scheduled posts and reviewed replies do not need an Automated label or a second account. A separate managing account is required only for unattended replies.",
         mention_safe_note: "Note: No Automated label or second X account is needed if you only use regular scheduled posts and Phase 1 (review and click to send).",
+        outbound_reply_title: "Outbound reply approval",
+        outbound_reply_refresh: "Refresh list",
+        outbound_reply_note: "These are reply drafts for other people's posts. A reply is sent only when you approve that one item here.",
+        outbound_reply_empty: "Not loaded yet.",
         mention_phase1_note: "Phase 1 shows a draft for each mention. You review it, then send with one click. The list below is that review queue.",
         phase2_advanced_summary: "⚙️ Advanced option: Fully automatic mention replies (Phase 2 — requires a separate managing X account) ▶",
         ops_card_title: "🧭 Current account state and VELOX AI operating plan",
@@ -4836,6 +4852,44 @@
       const area = document.getElementById('mentionReply_' + tweetId);
       if (area && data.replies && data.replies[0]) area.value = data.replies[0];
       else alert(data.error || (isEn ? 'Could not draft a reply.' : '返信案を作れませんでした。'));
+    }
+
+    async function loadOutboundReplies() {
+      const isEn = checkIsEn();
+      const box = document.getElementById('outboundReplyList');
+      const res = await fetch('/api/autopilot/outbound-replies');
+      const data = await res.json().catch(() => ({}));
+      if (!data.ok) {
+        if (box) box.textContent = data.error || (isEn ? 'Could not load outbound replies.' : '外向け返信を取得できませんでした。');
+        return;
+      }
+      const rows = Array.isArray(data.replies) ? data.replies : [];
+      if (!box) return;
+      if (!rows.length) {
+        const discovery = data.discoveryStatus && data.discoveryStatus.lastStatus;
+        if (discovery === 'invalid_query') {
+          box.textContent = isEn ? 'The latest candidate search query was rejected by X API.' : '直近の候補検索は検索条件が受け付けられませんでした。';
+          return;
+        }
+        const searchFailed = discovery === 'auth_error' || discovery === 'rate_limited' || discovery === 'network_error';
+        box.textContent = searchFailed
+          ? (isEn ? 'Could not run the latest candidate search (X API search permission or temporary rate limit).' : '直近の候補検索を実行できませんでした（X API の検索権限または一時的な制限の可能性があります）。')
+          : (isEn ? 'No outbound replies are waiting.' : '承認待ちの外向け返信はありません。');
+        return;
+      }
+      box.innerHTML = rows.map(item => {
+        const id = item.tweetId || item.id;
+        const status = item.status === 'held' ? (isEn ? 'Held' : '保留中') : (isEn ? 'Waiting' : '承認待ち');
+        return `<div class="p-3 mb-2 rounded-xl border border-slate-200"><div class="font-bold text-slate-700">@${escHtml(item.username || '')} · ${escHtml(item.matchedRing || '')} · ${escHtml(item.matchedTopic || '')} · ${status}</div><div class="mt-1 text-slate-500">${escHtml(item.sourceText || '')}</div><div class="mt-2 text-slate-800">${escHtml(item.draftText || '')}</div><div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="decideOutboundReply('${id}','approve')">${isEn ? 'Approve and send' : '承認して送信'}</button><button type="button" onclick="decideOutboundReply('${id}','hold')">${isEn ? 'Hold' : '保留'}</button><button type="button" onclick="decideOutboundReply('${id}','reject')">${isEn ? 'Reject' : '却下'}</button></div></div>`;
+      }).join('');
+    }
+
+    async function decideOutboundReply(tweetId, action) {
+      const isEn = checkIsEn();
+      const res = await fetch('/api/autopilot/outbound-replies/' + tweetId + '/' + action, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!data.ok) alert(data.error || (isEn ? 'Could not update the outbound reply.' : '外向け返信を更新できませんでした。'));
+      await loadOutboundReplies();
     }
 
     async function sendMentionReply(tweetId) {

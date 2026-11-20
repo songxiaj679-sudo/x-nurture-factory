@@ -987,9 +987,35 @@ ${mentionText}`;
   return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
 
-/**
- * 📩 公式アカウント宛の最新メンションを取得する (GET /2/users/:id/mentions)
- */
+async function searchRecentPublicTweets(credentials, { query = '', maxResults = 10, fetchImpl = null } = {}) {
+  try {
+    let creds = credentials || {};
+    if (!fetchImpl && creds.oauth2RefreshToken) {
+      creds = await refreshOAuth2TokenIfNeeded(creds, false, creds.saasUserId);
+    }
+    const token = creds.oauth2AccessToken;
+    const q = String(query || '').replace(/\s+/g, ' ').trim();
+    if (!token || q.length < 2) return { ok: true, tweets: [], reason: 'unavailable', httpStatus: null };
+    const count = Math.min(10, Math.max(5, Number(maxResults) || 10));
+    const url = `https://api.twitter.com/2/tweets/search/recent?max_results=${count}&query=${encodeURIComponent(q)}&tweet.fields=author_id,created_at,text&expansions=author_id&user.fields=username`;
+    const res = await (fetchImpl || fetch)(url, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: true, tweets: [], reason: `http_${res.status}`, httpStatus: res.status };
+    const names = new Map();
+    for (const user of (data.includes && data.includes.users) || []) names.set(user.id, user.username || '');
+    const tweets = (Array.isArray(data.data) ? data.data : []).map(row => ({
+      id: String(row.id || ''),
+      text: String(row.text || ''),
+      authorId: String(row.author_id || ''),
+      username: names.get(row.author_id) || '',
+      createdAt: row.created_at || ''
+    })).filter(row => row.id && row.text);
+    return { ok: true, tweets, reason: '', httpStatus: res.status };
+  } catch (_error) {
+    return { ok: true, tweets: [], reason: 'error', httpStatus: null };
+  }
+}
+
 async function getOfficialMentions(credentials, maxResults = 10) {
   if (credentials && credentials.oauth2RefreshToken) {
     credentials = await refreshOAuth2TokenIfNeeded(credentials, false, credentials.saasUserId);
@@ -1318,6 +1344,7 @@ module.exports = {
   lookupAnyUserProfileAndTweets,
   refreshOAuth2TokenIfNeeded,
   getOfficialMentions,
+  searchRecentPublicTweets,
   reserveStructuredMediaCard,
   followUserViaOfficialApi,
   generateOfficialReplyContent,
