@@ -110,8 +110,8 @@ async function fetchSourceDossier({
   const web = topicRing === 'ring2_broad_adjacent';
   const model = process.env.XAI_MODEL_RADAR || 'grok-4.20-0309-non-reasoning';
   const prompt = outputLang === 'en'
-    ? `Return JSON only for this practitioner topic: ${topic}. Reader: ${scrubField(readerPersona, 160, productName)}. Fields: currentDebate, concreteAngles (2), specialistInsight, avoidCliches (2). Qualitative only. No numbers, dates, quotes, product names, or page-checking steps.`
-    : `この話題の実務メモをJSONだけで返す。話題: ${topic}。読み手: ${scrubField(readerPersona, 160, productName)}。項目は currentDebate、concreteAngles を2つ、specialistInsight、avoidCliches を2つ。数値、日付、引用、製品名、登録ページの照合手順は入れない。`;
+    ? `Return JSON only for this topic: ${topic}. Reader: ${scrubField(readerPersona, 160, productName)}. Fields: currentDebate, concreteAngles (2), specialistInsight, avoidCliches (2). The notes may be an everyday question, a way to tell two similar things apart, a seasonal or daily habit, or a plain specialist view. Qualitative only. No numbers, dates, quotes, product names, or page-checking steps.`
+    : `この話題のメモをJSONだけで返す。話題: ${topic}。読み手: ${scrubField(readerPersona, 160, productName)}。項目は currentDebate、concreteAngles を2つ、specialistInsight、avoidCliches を2つ。生活者の疑問、見分け方、季節や日常の工夫、専門家のやさしい視点のどれでもよい。数値、日付、引用、製品名、登録ページの照合手順は入れない。`;
   const started = Date.now();
   try {
     const { completeText } = require('./grok_client');
@@ -123,7 +123,7 @@ async function fetchSourceDossier({
       xSearchOnly: !web,
       excludedXHandles,
       timeoutMs: 18000,
-      systemPrompt: 'One tool call. Qualitative practitioner notes only. No invented statistics or quotations.',
+      systemPrompt: 'One tool call. Qualitative notes for this reader and field. No invented statistics or quotations.',
       prompt
     })).text;
     const parsed = JSON.parse(String(text).replace(/```json/gi, '').replace(/```/g, '').trim());

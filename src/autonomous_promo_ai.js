@@ -2851,11 +2851,13 @@ async function resolveAudienceCraft({ userId, user, brandKnowledge, posts, lang,
   const { ensureAudienceKnowledge } = require('./audience_knowledge_engine');
   const { selectEditorialArchetype } = require('./editorial_archetypes');
   let audienceKnowledge = user && user.audienceKnowledge && (user.audienceKnowledge.schemaVersion === 2 || user.audienceKnowledge.schemaVersion === 1) ? user.audienceKnowledge : null;
+  let needsReaderHint = false;
   const signals = Array.isArray(radar) ? radar : (radar && Array.isArray(radar.signals) ? radar.signals : []);
   if (!budgetDegraded) {
     try {
       const built = await ensureAudienceKnowledge({ db, userId, user, brandKnowledge, radar: signals, lang, userPrompt: user && user.userPrompt || '' });
       if (built && built.audienceKnowledge) audienceKnowledge = built.audienceKnowledge;
+      if (built && built.needsReaderHint === true && !audienceKnowledge) needsReaderHint = true;
     } catch (err) {
       console.warn(`[Audience Brain] ${String(err && err.message || err).slice(0, 180)}`);
     }
@@ -2872,7 +2874,18 @@ async function resolveAudienceCraft({ userId, user, brandKnowledge, posts, lang,
     topics: audienceKnowledge && audienceKnowledge.audienceTopics,
     radarAvailable: signals.length > 0
   });
-  return { audienceKnowledge, archetype: plan.archetype, focusTopic: plan.topic, focusTopicId: plan.focusTopicId || '' };
+  return { audienceKnowledge, archetype: plan.archetype, focusTopic: plan.topic, focusTopicId: plan.focusTopicId || '', needsReaderHint };
+}
+
+function pageHasSubstance(pageSummary) {
+  const text = [
+    pageSummary && pageSummary.title,
+    pageSummary && pageSummary.description,
+    pageSummary && pageSummary.snippet,
+    pageSummary && pageSummary.text,
+    ...((pageSummary && pageSummary.headings) || [])
+  ].join('').replace(/\s+/g, '');
+  return text.length >= 24;
 }
 
 async function prepareNextPost(userId, options = {}) {
@@ -3147,6 +3160,16 @@ async function prepareNextPost(userId, options = {}) {
     radar: contextSignals,
     budgetDegraded
   });
+  const hadAudience = Boolean(user.audienceKnowledge && (user.audienceKnowledge.schemaVersion === 2 || user.audienceKnowledge.schemaVersion === 1));
+  if (!hadAudience && audienceCraft.needsReaderHint === true && !pageHasSubstance(pageSummary)) {
+    const err = new Error(isEnProgress
+      ? 'The page and account do not say who the reader is, so a generic post was not created.'
+      : '業種と読者が分からないため、一般論の投稿は作りません。');
+    err.code = 'MISSING_READER_CONTEXT';
+    err.needsReaderHint = true;
+    err.reason = 'missing_reader_context';
+    throw err;
+  }
   const { decideNextPostMission } = require('./velox_master_core');
   const masterPlan = decideNextPostMission({
     accountState,
@@ -3548,6 +3571,7 @@ module.exports = {
   isValidTimeZone,
   launchAutopilotCampaign,
   prepareNextPost,
+  pageHasSubstance,
   postIsLearnable,
   ensureNextPost,
   consentGranted,

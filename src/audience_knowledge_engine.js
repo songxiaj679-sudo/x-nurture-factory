@@ -260,6 +260,10 @@ async function ensureAudienceKnowledge({
   if (cacheFresh(existing, hash, outputLang, now)) {
     return { ok: true, cached: true, audienceKnowledge: existing, budgetRecorded: false };
   }
+  const reader = readerSource(brandKnowledge, userPrompt);
+  if (!reader.category && !reader.icpSummary && !reader.readerGoal) {
+    return { ok: false, audienceKnowledge: null, needsReaderHint: true, reason: 'missing_reader_context', budgetRecorded: false };
+  }
   let budget;
   try {
     budget = await require('./tenant_ai_budget').checkTenantAiBudget({ db, userId, user, kind: 'llm', count: radarFresh ? 2 : 1, now });

@@ -7,11 +7,9 @@ const { planVisualCard, renderVisualCardPng } = require('../src/visual_card');
 const { buildTwitterAuthorizationUrl } = require('../src/twitter_auth');
 const { uploadOfficialMedia } = require('../src/official_api_client');
 
-test('fallback playbooks do not copy one sentence into every field', () => {
+test('fallback playbooks do not invent a generic card', () => {
   const cards = fallbackPlaybooks(['確認の入口を先に固定する'], [], '確認の入口を先に固定する');
-  assert.equal(cards.length, 1);
-  assert.notEqual(cards[0].readerSituation, cards[0].checkCriteria);
-  assert.notEqual(cards[0].commonMistake, cards[0].checkCriteria);
+  assert.deepEqual(cards, []);
 });
 
 test('an invented numeric rule is rejected when only a lone digit is grounded', () => {
