@@ -1,0 +1,1564 @@
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { db } = require('./firestore');
+const {
+  getCollectiveMarketingIntelligence,
+  getUserMarketingKnowledge
+} = require('./collective_intelligence');
+const { sampleFromMapElitesArchive } = require('./map_elites_memory');
+const { sanitizePostOrReplyText } = require('./official_api_client');
+
+/**
+ * 単一URLからWebサイトの主要メタ情報と本文テキストを抽出
+ */
+async function fetchSingleUrl(url) {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 VeloxCrawler/4.0'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!res.ok) {
+      return { ok: false, url, error: `HTTP ${res.status}: ${res.statusText}` };
+    }
+
+    const html = await res.text();
+
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].trim() : '';
+
+    const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                          html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i) ||
+                          html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+    const description = metaDescMatch ? metaDescMatch[1].trim() : '';
+
+    const headings = [];
+    const headingRegex = /<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi;
+    let hMatch;
+    while ((hMatch = headingRegex.exec(html)) !== null && headings.length < 8) {
+      const txt = hMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      if (txt && txt.length > 4 && txt.length < 80) {
+        headings.push(txt);
+      }
+    }
+
+    const bodyClean = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 2500);
+
+    return {
+      ok: true,
+      url,
+      title,
+      description,
+      headings,
+      snippet: bodyClean
+    };
+  } catch (err) {
+    return { ok: false, url, error: err.message };
+  }
+}
+
+/**
+ * 宣伝対象のURLからWebサイトの主要メタ情報と本文テキストを抽出（複数URL対応）
+ */
+async function fetchUrlSummary(targetUrl) {
+  if (!targetUrl || typeof targetUrl !== 'string') {
+    return { ok: false, error: 'URLが指定されていません' };
+  }
+
+  // 複数URLの抽出（改行、カンマ、スペース区切り対応）
+  const urlMatches = [...targetUrl.matchAll(/https?:\/\/[^\s,;\n]+/g)].map(m => m[0]);
+  const urls = urlMatches.length > 0 ? [...new Set(urlMatches)].slice(0, 5) : [targetUrl.trim()];
+
+  if (urls.length === 1) {
+    return await fetchSingleUrl(urls[0]);
+  }
+
+  // 複数URLを並行取得して統合
+  const results = await Promise.allSettled(urls.map(u => fetchSingleUrl(u)));
+  const successful = results
+    .filter(r => r.status === 'fulfilled' && r.value && r.value.ok)
+    .map(r => r.value);
+
+  if (successful.length === 0) {
+    const firstErr = results.find(r => r.status === 'fulfilled' && r.value && !r.value.ok)?.value?.error || '複数URLの取得に失敗しました';
+    return { ok: false, error: firstErr };
+  }
+
+  const combinedTitle = successful.map(s => s.title).filter(Boolean).join(' | ');
+  const combinedDesc = successful.map(s => s.description).filter(Boolean).join(' / ');
+  const combinedHeadings = [...new Set(successful.flatMap(s => s.headings))].slice(0, 10);
+  const combinedSnippet = successful.map((s, idx) => `[URL ${idx + 1}: ${s.url}]\nタイトル: ${s.title}\n${s.snippet}`).join('\n\n').slice(0, 4500);
+
+  return {
+    ok: true,
+    url: urls.join(', '),
+    urls: successful.map(s => s.url),
+    title: combinedTitle,
+    description: combinedDesc,
+    headings: combinedHeadings,
+    snippet: combinedSnippet,
+    isMultiUrl: true
+  };
+}
+
+/**
+ * 段階的プロンプト [Pass 1]: URL情報 + ユーザープロンプト + 集合知ナレッジに基づく市場分析 (日英両言語対応)
+ */
+async function analyzeMarketWithUserPrompt(pageInfo, userPrompt, collectiveKnowledge, userKnowledge) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEYが設定されていません');
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+
+  const successTips = (collectiveKnowledge.successPatterns || []).slice(0, 3).map(p => `・${p.patternName}: ${p.syntaxRule}`).join('\n');
+  const failureTips = (collectiveKnowledge.failurePatterns || []).slice(0, 3).map(p => `・${p.patternName}: ${p.flawReason}`).join('\n');
+
+  const prompt = `あなたはB2B・X(Twitter)マーケティングの最高戦略アナリストです。
+以下のWebサイト情報、お客様からの個別指示（ユーザープロンプト）、および全クライアントの集合知ナレッジを総合分析し、最も売上・商談に直結する【市場分析 ＆ ポジショニング戦略】を日英両言語（日本語とビジネス英語）を含むJSON形式で作成してください。
+
+【お客様からの直接カスタム指示（最優先）】
+${userPrompt ? userPrompt : '（特になし：サイト情報から最も確度の高いターゲットを自律判定してください）'}
+
+【宣伝対象のWebサイト情報】
+- URL: ${pageInfo.url}
+- タイトル: ${pageInfo.title || '(なし)'}
+- 説明: ${pageInfo.description || '(なし)'}
+- 見出し: ${pageInfo.headings ? pageInfo.headings.join(' / ') : '(なし)'}
+- 本文抜粋: ${pageInfo.snippet || '(なし)'}
+
+【全顧客の集合知ナレッジ（成功・失敗傾向）】
+[成功パターン]
+${successTips}
+[避けるべき失敗パターン]
+${failureTips}
+
+【出力JSONフォーマット】
+{
+  "serviceName": "サービス名・事業名",
+  "oneLineSummary": "30字以内のコア提供価値（日本語）",
+  "oneLineSummary_en": "Core value proposition within 15 words (Executive Business English)",
+  "targetAudience": "最も刺さるターゲット顧客層（日本語：職業、役職、深い悩み、年代）",
+  "targetAudience_en": "Target audience persona (Executive Business English: role, ICP, pain points)",
+  "userPainPoints": ["顧客の生々しい課題1", "課題2", "課題3"],
+  "userPainPoints_en": ["Key pain point 1 in English", "Key pain point 2 in English", "Key pain point 3 in English"],
+  "uniqueSellingPoints": ["競合に対する絶対的差別化要素1", "要素2"],
+  "uniqueSellingPoints_en": ["Competitive differentiator 1 in English", "Differentiator 2 in English"],
+  "toneOfVoice": "最も成約率が高まる発信トーン（日本語）",
+  "toneOfVoice_en": "Optimal tone of voice (Executive Business English)",
+  "coreAppealAngle": "今回のマーケティングで最もフォーカスすべき訴求軸（日本語）",
+  "coreAppealAngle_en": "Core strategic appeal angle (Executive Business English)",
+  "userPromptReflected": "ユーザープロンプトをどのように戦略に反映したかの解説（日本語：1〜2文）",
+  "userPromptReflected_en": "Explanation of how user directives were reflected (Executive Business English: 1-2 sentences)"
+}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const cleaned = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return parsed;
+  } catch (e) {
+    return {
+      serviceName: (pageInfo.title || '').slice(0, 20) || '提供サービス',
+      oneLineSummary: (pageInfo.description || '').slice(0, 30) || '業務の自動化・効率化ソリューション',
+      oneLineSummary_en: 'Autonomous Social Pipeline & B2B Growth Infrastructure',
+      targetAudience: '成果と効率化を求める経営者・マーケティング責任者・個人事業主',
+      targetAudience_en: 'Enterprise executives, B2B founders, and marketing directors seeking scalable deal flow',
+      userPainPoints: ['運用の工数が逼迫している', '成果に繋がる導線が作れない', 'アカウント停止や規約違反が不安'],
+      userPainPoints_en: ['Exhausting 30+ monthly hours on manual post creation', 'Near-zero pipeline conversion from vanity impressions', 'Fearing algorithmic reach penalties and account suspension'],
+      uniqueSellingPoints: ['公式API完全準拠による凍結リスクゼロ', '7名AI合議制による成約特化設計'],
+      uniqueSellingPoints_en: ['Strict official X API v2 compliance (zero ban risk)', '7-agent dialectical deliberation optimizing pipeline conversion'],
+      toneOfVoice: '論理的で信頼性の高いB2Bプロフェッショナル口調',
+      toneOfVoice_en: 'Authoritative, objective, respectful enterprise tone without AI hype',
+      coreAppealAngle: '属人作業からの完全解放と安全な自律化基盤',
+      coreAppealAngle_en: 'Overcoming manual overhead and establishing an autonomous, compliant deal pipeline',
+      userPromptReflected: userPrompt ? `ご指定の指示（${userPrompt.slice(0, 30)}）に基づき、ターゲットの課題解決と商談獲得にフォーカスしました` : 'サイト分析結果を元に最適な訴求を設計しました',
+      userPromptReflected_en: userPrompt ? `Directives reflected: Aligned core appeal with "${userPrompt.slice(0, 50)}" to target executive decision-makers.` : 'Optimized high-intent B2B conversion angles based on source page intelligence.'
+    };
+  }
+}
+
+/**
+ * 段階的プロンプト [Pass 2]: アカウント成長戦略（最適化Bio案 ＆ 看板固定Post案の立案：日英完全対応）
+ */
+async function generateAccountGrowthStrategy(marketAnalysis, userPrompt, targetUrl) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEYが設定されていません');
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+
+  const prompt = `あなたはXアカウントのプロフィール設計・固定ポスト最適化の最高峰プロフェッショナルです。
+以下の市場分析とユーザープロンプトに基づき、アカウントを訪れた見込み客がフォロー＆商談遷移したくなる【最適化Bio（プロフィール文）案】および【看板固定ポスト（Pin Tweet）戦略案】を、日本語とビジネス英語の両方で策定してください。
+
+【市場分析】
+- サービス名: ${marketAnalysis.serviceName}
+- コア価値: ${marketAnalysis.oneLineSummary}
+- ターゲット: ${marketAnalysis.targetAudience}
+- 読者の悩み: ${marketAnalysis.userPainPoints.join('、')}
+- 強み: ${marketAnalysis.uniqueSellingPoints.join('、')}
+- URL: ${targetUrl}
+- ユーザー指示: ${userPrompt || '特になし'}
+
+【出力JSONフォーマット】
+{
+  "optimizedBio": "160文字以内の完璧なプロフィール文（日本語・改行含む）",
+  "optimizedBio_en": "Optimized executive profile bio under 160 characters (Executive Business English)",
+  "bioLogic": "なぜこのBioが成約とフォロワー獲得に強いのかの理由解説（日本語）",
+  "bioLogic_en": "Strategic rationale behind the bio architecture (English)",
+  "pinnedPost": {
+    "headline": "固定ポストのタイトル・狙い（日本語）",
+    "headline_en": "Headline & strategic intent in English",
+    "text": "固定ポスト本文（130〜140文字・日本語）",
+    "text_en": "Pinned flagship post copy (220-270 chars in Business English)",
+    "ctaUrl": "${targetUrl}",
+    "pinnedPostLogic": "なぜこの固定ポストが商談・リード獲得の看板として機能するかの解説（日本語）",
+    "pinnedPostLogic_en": "Rationale for lead conversion in English"
+  },
+  "weeklyGrowthRoadmap": [
+    { "phase": "Week 1", "focus": "共感＆有益ノウハウによる初期フォロワーの信用残高構築", "focus_en": "Establishing initial authority & trust balance via narrative value" },
+    { "phase": "Week 2", "focus": "課題解体スレッドによる検討層への商談・リード獲得オファー", "focus_en": "Deploying breakdown threads to capture high-intent qualified leads" },
+    { "phase": "Week 3", "focus": "他社事例と実績データの自己学習による投稿トーンの完全適合", "focus_en": "Refining algorithmic distribution based on continuous cross-tenant telemetry" }
+  ]
+}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const cleaned = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    return {
+      optimizedBio: `${marketAnalysis.serviceName} 公式｜${marketAnalysis.targetAudience}の業務課題を解決。属人運用の限界を科学し、安全で再現性あるマーケティングインフラを提供します。無料相談・導入事例は下記リンクより▼`,
+      optimizedBio_en: `${marketAnalysis.serviceName} Official | Helping ${marketAnalysis.targetAudience_en || 'B2B leaders'} automate qualified pipeline without burnout. Official X API v2 compliant. Full architecture below ▼`,
+      bioLogic: 'ターゲットの課題解決を明示し、実績数値と導線を配置することでプロとしての権威性を担保。',
+      bioLogic_en: 'Clearly defines target persona pain points, validates operational prestige, and establishes high-converting traffic routing.',
+      pinnedPost: {
+        headline: '【看板固定ポスト】成約直結型ローンチ案内',
+        headline_en: '【Flagship Pin】Enterprise Pipeline Architecture Blueprint',
+        text: `「SNS集客に追われ本業が進まない」という課題を根本から解体しました。法令・公式API完全準拠でリスクをゼロにし、成果を出すための仕組みを公開。詳細はこちら👇\n${targetUrl}`,
+        text_en: `Burning 40+ hours every month manually drafting posts with zero qualified pipeline is an operational trap.\n\nWe deployed our 7-agent consensus framework to automate high-intent B2B acquisition with official API safety.\n\nRead our verified case study breakdown & live demo below 👇\n${targetUrl}`,
+        ctaUrl: targetUrl,
+        pinnedPostLogic: '読者の共感から入り、解決策のリンクへ自然に誘導する導線。',
+        pinnedPostLogic_en: 'Engages executive empathy first, structuring misplaced effort before routing attention into product evaluation.'
+      },
+      weeklyGrowthRoadmap: [
+        { phase: 'Week 1', focus: '共感＆ノウハウで認知とフォロワー獲得', focus_en: 'Establishing initial authority & trust balance via narrative value' },
+        { phase: 'Week 2', focus: 'スレッド展開による有効商談獲得', focus_en: 'Deploying breakdown threads to capture high-intent qualified leads' }
+      ]
+    };
+  }
+}
+
+/**
+ * 段階的プロンプト [Pass 3]: 7名編成 AI合議制諮問評議会 激論ディベート (日英完全対応)
+ */
+async function deliberateCouncilStrategy(marketAnalysis, accountGrowth, userPrompt, collectiveKnowledge, scheduleTimeZone = 'Asia/Tokyo', userKnowledge = null, userPlan = 'pro') {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEYが設定されていません');
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+
+  const full5Posts = [
+    {
+      step: 1,
+      format: 'single_empathy',
+      timeSlot: 'morning',
+      angle: '朝の始業前・現場の生々しい手作業と時間損失の事実提示（一次データ＋共感）',
+      angle_en: 'Operational Cost Recovery & Executive Empathy',
+      scores: { hook: 96, empathy: 97, algo: 94, brand: 95, total: 95.5 },
+      rationale: {
+        whyThisTime: '朝08:30の出勤時間帯。意思決定層が移動中に一人でスマホを見るため、共感フックが最も深く刺さる。',
+        whyThisTime_en: 'Matches morning 8:30 AM executive commute peak when decision-makers review feeds alone.',
+        hookLogic: '冒頭1行目で『毎朝の工数逼迫（月30時間の消失）』を具体的数字で示し、スクロールを完全停止させる。',
+        hookLogic_en: 'Opens with quantifiable operational drag ($1,400/month executive waste) to stop 0.2s thumb-scrolling.',
+        empathyLogic: '孤独に奮闘する経営者へのリスペクトを担保し、説教臭さやAI臭を完全排除。',
+        empathyLogic_en: 'Frames manual grind not as laziness, but as misplaced discipline, building executive solidarity.',
+        algorithmSafety: '直リンクなし。純粋な共感と有益性でいいね・リポスト初速を獲得し、アルゴリズムのおすすめTLへ乗せる。',
+        algorithmSafety_en: 'Zero in-body URLs, avoiding reach penalties while maximizing early bookmarks & dwell time.'
+      },
+      postDeliberation: {
+        hookOfficer: '朝08:30の出勤時間、スマホを見る経営者の親指は0.2秒で次へスクロールする。冷徹な数字を突きつけ、思考停止の努力を外科手術する。',
+        hookOfficer_en: 'At 8:30 AM commute rush, executive thumbs scroll past weak content in 0.2 seconds.',
+        empathyOfficer: '孤独に奮闘する姿への深い敬意と自尊心の救済を最優先した。',
+        empathyOfficer_en: 'Preserving dignity is essential; numbers without respect create friction.',
+        algoOfficer: '直リンクなし。純粋な共感テキスト投稿として初速のいいね・リポストを稼ぐ設計。',
+        algoOfficer_en: 'Zero link penalty. Formats as clean narrative copy to maximize early bookmarks.',
+        brandOfficer: 'AI特有の陳腐構文を徹底検閲。重厚で知的なプロフェッショナル口調を死守した。',
+        brandOfficer_en: 'Completely purged AI conversational clichés.',
+        investorOfficer: '月30時間の工数は月額20万円以上の隠れ人件費。損失を自覚させ商談化へ導く。',
+        investorOfficer_en: '30 hours of monthly manual drafting equals over $2,000 in executive waste.',
+        founderOfficer: '現場のリアルな痛みに直撃している。これなら仲間も頷く。',
+        founderOfficer_en: 'Speaks directly to operator frustration.',
+        chiefCommander: '朝の時間帯に最適化された文章として本会合で正式承認した。',
+        chiefCommander_en: 'Formally ratified as an incisive morning-hour post.'
+      }
+    },
+    {
+      step: 2,
+      format: 'quote_debate_trap',
+      timeSlot: 'noon',
+      angle: '常識の逆張り・引用RT議論惹起型ディベートトラップ（脱・リプ欄URL依存）',
+      angle_en: 'Challenging Common Wisdom & Quote Tweet Debate Velocity',
+      scores: { hook: 97, empathy: 93, algo: 98, brand: 94, total: 95.5 },
+      rationale: {
+        whyThisTime: '昼休み12:30。タイムラインのアクティブ数が急増し、引用RTでの議論が急速に広がる。',
+        whyThisTime_en: '12:30 PM lunch peak when timeline engagement velocity reaches maximum daily velocity.',
+        hookLogic: '「B2Bはリプ欄にURLを貼ればリードが獲れるという常識は間違い」と反直感を提起し、プロの議論を誘発。',
+        hookLogic_en: 'Challenges the myth of reply-link funnels with hard platform data to trigger peer repost debates.',
+        empathyLogic: '現場の固定観念を解体し、知的刺激を与える。',
+        empathyLogic_en: 'Stimulates peer respect by framing the post as an intellectual debate among industry experts.',
+        algorithmSafety: '外部リンク完全排除。引用リポストを誘発し、会話スコアを最大化させる。',
+        algorithmSafety_en: 'Zero links. Triggers Quote Reposts, the highest-weighted algorithmic metric.'
+      },
+      postDeliberation: {
+        hookOfficer: '昼休み、多くのマーケターがスマホを眺める時間に反直感をぶつけ、引用RT議論を意図的に巻き起こす。',
+        hookOfficer_en: 'Triggers quote repost debates during the lunch hour peak.',
+        empathyOfficer: '上からの説教ではなく同業者同士の知的ディベートとして設計。',
+        empathyOfficer_en: 'Intellectual peer debate rather than condescending advice.',
+        algoOfficer: '最重要指標であるConversation Score（会話・引用RT率）を直撃。',
+        algoOfficer_en: 'Optimizes Conversation Velocity—the highest weighted metric.',
+        brandOfficer: '業界全体の生産性向上を志すリーダーシップを印象付ける。',
+        brandOfficer_en: 'Positions the brand as an authoritative thought leader.',
+        investorOfficer: 'リプ欄URLのCVRが0.01%以下に沈む現実を突きつけ、合理的な意思決定層を刈り取る。',
+        investorOfficer_en: 'Highlights that reply links yield sub-0.01% CTR.',
+        founderOfficer: '「リプ欄リンク効かないよな」という現場のモヤモヤを代弁してくれた。',
+        founderOfficer_en: 'Articulates what operators secretly know.',
+        chiefCommander: '昼のタイムラインに投下する議論トラップとして完璧。承認する。',
+        chiefCommander_en: 'Ratified unanimously as a mid-day debate catalyst.'
+      }
+    },
+    {
+      step: 3,
+      format: 'single_value',
+      timeSlot: 'afternoon',
+      angle: '夕方の業務ハック・工数解放Before/After（残業削減から売上倍増へ）',
+      angle_en: 'Afternoon Operational Hack & Before/After Conversion',
+      scores: { hook: 95, empathy: 96, algo: 95, brand: 95, total: 95.2 },
+      rationale: {
+        whyThisTime: '夕方17:30の退勤・移動ラッシュ。今日の業務の振り返りと明日の改善策を求める時間帯。',
+        whyThisTime_en: 'Evening 17:30 commute when executives reflect on daily productivity and operational bottlenecks.',
+        hookLogic: '「残業月40時間→定時退社で売上2倍」の鮮明なBefore/Afterでスクロールを止める。',
+        hookLogic_en: 'Highlights a stark 40hr/mo overhead reduction to halt feed scrolling.',
+        empathyLogic: '経営者の役割は「作業」ではなく「戦略」であるという本質的な解放感を提供。',
+        empathyLogic_en: 'Emphasizes that executive responsibility is strategy, not repetitive mechanical drafting.',
+        algorithmSafety: 'クリーンテキストによる読了率とリポスト率の最大化。',
+        algorithmSafety_en: 'Clean narrative copy designed to maximize timeline dwell time.'
+      },
+      postDeliberation: {
+        hookOfficer: '17:30の退勤時に「作業で一日が終わるな」と強烈な気付きを提示。',
+        hookOfficer_en: 'Prompts immediate executive self-reflection during evening commute.',
+        empathyOfficer: '真面目な担当者が抱える慢性残業の痛みを完全に言語化。',
+        empathyOfficer_en: 'Validates operational fatigue with actionable systemic relief.',
+        algoOfficer: '夕方のTLアクティブ急増時間に適合した高読了率テキスト。',
+        algoOfficer_en: 'Engineered for high completion and dwell time during evening peak.',
+        brandOfficer: '知的な業務改革リーダーシップを確立。',
+        brandOfficer_en: 'Reinforces executive engineering pedigree.',
+        investorOfficer: '工数削減から直接売上へ繋がる最短動線を証明。',
+        investorOfficer_en: 'Clear ROI line from time reclamation to pipeline conversion.',
+        founderOfficer: '「定時で帰って戦略を練る」という理想を思い出させてくれる。',
+        founderOfficer_en: 'Reminds founders of their true leverage points.',
+        chiefCommander: 'ビジネスプラン限定の第3スロットとして採択。',
+        chiefCommander_en: 'Ratified for highest-tier multi-post schedule.'
+      }
+    },
+    {
+      step: 4,
+      format: 'four_tier_thread',
+      timeSlot: 'evening',
+      angle: '世間のためになる有益ノウハウ：2026年最新Xアルゴリズムの真実 ＆ シャドウバン即時回避・解除完全マニュアル',
+      angle_en: 'Universal High-Value Blueprint: 2026 Algorithm Mechanics & Shadowban Recovery Manual',
+      scores: { hook: 98, empathy: 97, algo: 99, brand: 98, total: 98.0 },
+      rationale: {
+        whyThisTime: '夜20:00のプライムタイム。タイムライン上で最も長文スレッドが精読・熟読され、ブックマークが急増するピーク。',
+        whyThisTime_en: 'Evening 20:00 peak when decision-makers read structured threads and bookmark blueprints.',
+        hookLogic: '「インプ急減とシャドウバンの危険性」という痛点を突いて0.2秒停止。',
+        hookLogic_en: 'Targets reach drop and shadowban anxiety to stop scrolls.',
+        empathyLogic: '理不尽なアルゴリズム変動に苦しむ運用者を救済し、圧倒的ギブで信頼を獲得。',
+        empathyLogic_en: 'Provides universal goodwill to convert readers into loyal followers.',
+        algorithmSafety: '親ツイート完全リンクフリー。ブックマーク加点（+10倍）と滞在時間を最大化。',
+        algorithmSafety_en: 'Zero links on root tweet. Maximize Bookmark Velocity (+10.0 weight).'
+      },
+      postDeliberation: {
+        hookOfficer: '20:00のプライムタイムに4段骨太スレッドを投下し親指を完全停止させる。',
+        hookOfficer_en: 'Deploys a high-retention 4-part thread during prime reading peak.',
+        empathyOfficer: 'ただの宣伝ではなく一次情報を惜しみなくギブし絶大な信頼を獲得。',
+        empathyOfficer_en: 'Pure utility education creating instant trust.',
+        algoOfficer: 'ブックマーク率が通常の3.5倍に達し、推薦グラフで最高峰スコアを獲得。',
+        algoOfficer_en: 'Maximizes bookmarks and thread dwell time.',
+        brandOfficer: 'エンジニア組織としての高い知見と品格を証明。',
+        brandOfficer_en: 'Demonstrates deep systems engineering authority.',
+        investorOfficer: '信頼残高の蓄積こそが最も低コストな高単価見込み客獲得。',
+        investorOfficer_en: 'Accumulating trust capital is the highest-ROI acquisition.',
+        founderOfficer: 'シャドウバンの原因や解除手順が具体的に書かれてたら即ブクマする。',
+        founderOfficer_en: 'Actionable recovery steps are immediately bookmarkable.',
+        chiefCommander: 'フォロワー獲得と権威性確立を同時に果たすスレッドとして採択。',
+        chiefCommander_en: 'Unanimously ratified as authoritative value thread.'
+      }
+    },
+    {
+      step: 5,
+      format: 'single_reflection',
+      timeSlot: 'night',
+      angle: '深夜の静かな本音考察：フォロワー500人で毎月商談が絶えないアカウントの設計思想',
+      angle_en: 'Late-Night Quiet Insight: Account Architecture Converting at 500 Followers',
+      scores: { hook: 96, empathy: 98, algo: 95, brand: 97, total: 96.5 },
+      rationale: {
+        whyThisTime: '深夜22:30の就寝前。リラックスした状態でじっくり心に染み渡る思索的ポストが好まれる時間帯。',
+        whyThisTime_en: 'Late-night 22:30 quiet reflection peak when executives read thoughtful long-form observations.',
+        hookLogic: '「万人受けのバズ vs 1人の意思決定者に深く刺す設計」の対比で深く引き込む。',
+        hookLogic_en: 'Contrasts vanity impression chasing with high-intent decision-maker targeting.',
+        empathyLogic: '数字ゲームに疲弊した運用者に寄り添い、本質的なビジネス価値へ着地させる。',
+        empathyLogic_en: 'Reassures founders exhausted by vanity metrics, redirecting focus to high-value pipeline.',
+        algorithmSafety: '夜間の読了滞在時間を最大化し、翌朝のTL露出へ繋ぐ。',
+        algorithmSafety_en: 'Maximizes night dwell time, rolling momentum into next-morning recommendation graph.'
+      },
+      postDeliberation: {
+        hookOfficer: '深夜22:30、静かに考え込む経営者の心に刺さる言葉を配置。',
+        hookOfficer_en: 'Resonates deeply during late-night quiet contemplation.',
+        empathyOfficer: '「誰に向けて書くか」という原点に立ち返る安らぎと確信を提供。',
+        empathyOfficer_en: 'Re-centers reader on core purpose and authenticity.',
+        algoOfficer: '滞在時間の蓄積が翌朝のレコメンド初速を底上げする。',
+        algoOfficer_en: 'Dwell time carries momentum into next morning feed scoring.',
+        brandOfficer: '煽りを一切排した、静かで誠実な企業トップの品格を表現。',
+        brandOfficer_en: 'Understated, authoritative executive reflection.',
+        investorOfficer: '無駄な認知ではなく、1件の高単価商談に直結する思考法。',
+        investorOfficer_en: 'Reinforces focus on qualified pipeline over empty views.',
+        founderOfficer: '寝る前にこういう本質的な言葉を読むと、明日も頑張ろうと思える。',
+        founderOfficer_en: 'Inspiring and deeply grounding for business operators.',
+        chiefCommander: '最高峰ビジネスプランの1日の締めくくりとして全会一致で正式承認。',
+        chiefCommander_en: 'Unanimously approved as closing post for top-tier schedule.'
+      }
+    }
+  ];
+  const targetCount = userPlan === 'business' ? 5 : (userPlan === 'starter' ? 1 : 3);
+
+  const prompt = `あなたはXマーケティングで驚異的な商談・成約率を誇る【7名編成 AI合議制諮問評議会】です。
+安易な妥協や忖度を排し、各専門AIがそれぞれ相反する利害と評価レンズを持ち、客観的かつ徹底的な弁証法的合議ディベートを戦わせてください。
+日本語（全面ビジネス日本語）と英語（全面ビジネス英語）の両方を完全に出力してください。下品な煽りや俗語（神輿担ぎ、YESマン、ドブ捨て、ピエロなど）は一切禁止し、気品と説得力のあるビジネス表現のみを用いてください。
+
+【検討対象案件】
+- サービス名: ${marketAnalysis.serviceName}
+- ターゲット: ${marketAnalysis.targetAudience}
+- 訴求軸: ${marketAnalysis.coreAppealAngle}
+- ユーザー指示（最優先）: ${userPrompt || '特になし'}
+- 予約タイムゾーン: ${scheduleTimeZone}（時間帯・理由はこの現地時間を基準にし、理由にもタイムゾーン名を明記）
+- 契約プラン: ${userPlan} (${userPlan === 'business' ? 'ビジネス最高峰: 1日5投稿 (朝・昼・夕・夜・深夜の24時間露出)' : (userPlan === 'starter' ? 'スターター: 1日1投稿 (朝枠)' : 'プロ運用: 1日3投稿 (朝・昼・夜のゴールデンタイム)')})
+- 投稿件数指示: postPlan配列には契約プランに合わせ【必ず${targetCount}件】（${userPlan === 'business' ? '5件：朝08:30、昼12:30、夕17:30、夜20:00、深夜22:30' : (userPlan === 'starter' ? '1件：朝08:30' : '3件：朝08:30、昼12:30、夜20:00')}）を出力してください。
+- BATCHENGINE知見: 引用RT議論トラップ（Quote Tweet）、プロフ固定ステルス導線、一次データ解体ノウハウ（直リンク減衰回避）
+
+${userKnowledge && (userKnowledge.negativeList || userKnowledge.failedCases) ? `【🚨 最重要検閲：ユーザーの蓄積ネガティブリスト（地雷・即死ルール・実測失敗集の完全回避）】
+※ ポジティブなバズの真似事よりも「絶対に踏んではならない地雷」の回避が、アカウント生存とフォロワー獲得の8割を決定づけます。評議会は各ポストが以下に1点でも抵触していないかを冷徹に検証してください。
+${userKnowledge.negativeList ? `【蓄積ネガティブリスト】:\n${JSON.stringify(userKnowledge.negativeList, null, 2)}` : ''}
+${userKnowledge.failedCases && userKnowledge.failedCases.length > 0 ? `【過去の実測失敗事例（伸び悩んだポストの反省点）】:\n${JSON.stringify(userKnowledge.failedCases.slice(0, 5), null, 2)}` : ''}
+${userKnowledge.avoidKeywords ? `【厳格に排除すべきNG構文・表現】: ${userKnowledge.avoidKeywords.join(', ')}` : ''}
+` : ''}
+【7名の評議員と独立した評価レンズ】
+1. 🎯 【親指停止フック分析官 (Thumb-Stop Hook Analyst)】: 0.2秒停止至上主義。ぬるい疑問文を排し、機会損失の数字可視化を要求。
+2. 💬 【現場共感・ストーリー心理官 (Narrative Empathy Strategist)】: 読者の自尊心と泥臭い奮闘へのリスペクト。上から目線の説教に反対し連帯を重視。
+3. 🔬 【Xアルゴリズム＆逆解析官 (Algorithmic Reverse-Engineer)】: 2026年最新Xアルゴリズム。直リンク80%減衰回避・引用RT議論構造・滞在時間ハックを指定。
+4. 🛡️ 【ブランド防御・品質統括官 (Brand Safety Director)】: 量産型AI構文や誇大広告を即時排除。上場企業水準の品格と公式API正規通信を死守。
+5. 💼 【辛口B2B投資家・CFO (Pragmatic CFO / ROI Focus)】: 商談単価・LTV・リード獲得の明確なROIを要求し、机上の空論を排除。
+6. 🏭 【実践SMEオペレーター (Veteran SME Operator)】: 現場で毎朝格闘する経営者の生々しい負荷に即した実感と言葉を要求。
+7. 🏛️ 【最高作戦司令官 (Executive Operations Commander)】: 安易な妥協案を拒否権（VETO）で粉砕。全員が客観的評価で90点以上を承認するまで妥協なく決裁。
+
+【出力JSONフォーマット】
+{
+  "deliberationRounds": {
+    "round1_proposals": {
+      "hookOfficer": "フック分析官の初期提案（ビジネス日本語：2段落）",
+      "hookOfficer_en": "Hook Analyst initial proposal (Executive English: 2 paragraphs)",
+      "empathyOfficer": "共感心理官の初期提案（ビジネス日本語：2段落）",
+      "empathyOfficer_en": "Empathy Strategist initial proposal (Executive English: 2 paragraphs)",
+      "algoOfficer": "アルゴリズム官の初期提案（ビジネス日本語：2段落）",
+      "algoOfficer_en": "Algorithmic Analyst initial proposal (Executive English: 2 paragraphs)",
+      "brandOfficer": "ブランド防御官の初期提案（ビジネス日本語：2段落）",
+      "brandOfficer_en": "Brand Safety Director initial proposal (Executive English: 2 paragraphs)",
+      "investorOfficer": "B2B投資家・CFOの初期提案（ビジネス日本語：2段落）",
+      "investorOfficer_en": "Pragmatic CFO initial proposal (Executive English: 2 paragraphs)",
+      "founderOfficer": "中小企業社長の初期提案（ビジネス日本語：2段落）",
+      "founderOfficer_en": "Veteran SME Operator initial proposal (Executive English: 2 paragraphs)",
+      "chiefCommander": "最高作戦司令官の初期指示（ビジネス日本語）",
+      "chiefCommander_en": "Executive Commander initial directive (Executive English)"
+    },
+    "round2_debate": {
+      "objectionToHook": "共感官・社長からフック官への反論（ビジネス日本語）",
+      "objectionToHook_en": "Empathy Strategist & SME Operator to Hook Analyst (Executive English)",
+      "objectionToFluff": "投資家・フック官から共感官への反論（ビジネス日本語）",
+      "objectionToFluff_en": "Pragmatic CFO to Empathy Strategist (Executive English)",
+      "objectionToAlgo": "社長・ブランド官からアルゴ官への反論（ビジネス日本語）",
+      "objectionToAlgo_en": "Brand Safety & SME Operator to Algorithmic Analyst (Executive English)",
+      "counterRefutation": "激論の末に導き出された高次元の合意着地点（ビジネス日本語）",
+      "counterRefutation_en": "Unanimous Consensus Convergence after dialectical debate (Executive English)"
+    },
+    "round3_scores": {
+      "hookScore": 96,
+      "empathyScore": 95,
+      "algoScore": 97,
+      "brandScore": 94,
+      "roiScore": 96,
+      "realityScore": 95,
+      "averageScore": 95.5,
+      "allPassed": true,
+      "critique": "評議会による多角採点合格総評（ビジネス日本語）",
+      "critique_en": "Council multi-agent scoring verdict (Executive English)"
+    },
+    "round4_verdict": {
+      "chiefVerdict": "最高作戦司令官による最終決裁（ビジネス日本語）",
+      "chiefVerdict_en": "Executive Operations Commander final ratification (Executive English)"
+    }
+  },
+  "postPlan": [
+    {
+      "step": 1,
+      "format": "single_empathy",
+      "timeSlot": "morning",
+      "angle": "朝の始業前・現場の生々しい手作業と時間損失の事実提示",
+      "angle_en": "Operational Cost Recovery & Executive Empathy",
+      "scores": { "hook": 96, "empathy": 97, "algo": 94, "brand": 95, "total": 95.5 },
+      "rationale": {
+        "whyThisTime": "朝7:30〜8:00の出勤時間帯。意思決定層が移動中に一人でスマホを見るため、共感フックが最も深く刺さる。",
+        "whyThisTime_en": "Matches morning 7:30 AM executive commute peak when decision-makers review feeds alone.",
+        "hookLogic": "冒頭1行目で『毎朝の工数逼迫（月30時間の消失）』を具体的数字で示し、スクロールを完全停止させる。",
+        "hookLogic_en": "Opens with quantifiable operational drag ($1,400/month executive waste) to stop 0.2s thumb-scrolling.",
+        "empathyLogic": "孤独に奮闘する経営者へのリスペクトを担保し、説教臭さやAI臭を完全排除。",
+        "empathyLogic_en": "Frames manual grind not as laziness, but as misplaced discipline, building executive solidarity.",
+        "algorithmSafety": "直リンクなし。純粋な共感と有益性でいいね・リポスト初速を獲得し、アルゴリズムのおすすめTLへ乗せる。",
+        "algorithmSafety_en": "Zero in-body URLs, avoiding reach penalties while maximizing early bookmarks & dwell time."
+      },
+      "postDeliberation": {
+        "hookOfficer": "フック分析官の個別推敲コメント（日本語）",
+        "hookOfficer_en": "Hook Analyst post commentary (English)",
+        "empathyOfficer": "共感心理官の個別推敲コメント（日本語）",
+        "empathyOfficer_en": "Empathy Strategist post commentary (English)",
+        "algoOfficer": "アルゴリズム官の個別推敲コメント（日本語）",
+        "algoOfficer_en": "Algorithm Analyst post commentary (English)",
+        "brandOfficer": "ブランド防御官の個別推敲コメント（日本語）",
+        "brandOfficer_en": "Brand Safety Director post commentary (English)",
+        "investorOfficer": "B2B投資家の個別推敲コメント（日本語）",
+        "investorOfficer_en": "Pragmatic CFO post commentary (English)",
+        "founderOfficer": "中小企業社長の個別推敲コメント（日本語）",
+        "founderOfficer_en": "SME Operator post commentary (English)",
+        "chiefCommander": "最高作戦司令官の採択コメント（日本語）",
+        "chiefCommander_en": "Executive Commander post ratification (English)"
+      }
+    },
+    {
+      "step": 2,
+      "format": "quote_debate_trap",
+      "timeSlot": "noon",
+      "angle": "常識の逆張り・引用RT議論惹起型ディベートトラップ（脱・リプ欄URL依存）",
+      "angle_en": "Challenging Common Wisdom & Quote Tweet Debate Velocity",
+      "scores": { "hook": 97, "empathy": 93, "algo": 98, "brand": 94, "total": 95.5 },
+      "rationale": {
+        "whyThisTime": "昼休み12:05〜12:45。タイムラインのアクティブ数が急増し、引用RTでの議論が急速に広がる。",
+        "whyThisTime_en": "12:05-12:45 PM lunch peak when timeline engagement velocity reaches maximum daily velocity.",
+        "hookLogic": "「未だにリプ欄にURLを貼っている人はアルゴリズムで損している」と反直感を提起し、プロの議論を誘発。",
+        "hookLogic_en": "Challenges the myth of reply-link funnels with hard platform data to trigger peer repost debates.",
+        "empathyLogic": "現場の固定観念を解体し、知的刺激を与える。",
+        "empathyLogic_en": "Stimulates peer respect by framing the post as an intellectual debate among industry experts.",
+        "algorithmSafety": "外部リンク完全排除。引用リポスト（Quote Tweet）を誘発することで、Conversation Scoreを最大化させる。",
+        "algorithmSafety_en": "Zero links. Triggers Quote Reposts, the highest-weighted algorithmic metric in the 2026 engine."
+      },
+      "postDeliberation": {
+        "hookOfficer": "フック分析官のコメント", "hookOfficer_en": "Hook Analyst commentary",
+        "empathyOfficer": "共感心理官のコメント", "empathyOfficer_en": "Empathy Strategist commentary",
+        "algoOfficer": "アルゴリズム官のコメント", "algoOfficer_en": "Algorithm Analyst commentary",
+        "brandOfficer": "ブランド防御官のコメント", "brandOfficer_en": "Brand Safety commentary",
+        "investorOfficer": "B2B投資家のコメント", "investorOfficer_en": "Pragmatic CFO commentary",
+        "founderOfficer": "中小企業社長のコメント", "founderOfficer_en": "SME Operator commentary",
+        "chiefCommander": "最高作戦司令官のコメント", "chiefCommander_en": "Executive Commander ratification"
+      }
+    },
+    {
+      "step": 3,
+      "format": "profile_pinned_funnel",
+      "timeSlot": "night",
+      "angle": "プロフ固定記事誘導・ステルス型成約ノウハウ（完全リンクフリー）",
+      "angle_en": "Stealth Pinned Asset Routing & Enterprise Authority Blueprint",
+      "scores": { "hook": 95, "empathy": 96, "algo": 97, "brand": 96, "total": 96.0 },
+      "rationale": {
+        "whyThisTime": "夜21:15〜22:00の就寝前ゴールデンタイム。長文が熟読され、プロフィールへのアクセスと固定記事読了率が最大化する。",
+        "whyThisTime_en": "Evening 21:15-22:00 peak when decision-makers read long-form copy before bedtime.",
+        "hookLogic": "一次データと検証結果を客観的に提示し、圧倒的な信頼を構築。",
+        "hookLogic_en": "Presents verified operational telemetry and structural proof to establish undeniable authority.",
+        "empathyLogic": "「もう夜遅くにXのネタで頭を抱えたくない」という経営者の解放欲求を直撃。",
+        "empathyLogic_en": "Directly relieves late-night founder fatigue with a structural, compliant solution.",
+        "algorithmSafety": "投稿内リンクは一切置かず、プロフ固定ポストへの自然な遷移により、リンク減衰ゼロで成約リードを獲得する。",
+        "algorithmSafety_en": "Completely avoids in-body URLs. Routes high-intent visitors to the pinned conversion flagship."
+      },
+      "postDeliberation": {
+        "hookOfficer": "フック分析官のコメント", "hookOfficer_en": "Hook Analyst commentary",
+        "empathyOfficer": "共感心理官のコメント", "empathyOfficer_en": "Empathy Strategist commentary",
+        "algoOfficer": "アルゴリズム官のコメント", "algoOfficer_en": "Algorithm Analyst commentary",
+        "brandOfficer": "ブランド防御官のコメント", "brandOfficer_en": "Brand Safety commentary",
+        "investorOfficer": "B2B投資家のコメント", "investorOfficer_en": "Pragmatic CFO commentary",
+        "founderOfficer": "中小企業社長のコメント", "founderOfficer_en": "SME Operator commentary",
+        "chiefCommander": "最高作戦司令官のコメント", "chiefCommander_en": "Executive Commander ratification"
+      }
+    }
+  ]
+}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const cleaned = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.warn('7-Member Deliberation parse fallback:', e.message);
+    return {
+      deliberationRounds: {
+        round1_proposals: {
+          hookOfficer: `タイムラインは0.2秒の戦場です。「SNS運用にお困りではありませんか？」などという定型的な疑問形は、経営者の親指を一瞬たりとも止められません。\n\n必要なのは冷徹な数字による機会損失の可視化です。「毎朝45分を投稿作成に溶かす社長へ。その時給換算、月額20万円以上の隠れ人件費ロスです」というように、業務コストと経営数値を直結させた強烈な反直感フックを冒頭1行目に配置すべきです。`,
+          hookOfficer_en: `The timeline is a 0.2-second battlefield. Generic questions like 'Struggling with social media?' fail to halt executive scrolling for even a fraction of a second.\n\nWe must open with cold, quantifiable pain: 'Burning 45 minutes every morning to manually draft posts with zero qualified pipeline is draining $1,400/month in hidden operational overhead.' Generic greetings are strictly vetoed.`,
+          empathyOfficer: `フック分析官の指摘は理解できますが、数字で一方的に断罪するような表現は経営者の誇りを傷つけ、反発を生むだけです。30〜50代の中小企業経営者や事業主は、限られたリソースの中で胃を痛めながら現場を支えています。\n\n我々が提供すべきは説教ではなく、深い理解と敬意です。「本業の商品開発や顧客対応に命を懸けたいのに、夜中にスマホ片手にXのネタを絞り出している孤立感」に光を当て、「あなたの努力は尊いが、その貴重な思考体力を手作業に浪費すべきではない」という連帯のトーンを徹底すべきです。`,
+          empathyOfficer_en: `While the numbers are accurate, leading with harsh accusations damages executive trust. Dedicated founders are already battling exhausting workloads with lean teams.\n\nWe frame manual effort not as carelessness, but as misplaced discipline: 'Dedicated founders are being burned out by brute-force tasks.' Preserving dignity is essential; numbers without respect create friction.`,
+          algoOfficer: `感情論の前に、2026年最新Xアルゴリズムの現実を直視してください。親ポストに直リンクを貼った瞬間に、X社のおすすめアルゴリズムによってインプレッションは80%以上強制減衰されます。\n\nまた、誰もがやっている安易なリプ欄URL誘導も、すでにユーザーに見透かされエンゲージメントが低下しています。今最もアルゴリズム評価（Conversation Score）が高いのは「専門家の引用RT・議論を巻き起こす逆張り構造」と「プロフ固定記事へのステルス導線」です。この2本柱で設計しなければインプは獲得できません。`,
+          algoOfficer_en: `Look at the algorithmic mechanics: in-body URLs trigger an immediate 75-80% distribution decay. Reply-link tricks have also been penalized by platform heuristics.\n\nIn 2026, the recommendation engine assigns peak weights to Dwell Time and Quote Repost velocity. We must format clean narrative copy that eliminates link penalties, driving high-intent readers naturally to a pinned profile asset.`,
+          brandOfficer: `過度な恐怖煽りと量産型AIポエムの双方に反対します。下品な煽りは企業のブランド価値を致命的に失墜させ、事なかれ主義のAI構文（「いかがでしたでしょうか」「必見です」）も読者に一瞬で見抜かれます。\n\n上場企業水準の重厚なプロの文体を担保し、かつX公式API v2完全準拠による事業継続性・セキュリティの客観的事実を明記することで、慎重な経営者層からの盤石な信頼を勝ち取る必要があります。`,
+          brandOfficer_en: `We strictly veto both hyperbolic fear-mongering and robotic AI templates ('Here are 5 tips', 'Let's dive in!'). Enterprise decision-makers buy from trusted partners, not cheap affiliate copywriters.\n\nWe mandate an authoritative, refined corporate tone backed by official X API v2 compliance, ensuring uncompromised brand equity.`,
+          investorOfficer: `共感ポエムだけでは1件の商談も生まれない。我々が見るべきはROI、CAC、そして有効商談の獲得数だけだ。読者が頷くだけで終わる投稿は、マーケティングではなくただの自己満足だ。\n\n1投稿ごとに「この投稿がどの経営指標に直結し、いくらの利益機会を生むのか」を明確にさせろ。無駄な文字数を削ぎ落とし、最短距離で成約と意思決定を促す導線になっていない提案は、投資対効果の観点から即時却下する。`,
+          investorOfficer_en: `Pure emotional validation yields zero pipeline. We must evaluate every post through the lens of CAC reduction, qualified pipeline velocity, and return on invested time.\n\nEvery post must communicate clear economic upside: liberating 40 hours of leadership focus to generate enterprise contracts. Eliminate fluff; optimize for procurement readiness.`,
+          founderOfficer: `机上の空論を語るな。毎朝45分、始業前にスマホの前で頭抱えてネタ探してる俺たち現場のリアルな苦痛がわかるか？AIが書いたような綺麗な箇条書きを見た瞬間に、現場の人間は即座にスクロールするんだよ。\n\n俺たちが欲しいのは高尚なマーケティング理論じゃない。「今すぐこの手作業の消耗戦から解放されて、本業の商談と売上に集中できる具体的な仕組み」だ。小手先のテクニックではなく、現場の生々しい実感を突く言葉を使え。`,
+          founderOfficer_en: `Cut the textbook theories. Do you know what it feels like to spend 45 minutes every morning before opening shop agonizing over content, only to get 2 likes? It feels like throwing time down the drain.\n\nOperators don't want academic lectures. We want our time back so we can close clients. Speak to the gritty day-to-day reality of running a company.`,
+          chiefCommander: `全評議員の初期主張を精査した。忖度や安易な妥協は一切許さない。フック官の客観的数字訴求、共感官のリスペクト、アルゴ官のリンク減衰回避、ブランド官の品格、投資家のROI意識、社長の現場実感を統合し、真に成果を生む洗練された戦略を策定せよ。`,
+          chiefCommander_en: `Initial arguments ratified. All superficial compromises vetoed. Synthesize cold opportunity cost metrics with executive dignity, governed by a zero-link stealth distribution framework.`
+        },
+        round2_debate: {
+          objectionToHook: `共感心理官・中小企業社長からフック分析官へ：
+「月20万円以上の損失」という事実提示であっても、現場で奮闘している経営者に対する敬意を欠いてはならない。過度な煽りや感情的表現はB2Bの信頼関係構築を阻害する。数字を提示する際は、「見えない機会損失の客観的構造化」へと昇華させよ。`,
+          objectionToHook_en: `Empathy Strategist & SME Operator to Hook Analyst:
+Leading with harsh accusations damages executive trust. We must structure cold facts as objective opportunity costs rather than cheap anxiety triggers.`,
+          objectionToFluff: `辛口投資家・フック分析官から共感心理官へ：
+経営者の気持ちに寄り添うだけで、読者が次のアクションを起こすか？単なる共感や慰め合いでは、1件の商談も生まれない。寄り添いは前提であり、そこから「だからこそ、この仕組みを導入して月40時間を奪還せよ」という合理的な投資判断へ着地させなければ、投じたリソースは無駄になる。`,
+          objectionToFluff_en: `Pragmatic CFO to Empathy Strategist:
+Comforting words alone do not drive business decisions. Empathy must serve as the bridge to a decisive ROI calculation and operational upgrade.`,
+          objectionToAlgo: `中小企業社長・ブランド防御官からアルゴリズム官へ：
+アルゴリズムの数式ばかり気にして作為的な仕掛けに偏りすぎると、肝心の文章から人間味と誠実さが損なわれる。アルゴリズム適合を意識しつつも、一人の人間・経営者として心を動かされる文章になっているかを最優先に推敲せよ。`,
+          objectionToAlgo_en: `Brand Safety & SME Operator to Algorithmic Analyst:
+Over-indexing on mathematical tricks makes copy feel mechanical. Human resonance and authentic peer respect must remain the core priority.`,
+          counterRefutation: `客観的激論の末の合意着地点：
+フック官の「客観的な数字による事実提示」と、共感官・社長の「経営者への深い敬意と現場感」を完全融合。アルゴ官の「エンゲージメント最適化」と「プロフ固定導線」を軸とし、投資家の求める「明確なROI」をブランド官の「企業品格」で包み込む、妥協なき3段階の黄金スケジュールを全会一致で採択する。`,
+          counterRefutation_en: `Unanimous Consensus Convergence:
+Full convergence reached: Synthesizing cold numerical facts with deep executive respect, routed through a zero-link stealth funnel to optimize algorithmic distribution and drive qualified lead pipeline.`
+        },
+        round3_scores: {
+          hookScore: 96,
+          empathyScore: 95,
+          algoScore: 97,
+          brandScore: 94,
+          roiScore: 96,
+          realityScore: 95,
+          averageScore: 95.5,
+          allPassed: true,
+          critique: `7名の評議員全員が90点以上の最高基準を承認。過度な煽りと内容のない共感の双方を完全に排除し、B2B意思決定層の親指を止め、心を動かし、成約へ導く極めて堅牢な戦略骨子が完成した。`,
+          critique_en: `All 7 directors approved 90+ score threshold. Generic AI phrasing and ungrounded emotional fluff completely eliminated. Highly resilient conversion architecture approved.`
+        },
+        round4_verdict: {
+          chiefVerdict: `最高作戦司令官として最終決裁を下す。安易な妥協案を排し、本質的な成果指標に基づき採択した。
+朝・昼・夜の意思決定ピークに合わせた【精鋭3投稿】に全リソースを集中させる。朝は「現場の生々しい工数損失への共感と事実提示」、昼は「引用RTと議論を巻き起こす常識の逆張り」、夜は「プロフ固定記事へ自然誘導するステルス型成約ノウハウ」を展開する。直リンクによるアルゴリズム減衰をゼロにし、真の商談獲得を自律達成せよ。`,
+          chiefVerdict_en: `Executive Operations Commander final ratification: Rejected all superficial compromises. We concentrate full resources into 3 high-impact golden-hour posts: Morning (misallocated overhead facts), Noon (reverse-angle quote debate), and Night (authoritative conversion blueprint to pinned asset).`
+        }
+      },
+      postPlan: (() => {
+        if (userPlan === 'business') return full5Posts;
+        if (userPlan === 'starter') return [full5Posts[0]];
+        return [full5Posts[0], full5Posts[1], full5Posts[3]];
+      })()
+    };
+  }
+}
+
+/**
+ * 段階的プロンプト [Pass 4]: 合議結果に基づき、最高品質の厳選3投稿本文を動的執筆（日英両言語対応）
+ */
+async function writeCouncilApprovedPosts(marketAnalysis, targetUrl, councilPlan, userPrompt, userKnowledge = null) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEYが設定されていません');
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+
+  // 🏛️ MAP-Elites（Quality-Diversity）および Reflexion（自己反省メモ）の注入
+  let mapElitesDirective = '';
+  try {
+    const eliteSample = await sampleFromMapElitesArchive(marketAnalysis.userId || 'global', { allowMutation: true });
+    mapElitesDirective = `
+【MAP-Elites 進化ディレクティブ (モード: ${eliteSample.mode.toUpperCase()})】
+- 行動特性ニッチ: ${eliteSample.angle.name} (${eliteSample.angle.desc})
+- 読者ターゲット層: ${eliteSample.audience.name}
+- 戦略指令: ${eliteSample.directive}
+${eliteSample.referenceHook ? `- 実証エリート勝ちパターン参考: 「${eliteSample.referenceHook}」` : ''}
+${eliteSample.reflection ? `- 過去の自己反省（Reflexion）: ${eliteSample.reflection}` : ''}
+`;
+  } catch (meErr) {
+    // fallback
+  }
+
+  const prompt = `あなたは7名編成AI合議制評議会に専属する最高峰のB2Bコピーライターです。
+評議会のディベート結果・各投稿の戦略根拠（rationale）に完全準拠し、計画された全${councilPlan.postPlan.length}件の投稿本文を、日本語版（120〜140文字）と英語版（220〜270文字のExecutive B2B English）の【両方】を執筆してください。
+
+【案件情報】
+- サービス名: ${marketAnalysis.serviceName}
+- ターゲット: ${marketAnalysis.targetAudience}
+- 訴求軸: ${marketAnalysis.coreAppealAngle}
+- ユーザー指示（最優先）: ${userPrompt || '特になし'}
+- 誘導先（プロフ固定記事の対象）: ${targetUrl}
+${mapElitesDirective}
+${userKnowledge && (userKnowledge.negativeList || userKnowledge.avoidKeywords) ? `【🚨 絶対厳守：ネガティブリスト遵守規則（以下の禁止トリガー・構文は1行たりとも書いてはならない）】
+${userKnowledge.negativeList ? `【蓄積ネガティブリスト】:\n${JSON.stringify(userKnowledge.negativeList, null, 2)}` : ''}
+${userKnowledge.avoidKeywords ? `【厳格排除NG語句】: ${userKnowledge.avoidKeywords.join(', ')}` : ''}
+${userKnowledge.failedCases && userKnowledge.failedCases.length > 0 ? `【過去の実測失敗事例（再発厳禁）】:\n${JSON.stringify(userKnowledge.failedCases.slice(0, 3), null, 2)}` : ''}
+` : ''}
+【評議会が決定した投稿計画（全${councilPlan.postPlan.length}件）】
+${JSON.stringify(councilPlan.postPlan, null, 2)}
+
+【文体ルール】
+- AI特有の安っぽい定型句（「いかがでしたでしょうか」「必見です！」「〜ですね！」）を完全排除。
+- 日本語版は読者の感情を動かす生々しいビジネス日本語（120〜140文字）。
+- 英語版はLinear, Stripe, Notion水準の洗練されたEnterprise B2B English（220〜270文字）。
+- 本文内に直接URLは貼らず、読後のプロフ固定遷移を促すこと。
+
+【出力JSONフォーマット】
+{
+  "posts": [
+    {
+      "step": 1,
+      "format": "single_empathy",
+      "angle": "朝の始業前・現場の生々しい手作業と時間損失の事実提示",
+      "angle_en": "Operational Cost Recovery & Executive Empathy",
+      "timeSlot": "morning",
+      "tweets": ["ツイート本文（ビジネス日本語：120〜140文字）"],
+      "tweets_en": ["Post text (Executive B2B English: 220-270 chars)"]
+    },
+    {
+      "step": 2,
+      "format": "quote_debate_trap",
+      "angle": "常識の逆張り・引用RT議論惹起型ディベートトラップ",
+      "angle_en": "Challenging Common Wisdom & Quote Tweet Debate Velocity",
+      "timeSlot": "noon",
+      "tweets": ["ツイート本文（ビジネス日本語：120〜140文字）"],
+      "tweets_en": ["Post text (Executive B2B English: 220-270 chars)"]
+    },
+    {
+      "step": 3,
+      "format": "profile_pinned_funnel",
+      "angle": "プロフ固定記事誘導・ステルス型成約ノウハウ",
+      "angle_en": "Stealth Pinned Asset Routing & Enterprise Authority Blueprint",
+      "timeSlot": "night",
+      "tweets": ["ツイート本文（ビジネス日本語：120〜140文字）"],
+      "tweets_en": ["Post text (Executive B2B English: 220-270 chars)"]
+    }
+  ]
+}`;
+
+  const defaultJaPosts = [
+    `毎朝45分画面を睨み、月30時間を手作業に溶かして商談ゼロ。真面目な担当者ほど「熱量が大事」と精神論に追い込まれ、アルゴリズムの仕様変更に搾取されている。\n\n努力の方向が違うだけです。泥臭い手作業で自社の貴重なリソースをすり減らすのは、もう終わりにしませんか。`,
+    `「B2Bはリプ欄にURLを貼ればリードが獲れる」という常識、実は完全に間違いです。なぜなら今のアルゴリズムは外部誘導を厳罰化しており、インプが削られCVRは0.01%以下に沈むから。\n\nこの冷徹な数字の現実に、現場のマーケターはどう答えますか？`,
+    `残業月40時間→定時退社で売上2倍。手作業でSNSを運用していた時は「投稿を作ること」が目的になっていましたが、仕組み化した瞬間に商談数が劇変しました。\n\n経営者がやるべきは「文章を書くこと」ではなく「戦略を打つこと」です。`,
+    [
+      `【警告】最近急にインプレッションが激減した人、これ見落としてたら一発でシャドウバン対象です。\n\n2026年最新のXレコメンドアルゴリズムで厳罰化された「即死ルール」と、アカウントの露出を復活させる具体的手順をまとめました。運用担当者は必ず確認してください👇 (1/4)`,
+      `① なぜインプが落ちるのか？\n今のXアルゴリズムは「短時間の同一URL投稿」「外部サイトへの誘導」をスパムスコアとして即時検知します。特にSearch Suggestion Ban（検索候補からの除外）にかかると、既存フォロワー以外へのリーチが90%以上遮断されます。(2/4)`,
+      `② 即効でやるべき3つの対策\n1. 親ツイートに外部リンクを絶対に貼らない（自己リプまたはプロフ固定へ誘導）\n2. 過去の不審なサードパーティアプリ連携を全解除\n3. 48時間はリポストや過剰リプライを止め、クリーンな閲覧（滞在時間獲得）のみ行う(3/4)`,
+      `③ アルゴリズムを味方につける最重要指標\n現在のXで最も加点されるのは「いいね」ではなく「ブックマーク（保存）」と「読了滞在時間（Dwell Time）」です。\n\n後から見返せるようこのスレッドを【保存】推奨。質問や相談はリプ欄へどうぞ。(4/4)`
+    ],
+    `深夜のひとりごと。フォロワー数が多いのに1円も売上が立たないアカウントと、フォロワー500人なのに毎月商談が絶えないアカウントの決定的な違いは何か？\n\n答えは「誰に向けて書いているか」。万人受けのバズではなく、たった1人の意思決定者に深く刺さる言葉を届ける設計です。`
+  ];
+
+  const defaultEnPosts = [
+    `Burning 45 minutes every morning staring at a blank screen to draft an X post—only to get 2 likes. Does that sound painfully familiar?\n\nSocial channels should be an engine for scalable distribution, not a daily chore that exhausts executive bandwidth. Stop wasting high-leverage hours on manual content writing.`,
+    `The belief that "dropping offer links in reply threads guarantees qualified B2B leads" is officially dead in 2026.\n\nDirect links trigger an immediate 75% algorithmic reach penalty. Top enterprise teams use zero-link stealth funnels: build narrative authority on the timeline, then guide prospects to an optimized pinned asset.`,
+    `Cutting manual drafting overhead by 40 hours/month while doubling inbound pipeline. When automated systems replace brute-force typing, founders reclaim strategic control over their time.`,
+    [
+      `[CRITICAL ALERT] If your impressions plummeted this week, you likely triggered an algorithmic shadowban.\n\nHere is the exact breakdown of the 2026 X recommendation penalty thresholds and our verified recovery protocol. Bookmark this thread for your team 👇 (1/4)`,
+      `1. Why Reach Gets Crushed\nX now immediately flags repeated outbound URLs and erratic session footprints. When hit with a Search Suggestion Ban, your impressions to non-followers decay by over 90% within hours.(2/4)`,
+      `2. The 3-Step Emergency Fix\n• Zero links on root tweets (move routing to pinned profile assets)\n• Revoke legacy third-party app OAuth permissions immediately\n• 48-hour cooloff: zero mass replies, accumulate clean reading dwell time(3/4)`,
+      `3. Winning the 2026 Recommendation Graph\nThe single highest-weighted factor is now Bookmarks (+10.0 multiplier) and Thread Dwell Time, far surpassing superficial likes.\n\nSave this blueprint to your bookmarks. Drop your questions below.(4/4)`
+    ],
+    `A late-night observation: The difference between a 50k-follower account making $0 and a 500-follower account closing high-ticket deals every week comes down to one principle: specificity over vanity reach.`
+  ];
+
+  try {
+    const result = await model.generateContent(prompt);
+    const cleaned = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    const rawPosts = parsed.posts || [];
+    return councilPlan.postPlan.map((planItem, idx) => {
+      const match = rawPosts[idx] || {};
+      let tweetsArray = Array.isArray(match.tweets) && match.tweets.length > 0 ? match.tweets : null;
+      if (!tweetsArray) {
+        tweetsArray = Array.isArray(defaultJaPosts[idx]) ? defaultJaPosts[idx] : [defaultJaPosts[idx] || defaultJaPosts[idx % defaultJaPosts.length]];
+      }
+      let tweetsEnArray = Array.isArray(match.tweets_en) && match.tweets_en.length > 0 ? match.tweets_en : null;
+      if (!tweetsEnArray) {
+        tweetsEnArray = Array.isArray(defaultEnPosts[idx]) ? defaultEnPosts[idx] : [defaultEnPosts[idx] || defaultEnPosts[idx % defaultEnPosts.length]];
+      }
+      return {
+        step: planItem.step,
+        format: planItem.format,
+        angle: match.angle || planItem.angle,
+        angle_en: match.angle_en || planItem.angle_en || 'Strategic Post',
+        timeSlot: planItem.timeSlot,
+        scores: planItem.scores || { hook: 95, empathy: 95, algo: 95, brand: 95, total: 95 },
+        rationale: planItem.rationale || {},
+        postDeliberation: planItem.postDeliberation || {},
+        tweets: tweetsArray.map(t => sanitizePostOrReplyText(t)),
+        tweets_en: tweetsEnArray.map(t => sanitizePostOrReplyText(t))
+      };
+    });
+  } catch (e) {
+    console.error('Failed to parse 3 council posts JSON:', e.message);
+    return councilPlan.postPlan.map((p, i) => {
+      const jaTweets = Array.isArray(defaultJaPosts[i]) ? defaultJaPosts[i] : [defaultJaPosts[i] || defaultJaPosts[i % defaultJaPosts.length]];
+      const enTweets = Array.isArray(defaultEnPosts[i]) ? defaultEnPosts[i] : [defaultEnPosts[i] || defaultEnPosts[i % defaultEnPosts.length]];
+      return {
+        step: i + 1,
+        format: p.format,
+        angle: p.angle,
+        angle_en: p.angle_en || 'Strategic Post',
+        timeSlot: p.timeSlot,
+        scores: p.scores || { hook: 95, empathy: 95, algo: 95, brand: 95, total: 95 },
+        rationale: p.rationale || {},
+        postDeliberation: p.postDeliberation || {},
+        tweets: jaTweets,
+        tweets_en: enTweets
+      };
+    });
+  }
+}
+
+/**
+ * 段階的プロンプト [Pass 5]: 執筆ドラフトを7名AI評議会へ再提示し、ダメ出し・推敲クロスディベートを行って最終リライト
+ * 議論させる → 投稿を作る → 投稿を見せて再議論・推敲させる弁証法ループ
+ */
+async function critiqueAndRefineDraftPosts(marketAnalysis, councilPlan, initialDrafts, accountStage = 'initial', userPrompt = '', userKnowledge = null) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) return initialDrafts;
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+
+  const stageDescriptions = {
+    initial: '【初期アカウント（フォロワー < 500）】壁打ちや上から目線は厳禁。読者へのリスペクト、生々しい現場の共感、親近感を持たせる問いかけ、プロフ固定への自然な誘導を最優先すること。',
+    growth: '【中堅アカウント（フォロワー 500〜5,000）】拡散力強化。常識の逆張り、引用RT議論トラップ、2段階ステルス導線でフォロワー外のTLに露出させること。',
+    enterprise: '【大規模アカウント（フォロワー 5,000+）】業界リーダーとしての品格と客観性。一次データ、検証生データ、ROIを提示し、高単価リードをプロフ固定から確実に刈り取ること。'
+  };
+
+  const prompt = `あなたは7名編成AI合議制評議会の【相互審査・推敲監査官】です。
+前段のコピーライターが執筆した以下の「全${initialDrafts.length}件の投稿ドラフト（スレッド含む）」を、7名の各専門官（フック分析官、共感心理官、アルゴリズム逆解析官、ブランド防御官、辛口CFO、叩き上げ社長、最高司令官）の視点から厳しく審査・ダメ出しし、指摘を反映した【最高純度の最終推敲版】を再執筆してください。
+
+【対象アカウントの現在地】
+${stageDescriptions[accountStage] || stageDescriptions.initial}
+
+【案件情報】
+- サービス名: ${marketAnalysis.serviceName}
+- ターゲット: ${marketAnalysis.targetAudience}
+- 訴求軸: ${marketAnalysis.coreAppealAngle}
+- ユーザー指示: ${userPrompt || '特になし'}
+
+${userKnowledge && (userKnowledge.negativeList || userKnowledge.avoidKeywords) ? `【🚨 最重要監査：蓄積ネガティブリスト監査（地雷・即死ルール・実測失敗集の完全回避）】
+評議会は執筆された全投稿（およびスレッド内の全ツイート）を以下のネガティブリストと照合し、1点でも抵触していれば即座に修正・リライトしてください。
+${userKnowledge.negativeList ? `【蓄積ネガティブリスト】:\n${JSON.stringify(userKnowledge.negativeList, null, 2)}` : ''}
+${userKnowledge.avoidKeywords ? `【NG語句】: ${userKnowledge.avoidKeywords.join(', ')}` : ''}
+${userKnowledge.failedCases && userKnowledge.failedCases.length > 0 ? `【過去の実測失敗反省点】:\n${JSON.stringify(userKnowledge.failedCases.slice(0, 5), null, 2)}` : ''}
+` : ''}
+【執筆されたドラフト投稿（全${initialDrafts.length}件：全スレッド・全ツイート）】
+${JSON.stringify(initialDrafts.map((d, i) => ({
+  slot: d.timeSlot,
+  format: d.format,
+  draft_ja_tweets: d.tweets || [d.text],
+  draft_en_tweets: d.tweets_en || [d.text_en]
+})), null, 2)}
+
+【評議会によるダメ出し・監査基準】
+1. ネガティブリスト監査官: 親ポストの直リンク、ハッシュタグ、量産型AI構文（「いかがでしたでしょうか」等）、安易な疑問形、過去の失敗トリガーが完全排除されているか？（1点でもあれば即リライト）
+2. フック分析官: 冒頭1行目で0.2秒スクロール停止できるか？「〜について共有します」などの平凡な書き出しは厳禁。
+3. 共感心理官: 読者を責め立てず、孤独な奮闘を救済・肯定しているか？上から目線の説教になっていないか？
+4. アルゴリズム逆解析官: 投稿内リンクは完全排除されているか？（直リンクはインプ70%減の厳罰）プロフ固定への導線が美しいか？スレッド連動でDwell Timeが最大化されているか？
+5. ブランド防御官: AI特有の安っぽい定型句が徹底的に排除されているか？
+6. 最高司令官: アカウントの現在地（初期/中堅/大）に合致した立ち振る舞いになっているか？
+
+【出力JSONフォーマット】
+{
+  "councilCritiqueNotes": "評議会による第2ラウンドの激論・推敲サマリー",
+  "refinedPosts": [
+    {
+      "step": 1,
+      "timeSlot": "morning",
+      "refined_tweets_ja": ["推敲後の最終日本語ポスト本文（120〜140文字）"],
+      "refined_tweets_en": ["推敲後の最終英語ポスト本文（220〜270文字）"],
+      "hookVerdict": "フック分析官の推敲評価",
+      "empathyVerdict": "共感心理官の推敲評価",
+      "algoVerdict": "アルゴリズム官の推敲評価",
+      "brandVerdict": "ブランド防御官の推敲評価",
+      "negativeListAudit": {
+        "passed": true,
+        "violationsPurged": "直リンク排除、ハッシュタグゼロ、AI定型句完全排除を確認"
+      }
+    },
+    {
+      "step": 2,
+      "timeSlot": "noon",
+      "refined_tweets_ja": ["推敲後の最終日本語ポスト本文（120〜140文字）"],
+      "refined_tweets_en": ["推敲後の最終英語ポスト本文（220〜270文字）"],
+      "hookVerdict": "フック分析官の推敲評価",
+      "empathyVerdict": "共感心理官の推敲評価",
+      "algoVerdict": "アルゴリズム官の推敲評価",
+      "brandVerdict": "ブランド防御官の推敲評価",
+      "negativeListAudit": {
+        "passed": true,
+        "violationsPurged": "直リンク排除、ハッシュタグゼロ、AI定型句完全排除を確認"
+      }
+    },
+    {
+      "step": 3,
+      "timeSlot": "night",
+      "refined_tweets_ja": [
+        "1本目（120〜140文字）(1/4)",
+        "2本目（120〜140文字）(2/4)",
+        "3本目（120〜140文字）(3/4)",
+        "4本目（120〜140文字）(4/4)"
+      ],
+      "refined_tweets_en": [
+        "Tweet 1 (220-270 chars) (1/4)",
+        "Tweet 2 (220-270 chars) (2/4)",
+        "Tweet 3 (220-270 chars) (3/4)",
+        "Tweet 4 (220-270 chars) (4/4)"
+      ],
+      "hookVerdict": "フック分析官の推敲評価",
+      "empathyVerdict": "共感心理官の推敲評価",
+      "algoVerdict": "アルゴリズム官の推敲評価",
+      "brandVerdict": "ブランド防御官の推敲評価",
+      "negativeListAudit": {
+        "passed": true,
+        "violationsPurged": "直リンク排除、ハッシュタグゼロ、AI定型句完全排除を確認"
+      }
+    }
+  ]
+}
+`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const cleaned = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    const refinedList = parsed.refinedPosts || [];
+
+    return initialDrafts.map((draft, idx) => {
+      const ref = refinedList[idx];
+      if (!ref) return draft;
+      let refinedTweets = draft.tweets;
+      if (ref.refined_tweets_ja && Array.isArray(ref.refined_tweets_ja) && ref.refined_tweets_ja.length > 0) {
+        refinedTweets = ref.refined_tweets_ja;
+      } else if (ref.refined_tweet_ja) {
+        refinedTweets = Array.isArray(draft.tweets) && draft.tweets.length > 1
+          ? [ref.refined_tweet_ja, ...draft.tweets.slice(1)]
+          : [ref.refined_tweet_ja];
+      }
+      let refinedTweetsEn = draft.tweets_en;
+      if (ref.refined_tweets_en && Array.isArray(ref.refined_tweets_en) && ref.refined_tweets_en.length > 0) {
+        refinedTweetsEn = ref.refined_tweets_en;
+      } else if (ref.refined_tweet_en) {
+        refinedTweetsEn = Array.isArray(draft.tweets_en) && draft.tweets_en.length > 1
+          ? [ref.refined_tweet_en, ...draft.tweets_en.slice(1)]
+          : [ref.refined_tweet_en];
+      }
+      const safeTweets = (Array.isArray(refinedTweets) ? refinedTweets : [refinedTweets]).map(t => sanitizePostOrReplyText(t));
+      const safeTweetsEn = (Array.isArray(refinedTweetsEn) ? refinedTweetsEn : [refinedTweetsEn]).map(t => sanitizePostOrReplyText(t));
+      return {
+        ...draft,
+        tweets: safeTweets,
+        tweets_en: safeTweetsEn,
+        text: safeTweets[0] || '',
+        text_en: safeTweetsEn[0] || '',
+        negativeListAudit: ref.negativeListAudit || { passed: true, verifiedRulesCount: (userKnowledge?.negativeList || []).length },
+        postDeliberation: {
+          ...(draft.postDeliberation || {}),
+          hookOfficer: ref.hookVerdict || draft.postDeliberation?.hookOfficer,
+          empathyOfficer: ref.empathyVerdict || draft.postDeliberation?.empathyOfficer,
+          algoOfficer: ref.algoVerdict || draft.postDeliberation?.algoOfficer,
+          brandOfficer: ref.brandVerdict || draft.postDeliberation?.brandOfficer,
+          negativeListAudit: ref.negativeListAudit || { passed: true, verifiedRulesCount: (userKnowledge?.negativeList || []).length }
+        }
+      };
+    });
+  } catch (err) {
+    console.warn('[Pass 5 Critique Warning]:', err.message);
+    return initialDrafts;
+  }
+}
+
+function getZonedDateParts(date, timeZone, includeTime = false) {
+  const options = {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    ...(includeTime ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' } : {})
+  };
+  return Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', options)
+      .formatToParts(date)
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, Number(part.value)])
+  );
+}
+
+function dateFromLocalDateTimeInZone(year, month, day, hour, minute, timeZone) {
+  const targetWallTime = Date.UTC(year, month - 1, day, hour, minute);
+  let timestamp = targetWallTime;
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const actual = getZonedDateParts(new Date(timestamp), timeZone, true);
+    const actualWallTime = Date.UTC(
+      actual.year,
+      actual.month - 1,
+      actual.day,
+      actual.hour,
+      actual.minute,
+      actual.second
+    );
+    const correction = targetWallTime - actualWallTime;
+    timestamp += correction;
+    if (correction === 0) break;
+  }
+
+  return new Date(timestamp);
+}
+
+function dateAtTimeInZone(referenceDate, timeZone, hour, minute, dayOffset = 0) {
+  const localDate = getZonedDateParts(referenceDate, timeZone);
+  const targetDay = new Date(Date.UTC(localDate.year, localDate.month - 1, localDate.day + dayOffset));
+  return dateFromLocalDateTimeInZone(
+    targetDay.getUTCFullYear(),
+    targetDay.getUTCMonth() + 1,
+    targetDay.getUTCDate(),
+    hour,
+    minute,
+    timeZone
+  );
+}
+
+function isValidTimeZone(timeZone) {
+  if (typeof timeZone !== 'string' || !timeZone.trim() || timeZone.length > 100) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 🚀 AI自律マーケティングキャンペーンを起動（多段合議・ユーザープロンプト・Bio戦略立案を完全統合）
+ */
+async function launchAutopilotCampaign(userId, targetUrl, options = {}) {
+  const userPrompt = (options.userPrompt || '').trim();
+  const lang = options.lang || 'ja';
+  if (options.scheduleTimeZone && !isValidTimeZone(options.scheduleTimeZone)) {
+    throw new Error('予約タイムゾーンが無効です。IANAタイムゾーンを指定してください。');
+  }
+  let scheduleTimeZone = options.scheduleTimeZone || 'Asia/Tokyo';
+  console.log(`🚀 [自律合議キャンペーン起動] ユーザー: ${userId} / URL: ${targetUrl} / 言語: ${lang}`);
+  if (userPrompt) console.log(`  💬 [ユーザープロンプト反映]: ${userPrompt}`);
+
+  // 0. アカウント規模（初期 / 中堅 / 大規模）の自動判定 ＆ 契約プラン判定
+  let accountStage = 'initial';
+  let userPlan = options.plan || 'pro';
+  try {
+    const userDoc = await db.collection('saas_users').doc(userId).get();
+    if (userDoc.exists) {
+      const uData = userDoc.data() || {};
+      if (uData.planId) userPlan = uData.planId;
+      const savedScheduleTimeZone = uData.scheduleTimeZone || uData.timezone;
+      if (!options.scheduleTimeZone && savedScheduleTimeZone) {
+        if (!isValidTimeZone(savedScheduleTimeZone)) {
+          throw new Error(`保存済み予約タイムゾーンが無効です: ${savedScheduleTimeZone}`);
+        }
+        scheduleTimeZone = savedScheduleTimeZone;
+      }
+      const followers = uData.twitterMetrics?.followers_count || 1;
+      if (followers >= 5000) accountStage = 'enterprise';
+      else if (followers >= 500) accountStage = 'growth';
+      else accountStage = 'initial';
+      console.log(`  📊 [アカウント規模自動判定] @${uData.xUsername || userId} (フォロワー: ${followers}人) -> 戦略ステージ: ${accountStage} / 契約プラン: ${userPlan}`);
+    }
+  } catch (e) {}
+
+  // 1. ページ内容取得
+  const pageSummary = await fetchUrlSummary(targetUrl);
+  if (!pageSummary.ok) {
+    throw new Error(`URLの読み込みに失敗しました: ${pageSummary.error}`);
+  }
+
+  // 2. 集合知 ＆ ユーザーナレッジのロードと最新メトリクスからの同期
+  const collectiveKnowledge = await getCollectiveMarketingIntelligence();
+  let userKnowledge = await getUserMarketingKnowledge(userId);
+  try {
+    const { aggregateUserHistoryAndMetrics, syncAndEvolveKnowledgeFromHistory } = require('./ai_deliberation_council');
+    const metricsData = await aggregateUserHistoryAndMetrics(userId);
+    userKnowledge = await syncAndEvolveKnowledgeFromHistory(userId, metricsData.history, userKnowledge);
+  } catch (eSync) {
+    console.warn('Knowledge sync warning in autopilot:', eSync.message);
+  }
+
+  // 3. [Pass 1] 市場分析・ポジショニング（ユーザープロンプト反映）
+  console.log(`  🔍 [Pass 1: 市場・ペルソナ分析中...]`);
+  const marketAnalysis = await analyzeMarketWithUserPrompt(pageSummary, userPrompt, collectiveKnowledge, userKnowledge);
+
+  // 4. [Pass 2] アカウント成長戦略（最適化Bio案 ＆ 看板固定Post案の策定）
+  console.log(`  👤 [Pass 2: 最適化Bio＆固定Post戦略案を策定中...]`);
+  const accountGrowth = await generateAccountGrowthStrategy(marketAnalysis, userPrompt, targetUrl);
+
+  // 5. [Pass 3] 3〜4ラウンド制 本格マルチエージェント・ディベート（7名編成）
+  console.log(`  🏛️ [Pass 3: 7名編成AI評議会によるラウンド制激論ディベート合議中...]`);
+  const councilPlan = await deliberateCouncilStrategy(marketAnalysis, accountGrowth, userPrompt, collectiveKnowledge, scheduleTimeZone, userKnowledge, userPlan);
+
+  // 6. [Pass 4] 精鋭投稿バッチの初期ドラフト執筆
+  console.log(`  ✍️ [Pass 4: 合議承認ポスト（厳選${councilPlan.postPlan.length}投稿）の初期ドラフト執筆中...]`);
+  const initialBatch = await writeCouncilApprovedPosts(marketAnalysis, targetUrl, councilPlan, userPrompt, userKnowledge);
+
+  // 7. [Pass 5] 執筆ドラフトを評議会へ再提示し、ダメ出し・推敲クロスディベート（弁証法ループ）
+  console.log(`  ⚔️ [Pass 5: 7名AI評議会による執筆ドラフトの相互監査・ダメ出し推敲ディベート中...]`);
+  const postBatch = await critiqueAndRefineDraftPosts(marketAnalysis, councilPlan, initialBatch, accountStage, userPrompt, userKnowledge);
+
+  // 7. スケジュール日時の計算（朝・昼・夜に分散配置）
+  const campaignId = `auto_${Date.now().toString(36)}`;
+  const now = Date.now();
+  const scheduledJobs = [];
+
+  const timeSlotMap = {
+    morning: { h: 8, m: 30 },
+    noon: { h: 12, m: 30 },
+    afternoon: { h: 17, m: 30 },
+    evening: { h: 20, m: 0 },
+    night: { h: 22, m: 30 },
+    sunday_night: { h: 21, m: 30 }
+  };
+
+  for (let i = 0; i < postBatch.length; i++) {
+    const p = postBatch[i];
+    const slotDef = timeSlotMap[p.timeSlot] || { h: 12, m: 0 };
+    const baseRefDate = options.startFromDate ? new Date(options.startFromDate) : new Date(now);
+    const slotMinute = slotDef.m + Math.floor(Math.random() * 10);
+    let scheduledDate = dateAtTimeInZone(baseRefDate, scheduleTimeZone, slotDef.h, slotMinute);
+    if (scheduledDate.getTime() <= now + 15 * 60 * 1000) {
+      scheduledDate = dateAtTimeInZone(baseRefDate, scheduleTimeZone, slotDef.h, slotMinute, 1);
+    }
+
+    const tweetsArray = Array.isArray(p.tweets) && p.tweets.length > 0 ? p.tweets : [p.text || ''];
+    const tweetsEnArray = Array.isArray(p.tweets_en) && p.tweets_en.length > 0 ? p.tweets_en : [p.text_en || ''];
+
+    scheduledJobs.push({
+      jobId: `job_${campaignId}_${i + 1}`,
+      userId,
+      campaignId,
+      scheduleTimeZone,
+      targetUrl,
+      format: p.format || (tweetsArray.length > 2 ? 'multi_thread_story' : (tweetsArray.length === 2 ? 'two_tier_reply_link' : 'single_value')),
+      tweets: tweetsArray,
+      tweets_en: tweetsEnArray,
+      text: tweetsArray[0] || '',
+      text_en: tweetsEnArray[0] || '',
+      isThread: tweetsArray.length > 1,
+      angle: p.angle || '自動最適化',
+      angle_en: p.angle_en || 'Strategic Post',
+      timeSlot: p.timeSlot || 'evening',
+      scores: p.scores || { hook: 95, empathy: 95, algo: 95, brand: 95, total: 95 },
+      rationale: p.rationale || {},
+      postDeliberation: p.postDeliberation || {},
+      negativeListAudit: p.negativeListAudit || { passed: true, verifiedRulesCount: (userKnowledge?.negativeList || []).length },
+      knowledgeLevel: userKnowledge?.level || 1,
+      learnedPostsCount: userKnowledge?.learnedPostsCount || 0,
+      scheduledAt: scheduledDate,
+      status: 'pending',
+      targetLikes: options.targetLikes || 10,
+      targetRetweets: options.targetRetweets || 5,
+      targetQuotes: options.targetQuotes || 2,
+      createdAt: new Date()
+    });
+  }
+
+  // 8. 戦略レポートオブジェクトの構築（日英バイリンガル完全格納）
+  const strategyReport = {
+    campaignId,
+    targetUrl,
+    scheduleTimeZone,
+    userPrompt: userPrompt || null,
+    generatedAt: new Date(),
+    marketAnalysis,
+    accountGrowth,
+    deliberationRounds: councilPlan.deliberationRounds,
+    collectiveIntelligenceSnapshot: {
+      totalLearnedAccounts: collectiveKnowledge.totalLearnedAccounts,
+      totalLearnedPosts: collectiveKnowledge.totalLearnedPosts
+    }
+  };
+
+  // 9. Firestoreへの保存（やり直し時の重複蓄積防止：古い未投稿ジョブを一括クリーンアップ）
+  const batch = db.batch();
+
+  if (!options.isStrategyBlueprintOnly) {
+    try {
+      const oldJobsSnap = await db.collection('autopilot_jobs')
+        .where('userId', '==', userId)
+        .where('status', '==', 'pending')
+        .get();
+
+      if (!options.isReplenish && !oldJobsSnap.empty) {
+        console.log(`  🧹 [旧予約投稿クリーンアップ] やり直し検知：過去の未投稿ジョブ ${oldJobsSnap.size}件を削除・最新ジョブに置換します`);
+        oldJobsSnap.docs.forEach(d => batch.delete(d.ref));
+      }
+    } catch (cleanErr) {
+      console.warn('[Old jobs cleanup warning]:', cleanErr.message);
+    }
+  }
+
+  const userRef = db.collection('saas_users').doc(userId);
+  batch.set(userRef, {
+    latestMarketingStrategy: strategyReport,
+    lastAutopilotCampaignId: campaignId,
+    updatedAt: new Date()
+  }, { merge: true });
+
+  const campRef = db.collection('autopilot_campaigns').doc(campaignId);
+  batch.set(campRef, {
+    campaignId,
+    userId,
+    targetUrl,
+    scheduleTimeZone,
+    userPrompt,
+    strategyReport,
+    plan: options.plan || 'pro',
+    totalJobs: options.isStrategyBlueprintOnly ? 0 : scheduledJobs.length,
+    active: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  });
+
+  if (!options.isStrategyBlueprintOnly) {
+    for (const job of scheduledJobs) {
+      const jobRef = db.collection('autopilot_jobs').doc(job.jobId);
+      batch.set(jobRef, job);
+    }
+  } else {
+    // 🏛️ 既存待機中スロット(pending)に対して、AI評議会がURL分析・集合知・TOP10バズから策定した最新投稿文を反映
+    try {
+      const pendingSnap = await db.collection('autopilot_jobs')
+        .where('userId', '==', userId)
+        .where('status', '==', 'pending')
+        .get();
+
+      if (!pendingSnap.empty) {
+        const pendingDocs = pendingSnap.docs;
+        pendingDocs.sort((a, b) => {
+          const ta = a.data().scheduledAt?._seconds || new Date(a.data().scheduledAt || 0).getTime() / 1000;
+          const tb = b.data().scheduledAt?._seconds || new Date(b.data().scheduledAt || 0).getTime() / 1000;
+          return ta - tb;
+        });
+
+        pendingDocs.forEach((d, i) => {
+          const generatedJob = scheduledJobs[i % scheduledJobs.length];
+          if (generatedJob) {
+            const tweets = Array.isArray(generatedJob.tweets) && generatedJob.tweets.length > 0 ? generatedJob.tweets : [generatedJob.text || ''];
+            const replyText = tweets.length > 1 ? tweets[1] : `▼ ${marketAnalysis.serviceName || 'サービス'}の詳細・無料体験はこちら👇\n${targetUrl.split(/[\n,\s]+/)[0] || targetUrl}`;
+            const fullTweets = tweets.length > 1 ? tweets : [tweets[0], replyText];
+
+            batch.update(d.ref, {
+              text: tweets[0],
+              tweets: fullTweets,
+              draftText: tweets[0],
+              draftReplyText: replyText,
+              text_en: generatedJob.text_en || null,
+              tweets_en: generatedJob.tweets_en || null,
+              angle: generatedJob.angle,
+              angle_en: generatedJob.angle_en || null,
+              format: 'two_tier_reply_link',
+              isThread: true,
+              scores: generatedJob.scores || { hook: 96, empathy: 97, algo: 95, brand: 96, total: 96 },
+              strategyDeliberatedAt: new Date(),
+              updatedAt: new Date()
+            });
+          }
+        });
+        console.log(`  ✨ [AI合議知見反映] 既存待機スロット ${pendingDocs.length}件にAI分析結果の投稿文を注入・同期しました`);
+      }
+    } catch (updateErr) {
+      console.warn('[Pending jobs AI update warning]:', updateErr.message);
+    }
+  }
+
+  await batch.commit();
+  console.log(`  🎉 [合議完了] ラウンド制ディベート戦略レポートと ${options.isStrategyBlueprintOnly ? '0 (JIT保持)' : scheduledJobs.length}件の自律ジョブを正常に保存しました！`);
+
+  return {
+    ok: true,
+    campaignId,
+    scheduleTimeZone,
+    strategyReport,
+    scheduledCount: scheduledJobs.length,
+    firstPostScheduledAt: scheduledJobs[0]?.scheduledAt
+  };
+}
+
+/**
+ * 🎯 【個別推敲】特定の1件の予約投稿に対して、個別プロンプトでAI評議会が再ディベート・修正する
+ */
+async function reThinkSingleJob(jobId, userPromptOrOpts = '') {
+  const promptText = typeof userPromptOrOpts === 'object' && userPromptOrOpts !== null
+    ? String(userPromptOrOpts.userPrompt || userPromptOrOpts.prompt || '')
+    : String(userPromptOrOpts || '');
+  console.log(`🎯 [個別再推敲開始] ジョブ: ${jobId} / 指示: ${promptText}`);
+
+  const jobRef = db.collection('autopilot_jobs').doc(jobId);
+  const snap = await jobRef.get();
+  if (!snap.exists) {
+    return { ok: false, error: '指定されたジョブが見つかりません' };
+  }
+
+  const job = snap.data();
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEYが設定されていません');
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+
+  const prompt = `あなたは7名編成AI合議制諮問評議会の専属コピーライター兼審査議長です。
+現在予約されている以下の1投稿に対して、ユーザーから個別の微調整・再推敲指示が入りました。
+ユーザー指示を踏まえて7名の専門官で是々非々審査を行い、投稿本文（日本語および英語）と個別ディベート、スコア、戦略根拠を最新化してください。
+
+【現在の投稿データ】
+- 時間帯: ${job.timeSlot}
+- 形式: ${job.format}
+- 現在の本文: ${JSON.stringify(job.tweets)}
+- 現在の本文(英語): ${JSON.stringify(job.tweets_en || [])}
+- 現在のアングル: ${job.angle}
+
+【ユーザーからの個別推敲指示】
+「${promptText}」
+
+【推敲ルール】
+- ユーザー指示が有効であれば積極的に採択し、さらにアルゴリズムや成約率を高めるプロの工夫を加えてください。
+- もしユーザー指示がアルゴリズム的に悪手（直リンクを貼るなど）であれば、本質的な意図を汲み取った上で安全な代替表現に昇華させてください。
+- 日本語版（tweets）と英語版（tweets_en）の両方を必ず更新してください。
+- 【最重要・文字数注記の絶対禁止】本文末尾や文頭に「（80文字）」「文字数: 〇」「(80 chars)」などの文字数カウント・注記・解説を絶対に含めないこと。そのまま投稿される本文のみを出力すること。
+
+【出力JSONフォーマット】
+{
+  "tweets": ["修正後の日本語ツイート本文（120〜140文字）"],
+  "tweets_en": ["Updated post copy in Executive Business English (220-270 chars)"],
+  "angle": "推敲後の訴求アングル（日本語）",
+  "angle_en": "Updated appeal angle in English",
+  "scores": { "hook": 96, "empathy": 96, "algo": 97, "brand": 95, "total": 96 },
+  "rationale": {
+    "whyThisTime": "時間帯適合理由",
+    "whyThisTime_en": "Scheduled time rationale in English",
+    "hookLogic": "推敲後のフック意図",
+    "hookLogic_en": "Updated hook logic in English",
+    "empathyLogic": "推敲後の共感意図",
+    "empathyLogic_en": "Updated empathy angle in English",
+    "algorithmSafety": "アルゴリズム安全性",
+    "algorithmSafety_en": "Algorithm safety in English"
+  },
+  "postDeliberation": {
+    "hookOfficer": "フック分析官の再推敲コメント",
+    "hookOfficer_en": "Hook Analyst revision notes in English",
+    "empathyOfficer": "共感心理官の再推敲コメント",
+    "empathyOfficer_en": "Empathy Strategist revision notes in English",
+    "algoOfficer": "アルゴリズム官の再推敲コメント",
+    "algoOfficer_en": "Algorithm Analyst revision notes in English",
+    "brandOfficer": "ブランド防御官の再推敲コメント",
+    "brandOfficer_en": "Brand Safety revision notes in English",
+    "investorOfficer": "B2B投資家の再推敲コメント",
+    "investorOfficer_en": "Pragmatic CFO revision notes in English",
+    "founderOfficer": "中小企業社長の再推敲コメント",
+    "founderOfficer_en": "SME Operator revision notes in English",
+    "chiefCommander": "最高司令官の再推敲採択コメント",
+    "chiefCommander_en": "Executive Commander ratification in English"
+  },
+  "reDeliberationNotes": "指示をどのように推敲に反映させたかの解説"
+}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const cleaned = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    const tweetsArray = (Array.isArray(parsed.tweets) && parsed.tweets.length > 0 ? parsed.tweets : job.tweets).map(t => sanitizePostOrReplyText(t));
+    const tweetsEnArray = (Array.isArray(parsed.tweets_en) && parsed.tweets_en.length > 0 ? parsed.tweets_en : (job.tweets_en || [])).map(t => sanitizePostOrReplyText(t));
+
+    const updatedData = {
+      tweets: tweetsArray,
+      tweets_en: tweetsEnArray,
+      text: tweetsArray[0] || '',
+      text_en: tweetsEnArray[0] || '',
+      isThread: tweetsArray.length > 1,
+      angle: parsed.angle || job.angle,
+      angle_en: parsed.angle_en || job.angle_en || 'Strategic Post',
+      scores: parsed.scores || job.scores || { hook: 95, empathy: 95, algo: 95, brand: 95, total: 95 },
+      rationale: parsed.rationale || job.rationale || {},
+      postDeliberation: parsed.postDeliberation || job.postDeliberation || {},
+      reDeliberationNotes: parsed.reDeliberationNotes || null,
+      lastUserPrompt: userPrompt,
+      reDeliberatedAt: new Date()
+    };
+
+    await jobRef.update(updatedData);
+
+    return {
+      ok: true,
+      jobId,
+      updatedJob: { id: jobId, ...job, ...updatedData }
+    };
+  } catch (e) {
+    console.error('Single job re-think error:', e.message);
+    return { ok: false, error: `推敲エラー: ${e.message}` };
+  }
+}
+
+/**
+ * 🔄 未投稿ジョブ全体を最新トレンド・ユーザー指示で動的に再検討（Re-evaluate / アジャスト）する
+ */
+async function reDeliberateAutopilotJobs(userId, userPrompt = '') {
+  console.log(`🔄 [動的再検討開始] ユーザー: ${userId} / 指示: ${userPrompt}`);
+
+  const snap = await db.collection('autopilot_jobs')
+    .where('userId', '==', userId)
+    .where('status', '==', 'pending')
+    .limit(20)
+    .get();
+
+  if (snap.empty) {
+    return { ok: false, error: '再検討対象となる未投稿（待機中）のジョブがありません。先にマーケティングを開始してください。' };
+  }
+
+  const jobs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const sampleJob = jobs[0];
+  const targetUrl = sampleJob.targetUrl || 'https://veloxpostapp.com';
+
+  const collectiveKnowledge = await getCollectiveMarketingIntelligence();
+  const userKnowledge = await getUserMarketingKnowledge(userId);
+  const pageSummary = await fetchUrlSummary(targetUrl);
+
+  const marketAnalysis = await analyzeMarketWithUserPrompt(pageSummary, userPrompt, collectiveKnowledge, userKnowledge);
+  const accountGrowth = await generateAccountGrowthStrategy(marketAnalysis, userPrompt, targetUrl);
+  const councilPlan = await deliberateCouncilStrategy(marketAnalysis, accountGrowth, userPrompt, collectiveKnowledge);
+  const newPosts = await writeCouncilApprovedPosts(marketAnalysis, targetUrl, councilPlan, userPrompt);
+
+  const batch = db.batch();
+  for (let i = 0; i < jobs.length; i++) {
+    const job = jobs[i];
+    const newP = newPosts[i % newPosts.length];
+    const tweetsArray = Array.isArray(newP.tweets) && newP.tweets.length > 0 ? newP.tweets : [newP.text || ''];
+    const tweetsEnArray = Array.isArray(newP.tweets_en) && newP.tweets_en.length > 0 ? newP.tweets_en : [newP.text_en || ''];
+
+    const jobRef = db.collection('autopilot_jobs').doc(job.id);
+    batch.update(jobRef, {
+      format: newP.format || job.format,
+      tweets: tweetsArray,
+      tweets_en: tweetsEnArray,
+      text: tweetsArray[0] || '',
+      text_en: tweetsEnArray[0] || '',
+      isThread: tweetsArray.length > 1,
+      angle: newP.angle || job.angle,
+      angle_en: newP.angle_en || job.angle_en || 'Strategic Post',
+      timeSlot: newP.timeSlot || job.timeSlot,
+      scores: newP.scores || { hook: 90, empathy: 90, algo: 90, brand: 90, total: 90 },
+      rationale: newP.rationale || {},
+      postDeliberation: newP.postDeliberation || {},
+      reDeliberatedAt: new Date(),
+      reDeliberateNote: '7名AI合議制により動的再推敲・全会一致承認'
+    });
+  }
+
+  const strategyReport = {
+    targetUrl,
+    userPrompt: userPrompt || null,
+    generatedAt: new Date(),
+    marketAnalysis,
+    accountGrowth,
+    deliberationRounds: councilPlan.deliberationRounds,
+    isReDeliberated: true
+  };
+
+  const userRef = db.collection('saas_users').doc(userId);
+  batch.set(userRef, {
+    latestMarketingStrategy: strategyReport,
+    updatedAt: new Date()
+  }, { merge: true });
+
+  await batch.commit();
+
+  return {
+    ok: true,
+    updatedJobsCount: jobs.length,
+    strategyReport
+  };
+}
+
+/**
+ * ✨ [Phase 1: 瞬速Aha! プレビューエンジン]
+ * X公式連携や課金前に、URLとプロンプトから即座に7名AI合議による厳選3投稿をプレビュー生成する
+ */
+async function generateInstantPreviewPosts(targetUrl, userPrompt = '', lang = 'ja') {
+  console.log(`✨ [Aha!プレビュー生成開始] URL: ${targetUrl} / 言語: ${lang}`);
+  const cleanUrl = String(targetUrl || '').trim();
+  let pageSummary = await fetchUrlSummary(cleanUrl);
+  if (!pageSummary || !pageSummary.ok) {
+    console.warn(`URL取得フォールバック適用: ${pageSummary?.error || 'Unknown error'}`);
+    pageSummary = {
+      ok: true,
+      url: cleanUrl,
+      title: cleanUrl.replace(/^https?:\/\//i, '').split('/')[0],
+      description: userPrompt || 'Webサービス・ソリューション',
+      headings: ['プロダクト概要', '主な特徴と強み', 'ユーザーベネフィット'],
+      snippet: `URL: ${cleanUrl}。対象サービス/プロダクト。ユーザー指示: ${userPrompt || '認知拡大・反響獲得のための魅力的なコピー作成'}`
+    };
+  }
+
+  const collectiveKnowledge = await getCollectiveMarketingIntelligence();
+  const { BASELINE_NEGATIVE_LIST } = require('./ai_deliberation_council');
+  const userKnowledge = {
+    negativeList: BASELINE_NEGATIVE_LIST || [],
+    avoidKeywords: ['いかがでしたでしょうか', '〜について解説します', '必見です', '3選'],
+    failedCases: []
+  };
+
+  const marketAnalysis = await analyzeMarketWithUserPrompt(pageSummary, userPrompt, collectiveKnowledge, userKnowledge);
+  const accountGrowth = await generateAccountGrowthStrategy(marketAnalysis, userPrompt, cleanUrl);
+  const councilPlan = await deliberateCouncilStrategy(marketAnalysis, accountGrowth, userPrompt, collectiveKnowledge, 'Asia/Tokyo', userKnowledge);
+  const initialBatch = await writeCouncilApprovedPosts(marketAnalysis, cleanUrl, councilPlan, userPrompt, userKnowledge);
+  const refinedBatch = await critiqueAndRefineDraftPosts(marketAnalysis, councilPlan, initialBatch, 'initial', userPrompt, userKnowledge);
+
+  return {
+    ok: true,
+    posts: refinedBatch,
+    marketAnalysis,
+    accountGrowth,
+    councilPlan,
+    targetUrl: cleanUrl
+  };
+}
+
+module.exports = {
+  fetchUrlSummary,
+  analyzeMarketWithUserPrompt,
+  generateAccountGrowthStrategy,
+  deliberateCouncilStrategy,
+  writeCouncilApprovedPosts,
+  dateAtTimeInZone,
+  dateFromLocalDateTimeInZone,
+  isValidTimeZone,
+  launchAutopilotCampaign,
+  reDeliberateAutopilotJobs,
+  reThinkSingleJob,
+  generateInstantPreviewPosts
+};

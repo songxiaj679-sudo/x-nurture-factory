@@ -1,0 +1,67 @@
+TAP version 13
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# Get jobs error: mock query failure
+# ℹ️ [Autopilot Worker] プロセス PID 860488 ではワーカー起動をスキップ（単一実行ワーカー構成）
+# Subtest: job list and dashboard show the selected language and complete scheduled thread
+ok 1 - job list and dashboard show the selected language and complete scheduled thread
+  ---
+  duration_ms: 33.125379
+  type: 'test'
+  ...
+# Subtest: GET /api/autopilot/jobs clearly separates raw stored data from reference previews without in-memory overwrite
+ok 2 - GET /api/autopilot/jobs clearly separates raw stored data from reference previews without in-memory overwrite
+  ---
+  duration_ms: 2.81918
+  type: 'test'
+  ...
+# Subtest: 50件を超える投稿履歴が存在しても待機予約および失敗ジョブが一切欠落せず共存し、postedAt等で決定論的ソートされること
+ok 3 - 50件を超える投稿履歴が存在しても待機予約および失敗ジョブが一切欠落せず共存し、postedAt等で決定論的ソートされること
+  ---
+  duration_ms: 2.0613
+  type: 'test'
+  ...
+# Subtest: クエリパラメータのバリデーション (statusフィルタ・limit境界・上限200件)
+ok 4 - クエリパラメータのバリデーション (statusフィルタ・limit境界・上限200件)
+  ---
+  duration_ms: 6.38976
+  type: 'test'
+  ...
+# Subtest: Firestoreの orderBy によるフィールド欠損文書除外仕様の検証と、APIクエリにおける orderBy 撤廃による欠損文書救済の証明
+ok 5 - Firestoreの orderBy によるフィールド欠損文書除外仕様の検証と、APIクエリにおける orderBy 撤廃による欠損文書救済の証明
+  ---
+  duration_ms: 0.85154
+  type: 'test'
+  ...
+# Subtest: 待機中ジョブ200件超および失敗ジョブ50件超の完全取得と全件点検保証 (打ち切り撤廃の検証)
+ok 6 - 待機中ジョブ200件超および失敗ジョブ50件超の完全取得と全件点検保証 (打ち切り撤廃の検証)
+  ---
+  duration_ms: 3.39895
+  type: 'test'
+  ...
+# Subtest: processing query errors are reported rather than returning an incomplete list
+ok 7 - processing query errors are reported rather than returning an incomplete list
+  ---
+  duration_ms: 0.90068
+  type: 'test'
+  ...
+# Subtest: posted history cursors use exact IDs, including numeric IDs and missing timestamps
+ok 8 - posted history cursors use exact IDs, including numeric IDs and missing timestamps
+  ---
+  duration_ms: 1.44059
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 218.120578

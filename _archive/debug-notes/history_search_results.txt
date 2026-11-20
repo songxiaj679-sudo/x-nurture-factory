@@ -1,0 +1,117 @@
+src/email_firstmail.js:839:      const historyWindowAgo = now - Math.max(60 * 60 * 1000, effectiveMinIntervalMs);
+src/email_firstmail.js:841:      const keptTs = rawTs.filter(t => typeof t === 'number' && t > historyWindowAgo).sort((a, b) => a - b);
+src/luxury_web_funnel.js:593:          history: []
+src/luxury_web_funnel.js:628:      const hSnap = await db.collection('saas_history').where('ownerUserId', '==', userId).get();
+src/luxury_web_funnel.js:629:      const history = hSnap.docs.map(d => {
+src/luxury_web_funnel.js:683:        history,
+src/luxury_web_funnel.js:1616:      const { historyId } = req.body || {};
+src/luxury_web_funnel.js:1617:      if (!historyId) return res.json({ ok: false });
+src/luxury_web_funnel.js:1618:      await db.collection('saas_history').doc(String(historyId)).update({
+src/luxury_web_funnel.js:1622:      const delRes = await executeSafeStealthDeleteTweet(String(historyId));
+src/autonomous_promo_ai.js.bak_audit2:1109:    userKnowledge = await syncAndEvolveKnowledgeFromHistory(userId, metricsData.history, userKnowledge);
+src/landing_page.js:455:      const history = (lSnap.docs || []).map(d => {
+src/landing_page.js:473:        history
+src/landing_page.js:1428:          await db.collection('saas_history').add({
+src/affiliate_page.js:222:    '              <tbody id="dash-history-tbody"><tr><td colspan="4" style="color:var(--muted);">No commission or payout records yet.</td></tr></tbody>',
+src/affiliate_page.js:410:    '          var tbody = document.getElementById("dash-history-tbody");',
+src/affiliate_page.js:411:    '          if (d.history && d.history.length > 0) {',
+src/affiliate_page.js:412:    '            tbody.innerHTML = d.history.map(function(h) {',
+src/affiliate_page.js:529:      const history = (ledgerSnap.docs || []).map(doc => {
+src/affiliate_page.js:558:        history
+src/ai_deliberation_council.js:240:async function syncAndEvolveKnowledgeFromHistory(userId, historyList, currentKnowledge) {
+src/ai_deliberation_council.js:241:  if (!Array.isArray(historyList) || historyList.length === 0) return currentKnowledge;
+src/ai_deliberation_council.js:252:  const validItems = filterValidMaturePostsForLearning(historyList, 24);
+src/ai_deliberation_council.js:317:  knowledge.learnedPostsCount = historyList.length;
+src/ai_deliberation_council.js:318:  knowledge.level = Math.min(10, Math.floor(historyList.length / 3) + 1);
+src/ai_deliberation_council.js:374:    const history = [];
+src/ai_deliberation_council.js:398:      history.push({
+src/ai_deliberation_council.js:433:      history,
+src/ai_deliberation_council.js:446:      history: [],
+src/ai_deliberation_council.js:492:  const matureHistory = filterValidMaturePostsForLearning(metricsData.history, 24);
+src/shop.js.orig:2463:    const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).get();
+src/shop.js.orig:3841:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js.orig:3855:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js.bak_stripe:2488:    const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).get();
+src/shop.js.bak_stripe:3866:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js.bak_stripe:3880:    const ref = db.collection('saas_history').doc(histId);
+src/saas_engine.js:1261:    await db.collection('saas_history').add({
+src/saas_engine.js:1341:async function executeTenantRemoteDelete(tenantUser, accDocId, accData, historyDocs) {
+src/saas_engine.js:1367:    _log(`🗑️ Starting remote deletion of ${historyDocs.length} post(s) on @${cleanUsername || 'user'}...`);
+src/saas_engine.js:1383:    for (const hDoc of historyDocs) {
+src/saas_engine.js:1753:    const delSnap = await db.collection('saas_history').where('ownerUserId', '==', userId).where('deleteReq', '==', true).get().catch(() => ({ empty: true, docs: [] }));
+src/saas_outreach_worker.js:552:    await db.collection('saas_history').add({
+src/saas_outreach_worker.js:882:        await db.collection('saas_history').add({
+src/saas_outreach_worker.js:949:          _log(`⏭️ Reply rejected or unconfirmed (${repCap.errorMsg || 'no_id'}); skipping history log to prevent dead link.`);
+src/saas_outreach_worker.js:959:        await db.collection('saas_history').add({
+src/ai_deliberation_council.js.bak_trend:137:async function syncAndEvolveKnowledgeFromHistory(userId, historyList, currentKnowledge) {
+src/ai_deliberation_council.js.bak_trend:138:  if (!Array.isArray(historyList) || historyList.length === 0) return currentKnowledge;
+src/ai_deliberation_council.js.bak_trend:145:  const totalImp = historyList.reduce((acc, h) => acc + (h.impressions || 0), 0);
+src/ai_deliberation_council.js.bak_trend:146:  const avg = Math.round(totalImp / historyList.length);
+src/ai_deliberation_council.js.bak_trend:148:  for (const item of historyList) {
+src/ai_deliberation_council.js.bak_trend:186:  knowledge.learnedPostsCount = historyList.length;
+src/ai_deliberation_council.js.bak_trend:187:  knowledge.level = Math.min(10, Math.floor(historyList.length / 3) + 1);
+src/ai_deliberation_council.js.bak_trend:243:    const history = [];
+src/ai_deliberation_council.js.bak_trend:260:      history.push({
+src/ai_deliberation_council.js.bak_trend:288:      history,
+src/ai_deliberation_council.js.bak_trend:301:      history: [],
+src/ai_deliberation_council.js.bak_trend:340:  userKnowledge = await syncAndEvolveKnowledgeFromHistory(userId, metricsData.history, userKnowledge);
+src/telegram_bot.js:1128:        const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).limit(15).get();
+src/telegram_bot.js:1159:        const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).get();
+src/reply_promo_engine.js:543:        await db.collection('saas_history').add({
+src/reply_promo_engine.js:731:      await db.collection('saas_reply_history').add({
+src/reply_promo_engine.js:742:        await db.collection('saas_history').add({
+src/metrics_harvest_engine.js:147: * @param {Array<Object>} historyItems
+src/metrics_harvest_engine.js:151:function filterValidMaturePostsForLearning(historyItems, options = {}) {
+src/metrics_harvest_engine.js:158:  if (!Array.isArray(historyItems)) return [];
+src/metrics_harvest_engine.js:160:  return historyItems.filter(item => {
+src/saas_engine.js.bak_checker_nurture:581:      await db.collection('saas_history').add({ ownerUserId: tenantUser.userId, threadNo, accountDocId: accDocRef.id, username: cleanUsername, text: fullText.substring(0, 30), url: postedUrl, deleteReq: false, deleted: false, createdAt: new Date() }).catch(() => {});
+src/v3_post_executor.js:499:async function executeSafeStealthDeleteTweet(historyId) {
+src/v3_post_executor.js:500:  if (!historyId) return { ok: false, error: 'Missing historyId' };
+src/v3_post_executor.js:501:  const hRef = db.collection('saas_history').doc(String(historyId));
+src/shop.js.bak2:2460:    const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).get();
+src/shop.js.bak2:3838:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js.bak2:3852:    const ref = db.collection('saas_history').doc(histId);
+src/autonomous_promo_ai.js:1542:    const matureHistory = filterValidMaturePostsForLearning(metricsData.history, { requireSnapshotOnly: true });
+src/autonomous_promo_ai.js:2106:  const historyList = [];
+src/autonomous_promo_ai.js:2345:        historyList.push({
+src/autonomous_promo_ai.js:2384:        for (const h of historyList) {
+src/autonomous_promo_ai.js:2406:      const matureHistoryList = filterValidMaturePostsForLearning(historyList, { requireSnapshotOnly: true });
+src/autonomous_promo_ai.js:2470:            const matureSnapshotPosts = filterValidMaturePostsForLearning(historyList, { requireSnapshotOnly: true });
+src/autonomous_promo_ai.js:2573:    historyCount: historyList.length,
+src/shop.js.bak_routes:2488:    const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).get();
+src/shop.js.bak_routes:3866:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js.bak_routes:3880:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js:2549:    const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).get();
+src/shop.js:3951:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js:3965:    const ref = db.collection('saas_history').doc(histId);
+src/ai_deliberation_council.js.bak_index:153:async function syncAndEvolveKnowledgeFromHistory(userId, historyList, currentKnowledge) {
+src/ai_deliberation_council.js.bak_index:154:  if (!Array.isArray(historyList) || historyList.length === 0) return currentKnowledge;
+src/ai_deliberation_council.js.bak_index:161:  const totalImp = historyList.reduce((acc, h) => acc + (h.impressions || 0), 0);
+src/ai_deliberation_council.js.bak_index:162:  const avg = Math.round(totalImp / historyList.length);
+src/ai_deliberation_council.js.bak_index:164:  for (const item of historyList) {
+src/ai_deliberation_council.js.bak_index:202:  knowledge.learnedPostsCount = historyList.length;
+src/ai_deliberation_council.js.bak_index:203:  knowledge.level = Math.min(10, Math.floor(historyList.length / 3) + 1);
+src/ai_deliberation_council.js.bak_index:259:    const history = [];
+src/ai_deliberation_council.js.bak_index:276:      history.push({
+src/ai_deliberation_council.js.bak_index:304:      history,
+src/ai_deliberation_council.js.bak_index:317:      history: [],
+src/ai_deliberation_council.js.bak_index:357:  userKnowledge = await syncAndEvolveKnowledgeFromHistory(userId, metricsData.history, userKnowledge);
+src/admin.js:1847:    if (!selectedIds) return res.send('<script>alert("交換対象の不良アカウントが選択されていません！"); history.back();</script>');
+src/admin.js:1854:      return res.send('<script>alert("⚠️ 完成・在庫が0件です！"); history.back();</script>');
+src/admin.js:1916:    res.send(`<script>alert("交換処理エラー: ${e.message}"); history.back();</script>`);
+src/admin.js:2042:    if (!selectedIds) return res.send('<script>alert("選択されていません！"); history.back();</script>');
+src/admin.js:2104:    if (!selectedIds) return res.send('<script>alert("選択されていません！"); history.back();</script>');
+src/batch_engine.js:255:  const targetMention = await page.evaluate((myHandle, historyList) => {
+src/batch_engine.js:256:    const historySet = new Set(historyList || []);
+src/batch_engine.js:285:      if (historySet.has(sigKey)) continue;
+src/account_repository.js:159:      const historyEntry = {
+src/account_repository.js:166:        historyEntry.from = normalizeAccountStatus(currentStatus);
+src/account_repository.js:168:      updatePayload.statusHistory = FieldValue.arrayUnion(historyEntry);
+src/shop.js.bak:2434:    const histSnap = await db.collection('saas_history').where('ownerUserId', '==', user.userId).get();
+src/shop.js.bak:3812:    const ref = db.collection('saas_history').doc(histId);
+src/shop.js.bak:3826:    const ref = db.collection('saas_history').doc(histId);
+src/ai_deliberation_council.js.bak:85:    const history = [];
+src/ai_deliberation_council.js.bak:98:      history.push({
+src/ai_deliberation_council.js.bak:126:      history,
+src/ai_deliberation_council.js.bak:139:      history: [],
+src/ai_deliberation_council.js.bak:213:- 過去の実績履歴（分析用データ）: ${JSON.stringify(metricsData.history.slice(0, 3))}

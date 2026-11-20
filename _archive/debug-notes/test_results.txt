@@ -1,0 +1,1197 @@
+
+> x-nurture-factory@1.0.0 test
+> NODE_ENV=test node --test
+
+TAP version 13
+# === 🔬 Testing All 5 Modules Unit Logic ===
+# [Test 1] Testing Instant Preview & Council Functions...
+# ✅ Phase 1: generateInstantPreviewPosts function successfully loaded.
+# [Test 2] Testing Phase 2: Council Account Audit...
+# ✅ Phase 1: /api/autopilot/instant-preview route verified in hybrid_saas_routes.js
+# Test failed: Error: /api/account/diagnose missing in hybrid_saas_routes.js
+#     at test (/home/songxiaj679/x-nurture-factory/scratch/unit_test.js:25:11)
+#     at Object.<anonymous> (/home/songxiaj679/x-nurture-factory/scratch/unit_test.js:76:1)
+#     at Module._compile (node:internal/modules/cjs/loader:1781:14)
+#     at Object..js (node:internal/modules/cjs/loader:1913:10)
+#     at Module.load (node:internal/modules/cjs/loader:1505:32)
+#     at Function._load (node:internal/modules/cjs/loader:1309:12)
+#     at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+#     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+#     at node:internal/main/run_main_module:36:49
+# Subtest: scratch/unit_test.js
+not ok 1 - scratch/unit_test.js
+  ---
+  duration_ms: 718.459733
+  type: 'test'
+  location: '/home/songxiaj679/x-nurture-factory/scratch/unit_test.js:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: ACCOUNT_STATUS_SET includes required lifecycle states
+ok 2 - ACCOUNT_STATUS_SET includes required lifecycle states
+  ---
+  duration_ms: 1.95691
+  type: 'test'
+  ...
+# Subtest: normalizeAccountStatus accepts aliases and preserves canonical values
+ok 3 - normalizeAccountStatus accepts aliases and preserves canonical values
+  ---
+  duration_ms: 0.46111
+  type: 'test'
+  ...
+# Subtest: getLegacyAccountStatus keeps existing UI and query status values consistent
+ok 4 - getLegacyAccountStatus keeps existing UI and query status values consistent
+  ---
+  duration_ms: 0.29686
+  type: 'test'
+  ...
+# Subtest: account state reads prefer lifecycleStatus and preserve legacy UI states
+ok 5 - account state reads prefer lifecycleStatus and preserve legacy UI states
+  ---
+  duration_ms: 0.39232
+  type: 'test'
+  ...
+# Subtest: state queries include legacy and canonical persisted status values
+ok 6 - state queries include legacy and canonical persisted status values
+  ---
+  duration_ms: 1.41011
+  type: 'test'
+  ...
+# Subtest: getAccountsByLifecycleStatuses filters query results by canonical lifecycle state
+ok 7 - getAccountsByLifecycleStatuses filters query results by canonical lifecycle state
+  ---
+  duration_ms: 542.209944
+  type: 'test'
+  ...
+# Subtest: account repository prepares a consistent account record and preserves supplied profile data
+ok 8 - account repository prepares a consistent account record and preserves supplied profile data
+  ---
+  duration_ms: 1.70258
+  type: 'test'
+  ...
+# Subtest: getAccountsByLifecycleStatuses paginates without dropping later matching accounts
+ok 9 - getAccountsByLifecycleStatuses paginates without dropping later matching accounts
+  ---
+  duration_ms: 0.72825
+  type: 'test'
+  ...
+# Subtest: stageAccountStateUpdate delegates validated state patches to the batch
+ok 10 - stageAccountStateUpdate delegates validated state patches to the batch
+  ---
+  duration_ms: 0.92286
+  type: 'test'
+  ...
+# Subtest: buildAccountStatePatch keeps the legacy status and writes its canonical lifecycle status
+ok 11 - buildAccountStatePatch keeps the legacy status and writes its canonical lifecycle status
+  ---
+  duration_ms: 0.69466
+  type: 'test'
+  ...
+# Subtest: buildAccountStatePatch rejects statuses outside the shared state list
+ok 12 - buildAccountStatePatch rejects statuses outside the shared state list
+  ---
+  duration_ms: 0.7359
+  type: 'test'
+  ...
+# Subtest: buildAccountRecord includes account lifecycle metadata
+ok 13 - buildAccountRecord includes account lifecycle metadata
+  ---
+  duration_ms: 0.29126
+  type: 'test'
+  ...
+# Subtest: getPostingEligibility fails closed until an account is ready and explicitly approved
+ok 14 - getPostingEligibility fails closed until an account is ready and explicitly approved
+  ---
+  duration_ms: 0.49412
+  type: 'test'
+  ...
+# Subtest: getPostingEligibility blocks inactive and restricted accounts
+ok 15 - getPostingEligibility blocks inactive and restricted accounts
+  ---
+  duration_ms: 0.17408
+  type: 'test'
+  ...
+# Subtest: getAccountRuntimeContext creates a per-account runtime view
+ok 16 - getAccountRuntimeContext creates a per-account runtime view
+  ---
+  duration_ms: 0.33957
+  type: 'test'
+  ...
+# Subtest: transitionAccountStatus keeps lifecycle safety and updates timestamps
+ok 17 - transitionAccountStatus keeps lifecycle safety and updates timestamps
+  ---
+  duration_ms: 0.41334
+  type: 'test'
+  ...
+# Subtest: getEligibleAccountsForQueue filters only valid account states for the requested queue
+ok 18 - getEligibleAccountsForQueue filters only valid account states for the requested queue
+  ---
+  duration_ms: 0.61343
+  type: 'test'
+  ...
+# Subtest: state machine validates legal and blocks illegal status transitions
+ok 19 - state machine validates legal and blocks illegal status transitions
+  ---
+  duration_ms: 0.40513
+  type: 'test'
+  ...
+# Subtest: transitionAccountStatus enforces state transition safety unless forced
+ok 20 - transitionAccountStatus enforces state transition safety unless forced
+  ---
+  duration_ms: 0.31623
+  type: 'test'
+  ...
+# Subtest: claimAccountLock and releaseAccountLock manage distributed locks correctly
+ok 21 - claimAccountLock and releaseAccountLock manage distributed locks correctly
+  ---
+  duration_ms: 0.8908
+  type: 'test'
+  ...
+# Subtest: withAccountLock automatically claims and releases locks around workload
+ok 22 - withAccountLock automatically claims and releases locks around workload
+  ---
+  duration_ms: 0.79512
+  type: 'test'
+  ...
+# Subtest: Google OAuth config requires credentials and an explicit callback URL
+ok 23 - Google OAuth config requires credentials and an explicit callback URL
+  ---
+  duration_ms: 5.442949
+  type: 'test'
+  ...
+# Subtest: Google authorization URL uses the configured callback and CSRF state
+ok 24 - Google authorization URL uses the configured callback and CSRF state
+  ---
+  duration_ms: 0.824
+  type: 'test'
+  ...
+# Subtest: OAuth state comparison only accepts exact non-empty values
+ok 25 - OAuth state comparison only accepts exact non-empty values
+  ---
+  duration_ms: 0.34201
+  type: 'test'
+  ...
+# Subtest: Google login route redirects with a state cookie and configured callback
+ok 26 - Google login route redirects with a state cookie and configured callback
+  ---
+  duration_ms: 1.494791
+  type: 'test'
+  ...
+# Subtest: Google login creates a new saas user and reuses it on the next login
+ok 27 - Google login creates a new saas user and reuses it on the next login
+  ---
+  duration_ms: 2.22974
+  type: 'test'
+  ...
+# Subtest: daily report windows use the previous Japan calendar day
+ok 28 - daily report windows use the previous Japan calendar day
+  ---
+  duration_ms: 31.213319
+  type: 'test'
+  ...
+# Subtest: tweet metrics include only yesterday posts in the JST window
+ok 29 - tweet metrics include only yesterday posts in the JST window
+  ---
+  duration_ms: 2.256641
+  type: 'test'
+  ...
+# Subtest: X API failures are reported as actionable safe categories
+ok 30 - X API failures are reported as actionable safe categories
+  ---
+  duration_ms: 1.20537
+  type: 'test'
+  ...
+# Subtest: business totals exclude Telegram-only accounts and report missing impressions honestly
+ok 31 - business totals exclude Telegram-only accounts and report missing impressions honestly
+  ---
+  duration_ms: 1.48189
+  type: 'test'
+  ...
+# Subtest: A/B Experiment Engine (VELOX 4.0)
+    # Subtest: assignExperimentVariant
+        # Subtest: assigns variant A or B with matching prompt version
+        ok 1 - assigns variant A or B with matching prompt version
+          ---
+          duration_ms: 1.51237
+          type: 'test'
+          ...
+        # Subtest: supports forced variant for deterministic tests
+        ok 2 - supports forced variant for deterministic tests
+          ---
+          duration_ms: 0.364179
+          type: 'test'
+          ...
+        1..2
+    ok 1 - assignExperimentVariant
+      ---
+      duration_ms: 3.18282
+      type: 'suite'
+      ...
+    # Subtest: resolveUserExperimentCohort (User-Level Cohort Persistence & Isolation)
+        # Subtest: preserves existing assigned cohort for user
+        ok 1 - preserves existing assigned cohort for user
+          ---
+          duration_ms: 0.40573
+          type: 'test'
+          ...
+        # Subtest: deterministically assigns new user to control_A or treatment_B
+        ok 2 - deterministically assigns new user to control_A or treatment_B
+          ---
+          duration_ms: 0.93623
+          type: 'test'
+          ...
+        1..2
+    ok 2 - resolveUserExperimentCohort (User-Level Cohort Persistence & Isolation)
+      ---
+      duration_ms: 1.79866
+      type: 'suite'
+      ...
+    # Subtest: evaluateJobExperimentEligibility (Strict 24.0h - 25.0h Window)
+        # Subtest: marks job as eligible only if age is strictly between 24.0 and 25.0 hours with frozen snapshot
+        ok 1 - marks job as eligible only if age is strictly between 24.0 and 25.0 hours with frozen snapshot
+          ---
+          duration_ms: 0.691819
+          type: 'test'
+          ...
+        # Subtest: rejects immature post (< 24.0 hours)
+        ok 2 - rejects immature post (< 24.0 hours)
+          ---
+          duration_ms: 0.41815
+          type: 'test'
+          ...
+        # Subtest: rejects outside-window post (> 25.0 hours)
+        ok 3 - rejects outside-window post (> 25.0 hours)
+          ---
+          duration_ms: 0.585701
+          type: 'test'
+          ...
+        # Subtest: rejects missing metrics or unfrozen snapshot
+        ok 4 - rejects missing metrics or unfrozen snapshot
+          ---
+          duration_ms: 0.2473
+          type: 'test'
+          ...
+        1..4
+    ok 3 - evaluateJobExperimentEligibility (Strict 24.0h - 25.0h Window)
+      ---
+      duration_ms: 2.548761
+      type: 'suite'
+      ...
+    # Subtest: calculateWilsonScoreInterval
+        # Subtest: computes valid 95% Wilson interval
+        ok 1 - computes valid 95% Wilson interval
+          ---
+          duration_ms: 0.631189
+          type: 'test'
+          ...
+        # Subtest: handles zero trials safely
+        ok 2 - handles zero trials safely
+          ---
+          duration_ms: 1.397779
+          type: 'test'
+          ...
+        1..2
+    ok 4 - calculateWilsonScoreInterval
+      ---
+      duration_ms: 6.26211
+      type: 'suite'
+      ...
+    # Subtest: analyzeAbExperimentResults
+        # Subtest: withholds decision (INSUFFICIENT_DATA) when sample size is under threshold
+        ok 1 - withholds decision (INSUFFICIENT_DATA) when sample size is under threshold
+          ---
+          duration_ms: 1.26342
+          type: 'test'
+          ...
+        # Subtest: tracks omission reasons and harvest rate accurately
+        ok 2 - tracks omission reasons and harvest rate accurately
+          ---
+          duration_ms: 0.38364
+          type: 'test'
+          ...
+        # Subtest: evaluates significant winner when sample size is sufficient and intervals do not overlap
+        ok 3 - evaluates significant winner when sample size is sufficient and intervals do not overlap
+          ---
+          duration_ms: 0.50624
+          type: 'test'
+          ...
+        1..3
+    ok 5 - analyzeAbExperimentResults
+      ---
+      duration_ms: 2.39183
+      type: 'suite'
+      ...
+    # Subtest: filterPromptDirectivesForVariant (Variant Directive Isolation)
+        # Subtest: variant A strictly excludes DPO pairs and episodic memories while variant B preserves them
+        ok 1 - variant A strictly excludes DPO pairs and episodic memories while variant B preserves them
+          ---
+          duration_ms: 0.34058
+          type: 'test'
+          ...
+        1..1
+    ok 6 - filterPromptDirectivesForVariant (Variant Directive Isolation)
+      ---
+      duration_ms: 0.45955
+      type: 'suite'
+      ...
+    # Subtest: Dashboard Experiment Stats API Payload Compatibility
+        # Subtest: produces structured payload compatible with /api/autopilot/experiment-stats
+        ok 1 - produces structured payload compatible with /api/autopilot/experiment-stats
+          ---
+          duration_ms: 0.38088
+          type: 'test'
+          ...
+        1..1
+    ok 7 - Dashboard Experiment Stats API Payload Compatibility
+      ---
+      duration_ms: 0.50227
+      type: 'suite'
+      ...
+    1..7
+ok 32 - A/B Experiment Engine (VELOX 4.0)
+  ---
+  duration_ms: 18.744759
+  type: 'suite'
+  ...
+# Subtest: Audience Simulation Engine (VELOX 4.0)
+    # Subtest: AUDIENCE_PERSONAS should define 5 distinct critic personas with weights summing to 1.0
+    ok 1 - AUDIENCE_PERSONAS should define 5 distinct critic personas with weights summing to 1.0
+      ---
+      duration_ms: 1.55863
+      type: 'test'
+      ...
+    # Subtest: calculateWeightedAudienceScore uses configured persona weights and rejects incomplete scores
+    ok 2 - calculateWeightedAudienceScore uses configured persona weights and rejects incomplete scores
+      ---
+      duration_ms: 0.59321
+      type: 'test'
+      ...
+    # Subtest: simulateAudienceReaction should return valid score, feedback, and evaluationMethod on heuristic fallback
+    ok 3 - simulateAudienceReaction should return valid score, feedback, and evaluationMethod on heuristic fallback
+      ---
+      duration_ms: 1.26789
+      type: 'test'
+      ...
+    # Subtest: simulateAudienceReaction should penalize direct URLs in tweet body under heuristic evaluation
+    ok 4 - simulateAudienceReaction should penalize direct URLs in tweet body under heuristic evaluation
+      ---
+      duration_ms: 0.43914
+      type: 'test'
+      ...
+    # Subtest: selectBestDraftBySimulation should pick the highest scoring draft under heuristic evaluation
+    ok 5 - selectBestDraftBySimulation should pick the highest scoring draft under heuristic evaluation
+      ---
+      duration_ms: 0.67004
+      type: 'test'
+      ...
+    # Subtest: evaluatePostWithAudience attaches evaluation metadata to a post
+    ok 6 - evaluatePostWithAudience attaches evaluation metadata to a post
+      ---
+      duration_ms: 0.58996
+      type: 'test'
+      ...
+    # Subtest: evaluatePostWithAudience sanitizes and adopts only a higher-scoring safe refinement
+    ok 7 - evaluatePostWithAudience sanitizes and adopts only a higher-scoring safe refinement
+      ---
+      duration_ms: 1.50998
+      type: 'test'
+      ...
+    # Subtest: evaluatePostWithAudience keeps the original when refinement is unsafe
+    ok 8 - evaluatePostWithAudience keeps the original when refinement is unsafe
+      ---
+      duration_ms: 0.62734
+      type: 'test'
+      ...
+    1..8
+ok 33 - Audience Simulation Engine (VELOX 4.0)
+  ---
+  duration_ms: 9.56873
+  type: 'suite'
+  ...
+# Subtest: Audit Fix 1: AES-256-GCM Encryption & Key Rotation
+ok 34 - Audit Fix 1: AES-256-GCM Encryption & Key Rotation
+  ---
+  duration_ms: 3.03318
+  type: 'test'
+  ...
+# Subtest: Audit Fix 2: Atomic Claim Simulation (Race Condition & Double-post Prevention)
+ok 35 - Audit Fix 2: Atomic Claim Simulation (Race Condition & Double-post Prevention)
+  ---
+  duration_ms: 7.988079
+  type: 'test'
+  ...
+# Subtest: Audit Fix 3: Multi-tenant Ownership & Session Authorization
+ok 36 - Audit Fix 3: Multi-tenant Ownership & Session Authorization
+  ---
+  duration_ms: 0.630039
+  type: 'test'
+  ...
+# Subtest: Audit Fix 4: Purchase & Order Ownership Boundary
+ok 37 - Audit Fix 4: Purchase & Order Ownership Boundary
+  ---
+  duration_ms: 0.39214
+  type: 'test'
+  ...
+# Subtest: Audit Fix 5: Live Express HTTP Endpoint Tenant Isolation
+not ok 38 - Audit Fix 5: Live Express HTTP Endpoint Tenant Isolation
+  ---
+  duration_ms: 9.408999
+  type: 'test'
+  location: '/home/songxiaj679/x-nurture-factory/tests/audit_fix_verification.test.js:112:1'
+  failureType: 'testCodeFailure'
+  error: 'Unexpected end of input'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    wrapSafe (node:internal/modules/cjs/loader:1713:18)
+    Module._compile (node:internal/modules/cjs/loader:1755:20)
+    Object..js (node:internal/modules/cjs/loader:1913:10)
+    Module.load (node:internal/modules/cjs/loader:1505:32)
+    Function._load (node:internal/modules/cjs/loader:1309:12)
+    wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    Module.require (node:internal/modules/cjs/loader:1527:12)
+    require (node:internal/modules/helpers:147:16)
+    TestContext.<anonymous> (/home/songxiaj679/x-nurture-factory/tests/audit_fix_verification.test.js:143:40)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+  ...
+# Subtest: Audit Fix 6: Stripe Webhook Cryptographic Verification & Fail-Closed Guard
+ok 39 - Audit Fix 6: Stripe Webhook Cryptographic Verification & Fail-Closed Guard
+  ---
+  duration_ms: 310.313517
+  type: 'test'
+  ...
+# Subtest: Audit Fix 7: Legacy Web Route Tenant Boundary & Impersonation Prevention
+ok 40 - Audit Fix 7: Legacy Web Route Tenant Boundary & Impersonation Prevention
+  ---
+  duration_ms: 275.295477
+  type: 'test'
+  ...
+# Subtest: Audit Fix 8: Collective Intelligence Knowledge Source Separation
+ok 41 - Audit Fix 8: Collective Intelligence Knowledge Source Separation
+  ---
+  duration_ms: 2.94456
+  type: 'test'
+  ...
+# Subtest: Audit Fix 9: AI Text Meta-Commentary & Character Count Sanitization
+ok 42 - Audit Fix 9: AI Text Meta-Commentary & Character Count Sanitization
+  ---
+  duration_ms: 1.6786
+  type: 'test'
+  ...
+# Subtest: Autonomous Evolution Core (VELOX 4.0)
+    # Subtest: calculateParetoFitness returns baseline score when impressions is 0
+    ok 1 - calculateParetoFitness returns baseline score when impressions is 0
+      ---
+      duration_ms: 3.70134
+      type: 'test'
+      ...
+    # Subtest: calculateParetoFitness rewards high bookmarks and engagement rates
+    ok 2 - calculateParetoFitness rewards high bookmarks and engagement rates
+      ---
+      duration_ms: 0.39368
+      type: 'test'
+      ...
+    # Subtest: SEED_ELITES defines structured elite cells with hook, syntaxPrinciple, and reflection
+    ok 3 - SEED_ELITES defines structured elite cells with hook, syntaxPrinciple, and reflection
+      ---
+      duration_ms: 0.41499
+      type: 'test'
+      ...
+    # Subtest: getUserMarketingKnowledge includes dpoPreferencePairs in default and returned schema
+    ok 4 - getUserMarketingKnowledge includes dpoPreferencePairs in default and returned schema
+      ---
+      duration_ms: 0.67482
+      type: 'test'
+      ...
+    # Subtest: DPO preference pair schema validates winner vs loser structure
+    ok 5 - DPO preference pair schema validates winner vs loser structure
+      ---
+      duration_ms: 0.3299
+      type: 'test'
+      ...
+    1..5
+ok 43 - Autonomous Evolution Core (VELOX 4.0)
+  ---
+  duration_ms: 7.93131
+  type: 'suite'
+  ...
+# /home/songxiaj679/x-nurture-factory/src/hybrid_saas_routes.js:2050
+# SyntaxError: Unexpected end of input
+#     at wrapSafe (node:internal/modules/cjs/loader:1713:18)
+#     at Module._compile (node:internal/modules/cjs/loader:1755:20)
+#     at Object..js (node:internal/modules/cjs/loader:1913:10)
+#     at Module.load (node:internal/modules/cjs/loader:1505:32)
+#     at Function._load (node:internal/modules/cjs/loader:1309:12)
+#     at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+#     at Module.require (node:internal/modules/cjs/loader:1527:12)
+#     at require (node:internal/modules/helpers:147:16)
+#     at Object.<anonymous> (/home/songxiaj679/x-nurture-factory/tests/autopilot_jobs_separation.test.js:101:38)
+#     at Module._compile (node:internal/modules/cjs/loader:1781:14)
+# Node.js v22.23.5
+# Subtest: tests/autopilot_jobs_separation.test.js
+not ok 9 - tests/autopilot_jobs_separation.test.js
+  ---
+  duration_ms: 81.322159
+  type: 'test'
+  location: '/home/songxiaj679/x-nurture-factory/tests/autopilot_jobs_separation.test.js:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: Batch Sync & Concurrency Protection (Skipped: FIRESTORE_EMULATOR_HOST not set)
+ok 45 - Batch Sync & Concurrency Protection (Skipped: FIRESTORE_EMULATOR_HOST not set) # SKIP
+  ---
+  duration_ms: 1.64464
+  type: 'suite'
+  ...
+# Subtest: dashboard UI language is independent from post-generation language
+ok 46 - dashboard UI language is independent from post-generation language
+  ---
+  duration_ms: 9.249169
+  type: 'test'
+  ...
+# Subtest: all dashboard data-i18n keys have Japanese and English translations
+ok 47 - all dashboard data-i18n keys have Japanese and English translations
+  ---
+  duration_ms: 5.16216
+  type: 'test'
+  ...
+# Subtest: static dashboard text can switch languages and restore its source text
+ok 48 - static dashboard text can switch languages and restore its source text
+  ---
+  duration_ms: 4.72369
+  type: 'test'
+  ...
+# Subtest: Firestore Emulator Integration Lifecycle Tests (FIRESTORE_EMULATOR_HOST not set - run with npm run test:emulator)
+ok 49 - Firestore Emulator Integration Lifecycle Tests (FIRESTORE_EMULATOR_HOST not set - run with npm run test:emulator) # SKIP
+  ---
+  duration_ms: 0.89077
+  type: 'suite'
+  ...
+# Subtest: Episodic Memory Store (VELOX 4.0)
+    # Subtest: extractKeywordsFromText should extract meaningful tokens and filter stop words
+    ok 1 - extractKeywordsFromText should extract meaningful tokens and filter stop words
+      ---
+      duration_ms: 1.512579
+      type: 'test'
+      ...
+    # Subtest: createEpisodeFromPost should classify WINNER on high bookmarks and composite score
+    ok 2 - createEpisodeFromPost should classify WINNER on high bookmarks and composite score
+      ---
+      duration_ms: 0.53161
+      type: 'test'
+      ...
+    # Subtest: createEpisodeFromPost should classify FAILURE on zero-engagement post with moderate impressions
+    ok 3 - createEpisodeFromPost should classify FAILURE on zero-engagement post with moderate impressions
+      ---
+      duration_ms: 0.438019
+      type: 'test'
+      ...
+    # Subtest: queryRelevantEpisodes should rank matching angle and keywords higher
+    ok 4 - queryRelevantEpisodes should rank matching angle and keywords higher
+      ---
+      duration_ms: 0.68054
+      type: 'test'
+      ...
+    # Subtest: queryRelevantEpisodes should respect an explicitly empty store
+    ok 5 - queryRelevantEpisodes should respect an explicitly empty store
+      ---
+      duration_ms: 1.206059
+      type: 'test'
+      ...
+    # Subtest: formatEpisodesForPrompt should generate formatted Markdown for few-shot injection
+    ok 6 - formatEpisodesForPrompt should generate formatted Markdown for few-shot injection
+      ---
+      duration_ms: 0.60413
+      type: 'test'
+      ...
+    1..6
+ok 50 - Episodic Memory Store (VELOX 4.0)
+  ---
+  duration_ms: 8.17182
+  type: 'suite'
+  ...
+# Subtest: Evolution Data Loop Integration (Skipped: FIRESTORE_EMULATOR_HOST not set - run with npm run test:emulator)
+ok 51 - Evolution Data Loop Integration (Skipped: FIRESTORE_EMULATOR_HOST not set - run with npm run test:emulator) # SKIP
+  ---
+  duration_ms: 1.11357
+  type: 'suite'
+  ...
+# Subtest: Syndicate Importer: Encryption and Credential Packaging
+ok 52 - Syndicate Importer: Encryption and Credential Packaging
+  ---
+  duration_ms: 4.023121
+  type: 'test'
+  ...
+# Subtest: Intelligence Harvester: Tweet structure analysis and hook categorization
+ok 53 - Intelligence Harvester: Tweet structure analysis and hook categorization
+  ---
+  duration_ms: 4.79685
+  type: 'test'
+  ...
+# Subtest: Intelligence Harvester: Persist to JSONLines and retrieve top hooks
+ok 54 - Intelligence Harvester: Persist to JSONLines and retrieve top hooks
+  ---
+  duration_ms: 20.71557
+  type: 'test'
+  ...
+# Subtest: Syndicate 100-Account Fleet: 50 JA and 50 EN multi-genre deployment
+ok 55 - Syndicate 100-Account Fleet: 50 JA and 50 EN multi-genre deployment
+  ---
+  duration_ms: 1.84649
+  type: 'test'
+  ...
+# Subtest: JIT Post Generation: Dynamic character length and hook resolution logic
+ok 56 - JIT Post Generation: Dynamic character length and hook resolution logic
+  ---
+  duration_ms: 0.48104
+  type: 'test'
+  ...
+# Subtest: JIT Post Content: Sanitization and Zero In-Body URL Enforcer
+ok 57 - JIT Post Content: Sanitization and Zero In-Body URL Enforcer
+  ---
+  duration_ms: 1.63615
+  type: 'test'
+  ...
+# Subtest: JIT Post Dynamic Generation: Elastic character freedom & split-thread reply capability
+ok 58 - JIT Post Dynamic Generation: Elastic character freedom & split-thread reply capability
+  ---
+  duration_ms: 26.485379
+  type: 'test'
+  ...
+# Subtest: Meta-Prompt Optimizer (VELOX 4.0)
+    # Subtest: BASELINE_PROMPT_DIRECTIVES should contain all MANDATORY_SAFETY_RULES
+    ok 1 - BASELINE_PROMPT_DIRECTIVES should contain all MANDATORY_SAFETY_RULES
+      ---
+      duration_ms: 1.47622
+      type: 'test'
+      ...
+    # Subtest: validateDirectivesSafety should fail if any mandatory rule is missing
+    ok 2 - validateDirectivesSafety should fail if any mandatory rule is missing
+      ---
+      duration_ms: 0.315409
+      type: 'test'
+      ...
+    # Subtest: validateDirectivesSafety should reject modified immutable rules even when required phrases remain
+    ok 3 - validateDirectivesSafety should reject modified immutable rules even when required phrases remain
+      ---
+      duration_ms: 0.30534
+      type: 'test'
+      ...
+    # Subtest: analyzePerformanceClusters should accurately cluster high and low performers
+    ok 4 - analyzePerformanceClusters should accurately cluster high and low performers
+      ---
+      duration_ms: 0.821411
+      type: 'test'
+      ...
+    # Subtest: optimizePromptDirectives should safely add dynamic rules on heuristic fallback
+    ok 5 - optimizePromptDirectives should safely add dynamic rules on heuristic fallback
+      ---
+      duration_ms: 1.105839
+      type: 'test'
+      ...
+    # Subtest: optimizePromptDirectives should maintain current directives when data is insufficient
+    ok 6 - optimizePromptDirectives should maintain current directives when data is insufficient
+      ---
+      duration_ms: 0.367619
+      type: 'test'
+      ...
+    1..6
+ok 59 - Meta-Prompt Optimizer (VELOX 4.0)
+  ---
+  duration_ms: 6.42147
+  type: 'suite'
+  ...
+# [Job Fetch Error] User job-error: ジョブ取得エラーのため判定をスキップ（クールダウン誤判定を防止し次回再試行）: jobs unavailable
+# [Metrics Sync Error] User sync-error: rate limited
+# Subtest: reports individual failures while continuing to sync other users
+ok 60 - reports individual failures while continuing to sync other users
+  ---
+  duration_ms: 8.528181
+  type: 'test'
+  ...
+# Subtest: reports success when all eligible users synchronize
+ok 61 - reports success when all eligible users synchronize
+  ---
+  duration_ms: 1.10352
+  type: 'test'
+  ...
+# Subtest: Metrics Harvest Engine (VELOX 4.0)
+    # Subtest: normalizeTweetMetrics
+        # Subtest: normalizes valid positive metrics
+        ok 1 - normalizes valid positive metrics
+          ---
+          duration_ms: 1.52776
+          type: 'test'
+          ...
+        # Subtest: distinguishes genuine zero impressions and bookmarks from missing data
+        ok 2 - distinguishes genuine zero impressions and bookmarks from missing data
+          ---
+          duration_ms: 0.42935
+          type: 'test'
+          ...
+        # Subtest: identifies missing data when impression_count or bookmark_count is null or undefined without zero-coercion
+        ok 3 - identifies missing data when impression_count or bookmark_count is null or undefined without zero-coercion
+          ---
+          duration_ms: 0.41266
+          type: 'test'
+          ...
+        1..3
+    ok 1 - normalizeTweetMetrics
+      ---
+      duration_ms: 3.84235
+      type: 'suite'
+      ...
+    # Subtest: computePostAgeHours
+        # Subtest: accurately calculates elapsed hours from postedAt to referenceTime
+        ok 1 - accurately calculates elapsed hours from postedAt to referenceTime
+          ---
+          duration_ms: 0.48897
+          type: 'test'
+          ...
+        # Subtest: returns null for invalid or missing timestamps
+        ok 2 - returns null for invalid or missing timestamps
+          ---
+          duration_ms: 0.3122
+          type: 'test'
+          ...
+        1..2
+    ok 2 - computePostAgeHours
+      ---
+      duration_ms: 1.39075
+      type: 'suite'
+      ...
+    # Subtest: resolve24hMetricsSnapshot (Boundary & Idempotency)
+        # Subtest: boundary value: returns null when post age is 23.9 hours (< 24h immature)
+        ok 1 - boundary value: returns null when post age is 23.9 hours (< 24h immature)
+          ---
+          duration_ms: 0.60168
+          type: 'test'
+          ...
+        # Subtest: boundary value: creates frozen snapshot when post age is exactly 24.0 hours
+        ok 2 - boundary value: creates frozen snapshot when post age is exactly 24.0 hours
+          ---
+          duration_ms: 0.77339
+          type: 'test'
+          ...
+        # Subtest: boundary value: returns null when first harvest is late (e.g. 48h > 36h max window)
+        ok 3 - boundary value: returns null when first harvest is late (e.g. 48h > 36h max window)
+          ---
+          duration_ms: 0.33342
+          type: 'test'
+          ...
+        # Subtest: re-harvest idempotency: preserves initial 24h snapshot when re-harvested at 48 hours
+        ok 4 - re-harvest idempotency: preserves initial 24h snapshot when re-harvested at 48 hours
+          ---
+          duration_ms: 0.50471
+          type: 'test'
+          ...
+        # Subtest: excludes missing data from creating 24h snapshot even if post is in 24h window
+        ok 5 - excludes missing data from creating 24h snapshot even if post is in 24h window
+          ---
+          duration_ms: 0.50278
+          type: 'test'
+          ...
+        1..5
+    ok 3 - resolve24hMetricsSnapshot (Boundary & Idempotency)
+      ---
+      duration_ms: 3.72543
+      type: 'suite'
+      ...
+    # Subtest: filterValidMaturePostsForLearning
+        # Subtest: filters out immature posts (< 24h), missing data, and zero impressions
+        ok 1 - filters out immature posts (< 24h), missing data, and zero impressions
+          ---
+          duration_ms: 0.64444
+          type: 'test'
+          ...
+        # Subtest: excludes posts without 24h snapshot by default (learning held in reserve)
+        ok 2 - excludes posts without 24h snapshot by default (learning held in reserve)
+          ---
+          duration_ms: 0.26158
+          type: 'test'
+          ...
+        # Subtest: prioritizes 24h frozen snapshot values for apples-to-apples comparison
+        ok 3 - prioritizes 24h frozen snapshot values for apples-to-apples comparison
+          ---
+          duration_ms: 2.60015
+          type: 'test'
+          ...
+        1..3
+    ok 4 - filterValidMaturePostsForLearning
+      ---
+      duration_ms: 4.03421
+      type: 'suite'
+      ...
+    # Subtest: matchTweetToJob
+        # Subtest: matches exact tweetId as strict priority
+        ok 1 - matches exact tweetId as strict priority
+          ---
+          duration_ms: 0.42858
+          type: 'test'
+          ...
+        # Subtest: returns null and none matchType when tweetId does not match (no fuzzy text fallback)
+        ok 2 - returns null and none matchType when tweetId does not match (no fuzzy text fallback)
+          ---
+          duration_ms: 0.24723
+          type: 'test'
+          ...
+        1..2
+    ok 5 - matchTweetToJob
+      ---
+      duration_ms: 0.96243
+      type: 'suite'
+      ...
+    # Subtest: evaluateUserSyncEligibility (Cooldown & 24h Window Priority)
+        # Subtest: urgent window priority: bypasses cooldown if post is within 24-25h window with unfrozen snapshot
+        ok 1 - urgent window priority: bypasses cooldown if post is within 24-25h window with unfrozen snapshot
+          ---
+          duration_ms: 0.71708
+          type: 'test'
+          ...
+        # Subtest: urgent window priority: bypasses cooldown if post is within extended 24-36h window (e.g. 28h) with unfrozen snapshot
+        ok 2 - urgent window priority: bypasses cooldown if post is within extended 24-36h window (e.g. 28h) with unfrozen snapshot
+          ---
+          duration_ms: 0.24026
+          type: 'test'
+          ...
+        # Subtest: cooldown active: suppresses sync when within 60min and no jobs are in the 24h window
+        ok 3 - cooldown active: suppresses sync when within 60min and no jobs are in the 24h window
+          ---
+          duration_ms: 0.23791
+          type: 'test'
+          ...
+        # Subtest: does not consider already frozen snapshots as urgent
+        ok 4 - does not consider already frozen snapshots as urgent
+          ---
+          duration_ms: 0.21668
+          type: 'test'
+          ...
+        # Subtest: cooldown expired: allows sync when more than 60min have elapsed
+        ok 5 - cooldown expired: allows sync when more than 60min have elapsed
+          ---
+          duration_ms: 0.22338
+          type: 'test'
+          ...
+        # Subtest: initial sync: allows sync when user has never synced before (lastHarvestAt is null)
+        ok 6 - initial sync: allows sync when user has never synced before (lastHarvestAt is null)
+          ---
+          duration_ms: 0.19772
+          type: 'test'
+          ...
+        1..6
+    ok 6 - evaluateUserSyncEligibility (Cooldown & 24h Window Priority)
+      ---
+      duration_ms: 2.41415
+      type: 'suite'
+      ...
+    # Subtest: In-Memory Safety & Error Propagation Invariants
+        # Subtest: parseFirestoreTimestampMs converts Firestore Timestamp, seconds object, Date, string, and invalid values safely without NaN
+        ok 1 - parseFirestoreTimestampMs converts Firestore Timestamp, seconds object, Date, string, and invalid values safely without NaN
+          ---
+          duration_ms: 0.43454
+          type: 'test'
+          ...
+        1..1
+    ok 7 - In-Memory Safety & Error Propagation Invariants
+      ---
+      duration_ms: 0.56757
+      type: 'suite'
+      ...
+    1..7
+ok 62 - Metrics Harvest Engine (VELOX 4.0)
+  ---
+  duration_ms: 21.84612
+  type: 'suite'
+  ...
+# 🔄 [自己進化データループ起動] ユーザー: user
+# [Self-Correction Loop Warning] ユーザー user のツイート取得失敗: rate limited
+# 🔄 [自己進化データループ起動] ユーザー: user
+# [Self-Correction Loop Error] ユーザー user の未回収投稿直接照会失敗: partial errors
+# 🔄 [自己進化データループ起動] ユーザー: user
+# [Self-Correction Loop Error] (user): jobs unavailable
+# 🔄 [自己進化データループ起動] ユーザー: user
+# [Sync Timestamp Error] (user): transaction unavailable
+# Subtest: timeline failure does not write a successful sync timestamp
+ok 63 - timeline failure does not write a successful sync timestamp
+  ---
+  duration_ms: 13.149609
+  type: 'test'
+  ...
+# Subtest: partial direct lookup failure does not commit or update the sync timestamp
+ok 64 - partial direct lookup failure does not commit or update the sync timestamp
+  ---
+  duration_ms: 8.30738
+  type: 'test'
+  ...
+# Subtest: job retrieval failure does not update the sync timestamp
+ok 65 - job retrieval failure does not update the sync timestamp
+  ---
+  duration_ms: 1.77426
+  type: 'test'
+  ...
+# Subtest: sync timestamp transaction failure is reported as a failure
+ok 66 - sync timestamp transaction failure is reported as a failure
+  ---
+  duration_ms: 147.020139
+  type: 'test'
+  ...
+# [lookupTweetsByIds chunk HTTP_429 error]: Rate limit exceeded
+# Subtest: Official API Client Mock & Chunking Invariants
+    # Subtest: lookupTweetsByIds correctly chunks 150 IDs into 100 + 50 requests and merges all 150 tweets
+    ok 1 - lookupTweetsByIds correctly chunks 150 IDs into 100 + 50 requests and merges all 150 tweets
+      ---
+      duration_ms: 2.68031
+      type: 'test'
+      ...
+    # Subtest: lookupTweetsByIds handles mid-flight failure on 2nd chunk (HTTP 429) cleanly with error propagation
+    ok 2 - lookupTweetsByIds handles mid-flight failure on 2nd chunk (HTTP 429) cleanly with error propagation
+      ---
+      duration_ms: 1.87722
+      type: 'test'
+      ...
+    # Subtest: lookupTweetsByIds reports partial errors even when the response is HTTP 200
+    ok 3 - lookupTweetsByIds reports partial errors even when the response is HTTP 200
+      ---
+      duration_ms: 0.38549
+      type: 'test'
+      ...
+    # Subtest: getUserProfileAndRecentTweets propagates HTTP 429 rate limit error cleanly
+    ok 4 - getUserProfileAndRecentTweets propagates HTTP 429 rate limit error cleanly
+      ---
+      duration_ms: 0.66191
+      type: 'test'
+      ...
+    # Subtest: getUserProfileAndRecentTweets returns credentials_missing error when credentials are incomplete
+    ok 5 - getUserProfileAndRecentTweets returns credentials_missing error when credentials are incomplete
+      ---
+      duration_ms: 0.19185
+      type: 'test'
+      ...
+    1..5
+ok 67 - Official API Client Mock & Chunking Invariants
+  ---
+  duration_ms: 7.67273
+  type: 'suite'
+  ...
+# /home/songxiaj679/x-nurture-factory/src/hybrid_saas_routes.js:2050
+# SyntaxError: Unexpected end of input
+#     at wrapSafe (node:internal/modules/cjs/loader:1713:18)
+#     at Module._compile (node:internal/modules/cjs/loader:1755:20)
+#     at Object..js (node:internal/modules/cjs/loader:1913:10)
+#     at Module.load (node:internal/modules/cjs/loader:1505:32)
+#     at Function._load (node:internal/modules/cjs/loader:1309:12)
+#     at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+#     at Module.require (node:internal/modules/cjs/loader:1527:12)
+#     at require (node:internal/modules/helpers:147:16)
+#     at Object.<anonymous> (/home/songxiaj679/x-nurture-factory/tests/post_constraint_stop_isolation.test.js:70:38)
+#     at Module._compile (node:internal/modules/cjs/loader:1781:14)
+# Node.js v22.23.5
+# Subtest: tests/post_constraint_stop_isolation.test.js
+not ok 23 - tests/post_constraint_stop_isolation.test.js
+  ---
+  duration_ms: 81.097239
+  type: 'test'
+  location: '/home/songxiaj679/x-nurture-factory/tests/post_constraint_stop_isolation.test.js:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# 🧬 [MAP-Elites 探索モード発動] 局所解を打破するため、未開拓セル【minimalist_punch:single_punch:b2b_executive】へ突然変異探索を敢行します
+# Subtest: Post Constraints & Prompt Directives Validation
+    # Subtest: 1. Prompt mandates slot-based exclusive angle matrix and forbidden words
+    ok 1 - 1. Prompt mandates slot-based exclusive angle matrix and forbidden words
+      ---
+      duration_ms: 56.955819
+      type: 'test'
+      ...
+    # Subtest: 2. Prompt mandates zero direct URLs in main body
+    ok 2 - 2. Prompt mandates zero direct URLs in main body
+      ---
+      duration_ms: 0.4272
+      type: 'test'
+      ...
+    # Subtest: 3. Stage 1 account diagnosis injects anti-arrogance censorship directives
+    ok 3 - 3. Stage 1 account diagnosis injects anti-arrogance censorship directives
+      ---
+      duration_ms: 0.39282
+      type: 'test'
+      ...
+    # Subtest: 4. Variant A excludes DPO/episodes, Variant B injects them
+    ok 4 - 4. Variant A excludes DPO/episodes, Variant B injects them
+      ---
+      duration_ms: 1.14987
+      type: 'test'
+      ...
+    # Subtest: 5. Default Japanese posts strictly comply with zero-URL, slot differentiation, and no forbidden words
+    ok 5 - 5. Default Japanese posts strictly comply with zero-URL, slot differentiation, and no forbidden words
+      ---
+      duration_ms: 0.38861
+      type: 'test'
+      ...
+    # Subtest: 6. avoids grammar destruction: correctly replaces 溶かしていた and 月130時間 without corruption
+    ok 6 - 6. avoids grammar destruction: correctly replaces 溶かしていた and 月130時間 without corruption
+      ---
+      duration_ms: 1.068029
+      type: 'test'
+      ...
+    # Subtest: 7. preserves line breaks and provides safe fallback for url-only posts
+    ok 7 - 7. preserves line breaks and provides safe fallback for url-only posts
+      ---
+      duration_ms: 0.61173
+      type: 'test'
+      ...
+    # Subtest: 8. enforcePostThreadConstraints safely migrates extracted URL from main tweet to 2nd reply slot
+    ok 8 - 8. enforcePostThreadConstraints safely migrates extracted URL from main tweet to 2nd reply slot
+      ---
+      duration_ms: 1.738139
+      type: 'test'
+      ...
+    # Subtest: 9. stops English posts that would require ambiguous rewriting
+    ok 9 - 9. stops English posts that would require ambiguous rewriting
+      ---
+      duration_ms: 1.64136
+      type: 'test'
+      ...
+    # Subtest: 10. JIT post generation outputs comply with thread constraints without clichés
+    ok 10 - 10. JIT post generation outputs comply with thread constraints without clichés
+      ---
+      duration_ms: 14.00194
+      type: 'test'
+      ...
+    # Subtest: 11. stops complex LLM output instead of rewriting its meaning
+    ok 11 - 11. stops complex LLM output instead of rewriting its meaning
+      ---
+      duration_ms: 0.46115
+      type: 'test'
+      ...
+    # Subtest: 12. preserves relative time expressions (10分前, 10分 前, 5分後, 3分以内, 2時間半) without converting to clichés
+    ok 12 - 12. preserves relative time expressions (10分前, 10分 前, 5分後, 3分以内, 2時間半) without converting to clichés
+      ---
+      duration_ms: 0.30232
+      type: 'test'
+      ...
+    # Subtest: 13. sequentially replaces all distinct forbidden expressions without skipping later matches
+    ok 13 - 13. sequentially replaces all distinct forbidden expressions without skipping later matches
+      ---
+      duration_ms: 0.30603
+      type: 'test'
+      ...
+    # Subtest: 14. cleanly extracts URLs with trailing Japanese punctuation and parenthesized URLs
+    ok 14 - 14. cleanly extracts URLs with trailing Japanese punctuation and parenthesized URLs
+      ---
+      duration_ms: 0.30358
+      type: 'test'
+      ...
+    # Subtest: 15. migrates multiple URLs without dropping later URLs when first URL is already present in reply
+    ok 15 - 15. migrates multiple URLs without dropping later URLs when first URL is already present in reply
+      ---
+      duration_ms: 0.37443
+      type: 'test'
+      ...
+    # Subtest: 16. cleanly removes ALL duplicate occurrences of the same URL from main body
+    ok 16 - 16. cleanly removes ALL duplicate occurrences of the same URL from main body
+      ---
+      duration_ms: 0.46767
+      type: 'test'
+      ...
+    # Subtest: 17. cleanly handles /a vs /ab in same body, avoids swallowing Japanese prose, and prevents 130時間 corruption
+    ok 17 - 17. cleanly handles /a vs /ab in same body, avoids swallowing Japanese prose, and prevents 130時間 corruption
+      ---
+      duration_ms: 0.4225
+      type: 'test'
+      ...
+    # Subtest: 18. commitDeliberationToSchedule respects manual overrideTweets without AI alteration
+    ok 18 - 18. commitDeliberationToSchedule respects manual overrideTweets without AI alteration
+      ---
+      duration_ms: 1.22526
+      type: 'test'
+      ...
+    # Subtest: 19. stops ambiguous URLs and metrics instead of changing their meaning
+    ok 19 - 19. stops ambiguous URLs and metrics instead of changing their meaning
+      ---
+      duration_ms: 0.98164
+      type: 'test'
+      ...
+    1..19
+ok 69 - Post Constraints & Prompt Directives Validation
+  ---
+  duration_ms: 85.843919
+  type: 'suite'
+  ...
+# Subtest: production prompt includes DPO and episodes only for treatment B
+ok 70 - production prompt includes DPO and episodes only for treatment B
+  ---
+  duration_ms: 111.331389
+  type: 'test'
+  ...
+# Subtest: campaign slots are stored as instants matching their Tokyo wall-clock time
+ok 71 - campaign slots are stored as instants matching their Tokyo wall-clock time
+  ---
+  duration_ms: 19.28151
+  type: 'test'
+  ...
+# Subtest: campaign slot day offsets use the target timezone calendar date
+ok 72 - campaign slot day offsets use the target timezone calendar date
+  ---
+  duration_ms: 0.61997
+  type: 'test'
+  ...
+# Subtest: campaign slots respect regional offsets and daylight-saving changes
+ok 73 - campaign slots respect regional offsets and daylight-saving changes
+  ---
+  duration_ms: 1.31119
+  type: 'test'
+  ...
+# Subtest: time zone input must be a recognized IANA zone
+ok 74 - time zone input must be a recognized IANA zone
+  ---
+  duration_ms: 0.463469
+  type: 'test'
+  ...
+# Subtest: AI wall-clock recommendations are interpreted in the selected campaign timezone
+ok 75 - AI wall-clock recommendations are interpreted in the selected campaign timezone
+  ---
+  duration_ms: 0.477469
+  type: 'test'
+  ...
+# Subtest: explicit checkout currency takes precedence over UI language
+ok 76 - explicit checkout currency takes precedence over UI language
+  ---
+  duration_ms: 2.082411
+  type: 'test'
+  ...
+# Subtest: Stripe price selection uses the requested plan and currency catalog only
+ok 77 - Stripe price selection uses the requested plan and currency catalog only
+  ---
+  duration_ms: 0.325451
+  type: 'test'
+  ...
+# Subtest: invoice paid amount converts using currency minor units and an explicit JPY FX rate
+ok 78 - invoice paid amount converts using currency minor units and an explicit JPY FX rate
+  ---
+  duration_ms: 1.5373
+  type: 'test'
+  ...
+# Subtest: JPY FX lookup uses the payment date and validates the ECB reference response
+ok 79 - JPY FX lookup uses the payment date and validates the ECB reference response
+  ---
+  duration_ms: 1.74993
+  type: 'test'
+  ...
+1..79
+# tests 154
+# suites 25
+# pass 150
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1823.24235

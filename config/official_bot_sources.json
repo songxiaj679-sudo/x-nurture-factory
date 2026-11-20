@@ -1,0 +1,60 @@
+{
+  "custom_rss_feeds": [
+    {
+      "name": "TechCrunch Social",
+      "url": "https://techcrunch.com/category/social/feed/",
+      "limit": 3
+    },
+    {
+      "name": "The Verge Tech",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "limit": 3
+    },
+    {
+      "name": "Search Engine Journal",
+      "url": "https://www.searchenginejournal.com/category/social-media/feed/",
+      "limit": 3
+    }
+  ],
+  "custom_json_apis": [
+    {
+      "name": "Qiita (X/Twitter技術)",
+      "type": "qiita",
+      "url": "https://qiita.com/api/v2/items?page=1&per_page=6&query=Twitter+OR+X+API+OR+Bot"
+    },
+    {
+      "name": "Zenn (Twitter開発)",
+      "type": "zenn",
+      "url": "https://zenn.dev/api/articles?topicname=twitter&order=latest"
+    },
+    {
+      "name": "Zenn (自動化・AI技術)",
+      "type": "zenn",
+      "url": "https://zenn.dev/api/articles?topicname=ai&order=latest"
+    },
+    {
+      "name": "GitHub (世界の最新Xプログラム)",
+      "type": "github",
+      "url": "https://api.github.com/search/repositories?q=twitter+bot+OR+x-api+OR+twitter-automation&sort=updated&order=desc&per_page=6"
+    },
+    {
+      "name": "DEV.to (海外開発者コラム)",
+      "type": "devto",
+      "url": "https://dev.to/api/articles?tag=twitter&per_page=5"
+    },
+    {
+      "name": "HackerNews (X/Algorithm)",
+      "type": "hn",
+      "url": "https://hn.algolia.com/api/v1/search_by_date?query=Twitter%20OR%20X.com%20algorithm&tags=story&hitsPerPage=5"
+    }
+  ],
+  "custom_angles": [
+    "【GitHub＆開発トレンド翻訳】世界中のプログラマーが今作っている「X関連の最新ツール・プログラム」を素人にもわかる言葉でやさしく図解",
+    "【Qiita・Zenn技術かみくだき】エンジニアの間で話題の「X公式APIや自動化プログラムの仕組み」をパソコン初心者向けに3分で解説",
+    "【シャドウバン完全対策】検索に載らない「サーチバン・サジェストバン」が起きるプログラム上の原因と、安全に回復させる手順",
+    "【X最新アルゴリズム解剖】オープンソースコードや海外検証から判明した「じっくり読まれる時間（滞在時間）」とブックマークの評価基準",
+    "【リプライ制限・ゴーストバン回避】自動ボットやスパムと判定される行動の境界線と、アカウントの信頼スコアを高める方法",
+    "【AI×SNS自動化の最前線】最新AI（Gemini等）とプログラムを組み合わせて、毎日自動で役立つ情報を発信する仕組みの裏側"
+  ],
+  "priority_topics": []
+}

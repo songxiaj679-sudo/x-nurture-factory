@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="ja" translate="no">
+<head>
+  <meta name="google" content="notranslate" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VELOX AI — AI-Assisted X Posting Workflow</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/funnel-assets/funnel.css?v=20261119_1" />
+  <script>
+    // 🛡️ 旧バージョンURLハッシュ (#lane=...) および旧レーン選択キャッシュを最速先行消去
+    try {
+      if (window.location.hash && window.location.hash.includes('lane')) {
+        history.replaceState(null, document.title, window.location.pathname + window.location.search);
+      }
+      localStorage.removeItem('xsw_selected_lane');
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="google_translate_element" style="display:none;"></div>
+  <div class="dyn-toast-wrap" id="dynToastWrap"></div>
+
+  <!-- Full-Width Sticky Enterprise Sub-Navigation Bar + 10-Language Stylish Selector -->
+  <header class="flagship-header">
+    <div class="flagship-nav">
+      <a href="/" class="product-title">
+        <span>VELOX AI</span>
+        <span class="product-title-badge">AI SaaS</span>
+      </a>
+      <nav class="product-links" id="navGuestLinks">
+        <a href="#secReviews" data-i18n="nav_philosophy">開発思想</a>
+        <a href="#secExplorer" data-i18n="nav_tech">主な機能</a>
+        <a href="#secPerformance" data-i18n="nav_engine">投稿ワークフロー</a>
+        <a href="#secMultiStream" data-i18n="nav_sales">実績レポート</a>
+        <a href="#secSecurity" data-i18n="nav_security">セキュリティ</a>
+        <a href="#liveDemoSection" data-i18n="nav_demo">無料デモ</a>
+        <a href="#secEditions" data-i18n="nav_pricing">料金プラン</a>
+        <a href="#secFaq" data-i18n="nav_faq">FAQ</a>
+      </nav>
+      <div class="nav-right-btns">
+        <!-- 10-Language Stylish Glass Dropdown -->
+        <div class="lang-dropdown-wrap" id="langDropdownWrap">
+          <button type="button" class="lang-trigger-btn" onclick="toggleLangMenu(event)">
+            <span id="curLangLabel">🌐 JA</span>
+            <span style="font-size:0.65rem;opacity:0.7;">▼</span>
+          </button>
+          <div class="lang-menu-pop" id="langMenuPop">
+            <button type="button" class="lang-opt" data-lang="en" data-label="🌐 EN — English" onclick="selectSiteLanguage('en', this)"><span>🇺🇸 English (Global)</span><span>EN</span></button>
+            <button type="button" class="lang-opt active" data-lang="ja" data-label="🌐 JA — 日本語" onclick="selectSiteLanguage('ja', this)"><span>🇯🇵 日本語 (Japanese)</span><span>JA</span></button>
+          </div>
+        </div>
+
+        <a href="/dashboard" id="topDashboardBtn" style="display:none;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#FFFFFF;padding:8px 16px;border-radius:10px;font-size:0.82rem;font-weight:800;text-decoration:none;box-shadow:0 2px 8px rgba(37,99,235,0.3);white-space:nowrap;" data-i18n="nav_dashboard">🚀 ダッシュボードを開く</a>
+        <button type="button" class="btn-nav-outline" id="topAuthBtn" onclick="openAuthModal('login')" data-i18n="nav_login">ログイン</button>
+        <button type="button" class="btn-nav-blue" id="topUnlockBtn" onclick="openAuthModal('register')" data-i18n="nav_signup">新規登録</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       VIEW 1: GLOBAL B2B FLAGSHIP SHOWCASE (日本語・英語調和 & 公式ビジネス仕様)
+       ======================================================================== -->
+  <div id="guestShowcaseView">
+    <!-- SECTION 1: Hero Banner -->
+    <section class="hero-banner">
+      <div class="hero-inner">
+        <div class="hero-visual-col" style="display:flex; flex-direction:column; gap:14px; width:100%;">
+          <div class="hero-visual-frame" style="background:#FFFFFF; border:1px solid #E2E8F0; padding:10px; border-radius:24px; box-shadow:0 25px 50px -12px rgba(15,23,42,0.12); position:relative; overflow:hidden;">
+            <img src="/images/hero-dashboard-mockup.png?v=20261113" alt="VELOX AI dashboard preview" style="width:100%; height:auto; display:block; border-radius:16px; object-fit:cover;" />
+            <div style="position:absolute; bottom:16px; left:16px; right:16px; display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.85); backdrop-filter:blur(10px); padding:8px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.12);">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:#10B981;font-family:'JetBrains Mono',monospace;font-size:0.75rem;font-weight:bold;">● AI DRAFTING WORKFLOW</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#E2E8F0;">Official X API connection · Post scheduling</span>
+              </div>
+              <span style="background:#2563EB;color:#FFF;padding:3px 10px;border-radius:999px;font-weight:800;font-size:0.7rem;letter-spacing:0.04em;">CONTENT WORKFLOW</span>
+            </div>
+          </div>
+
+          <!-- Secondary Telemetry Strip matching height with right column -->
+          <div class="hero-telemetry-strip" style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:16px; padding:14px 20px; box-shadow:0 10px 25px -5px rgba(15,23,42,0.05); display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; text-align:center;">
+            <div style="border-right:1px solid #F1F5F9; padding-right:8px;">
+              <div style="font-size:0.72rem; font-weight:800; color:#64748B; margin-bottom:2px;" data-i18n="hero_telem1_label">公式API接続</div>
+              <div style="font-size:1.4rem; font-weight:900; color:#2563EB; line-height:1.2;">API v2</div>
+              <div style="font-size:0.67rem; color:#059669; font-weight:700; margin-top:2px;" data-i18n="hero_telem1_sub">公式 OAuth 2.0 準拠</div>
+            </div>
+            <div style="border-right:1px solid #F1F5F9; padding-right:8px;">
+              <div style="font-size:0.72rem; font-weight:800; color:#64748B; margin-bottom:2px;" data-i18n="hero_telem2_label">学習サイクル</div>
+              <div data-i18n="hero_telem2_value" style="font-size:1.15rem; font-weight:900; color:#059669; line-height:1.2;">毎回更新</div>
+              <div style="font-size:0.67rem; color:#059669; font-weight:700; margin-top:2px;" data-i18n="hero_telem2_sub">実測反応を次投稿へ反映</div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem; font-weight:800; color:#64748B; margin-bottom:2px;" data-i18n="hero_telem3_label">生成ポリシー</div>
+              <div data-i18n="hero_telem3_value" style="font-size:1.4rem; font-weight:900; color:#7C3AED; line-height:1.2;">根拠限定</div>
+              <div style="font-size:0.67rem; color:#64748B; font-weight:700; margin-top:2px;" data-i18n="hero_telem3_sub">未確認の数値・誇張を遮断</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-copy-box">
+          <div style="font-weight:800;font-size:0.82rem;color:#2563EB;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">
+            VELOX AI — AI-ASSISTED X WORKFLOW
+          </div>
+          <h1 id="heroH1" data-i18n="hero_h1">VELOX AI<br><span style="color:#2563EB;">反応を学びながら「次の1本」を届け続けるX運用AI。</span></h1>
+          <p style="font-size:1.03rem;color:#374151;font-weight:500;line-height:1.75;" id="heroDesc" data-i18n="hero_desc">
+            URLか、育てたいアカウント像を入れるだけです。投稿の作成・予約・反応の学習はおまかせし、今のアカウント状態、Bioの改善助言、AIがこの投稿を選んだ理由まで、一つの画面で確認できます。14日間無料で、管理画面からいつでも解約できます。
+          </p>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:18px;flex-wrap:wrap;">
+            <a href="https://developer.x.com/exhibit/veloxpostcloud" target="_blank" rel="noopener noreferrer" class="hero-exhibit-pill" data-i18n="hero_exhibit_pill">🏆 X公式 Developer Exhibit 掲載アプリ ↗</a>
+            <span style="background:#EFF6FF;color:#2563EB;padding:5px 12px;border-radius:999px;font-size:0.75rem;font-weight:800;border:1px solid #BFDBFE;" data-i18n="hero_badge1">🔗 X公式API v2 正規連携</span>
+            <span style="background:#F0FDF4;color:#166534;padding:5px 12px;border-radius:999px;font-size:0.75rem;font-weight:800;border:1px solid #BBF7D0;" data-i18n="hero_badge2">🧠 根拠と本来の文体を忠実に反映</span>
+            <span style="background:#FAF5FF;color:#6B21A8;padding:5px 12px;border-radius:999px;font-size:0.75rem;font-weight:800;border:1px solid #E9D5FF;" data-i18n="hero_badge4">🔄 公開後の実測から毎回再設計</span>
+            <span style="background:#F8FAFC;color:#334155;padding:5px 12px;border-radius:999px;font-size:0.75rem;font-weight:800;border:1px solid #CBD5E1;" data-i18n="hero_badge3">💳 14日間無料トライアル</span>
+          </div>
+          <div class="hero-cta-group">
+            <button type="button" class="btn-nav-blue" style="padding:14px 30px;font-size:0.94rem;" onclick="openUnlockModal()" data-i18n="hero_btn_select">14日間無料で試す →</button>
+            <a href="#liveDemoSection" class="btn-hero-white" data-i18n="hero_btn_demo">無料デモで投稿案を試す</a>
+          </div>
+          <div style="margin-top:10px;font-size:0.8rem;color:#475569;font-weight:700;" data-i18n="hero_cancel_assurance">✓ 14日間は ¥0 ・ 管理画面のボタン1つでいつでも解約できます</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="secOfficialExhibit" style="max-width:1120px;margin:0 auto;padding:52px 20px 24px;">
+      <div class="exhibit-showcase">
+        <div class="exhibit-main">
+          <div class="exhibit-kicker"><span class="exhibit-dot"></span><span data-i18n="official_exhibit_kicker">OFFICIAL X DEVELOPER DIRECTORY</span></div>
+          <div class="exhibit-url" data-i18n="official_exhibit_url">developer.x.com/exhibit/veloxpostcloud</div>
+          <h2 class="exhibit-title" data-i18n="official_banner_title">X公式「Developer Exhibit」掲載アプリ</h2>
+          <p class="exhibit-body" data-i18n="official_banner_body">X 公式のアプリ展示ギャラリー「Developer Exhibit」に、OAuth 2.0 準拠のコンテンツ作成・予約配信 SaaS として公開掲載されています。実運用での挙動は、日本・Global の各公式アカウント上でも日々公開しています。</p>
+          <a href="https://developer.x.com/exhibit/veloxpostcloud" target="_blank" rel="noopener noreferrer" class="exhibit-cta" data-i18n="official_exhibit_btn">🏆 X公式 Exhibit ページを見る ↗</a>
+        </div>
+        <div class="exhibit-accounts">
+          <div class="exhibit-account">
+            <div class="exhibit-account-role" data-i18n="official_jp_role">🇯🇵 Japan Official</div>
+            <div class="exhibit-account-handle">@VeloxSystemsV4</div>
+            <p data-i18n="official_jp_note">日本語・国内向けの実運用ログ</p>
+            <a href="https://x.com/VeloxSystemsV4" target="_blank" rel="noopener noreferrer" data-i18n="official_log_jp_btn">@VeloxSystemsV4 を見る ↗</a>
+          </div>
+          <div class="exhibit-account">
+            <div class="exhibit-account-role" data-i18n="official_hq_role">🌐 Global Official</div>
+            <div class="exhibit-account-handle">@VeloxSystemsHQ</div>
+            <p data-i18n="official_hq_note">英語・海外向けの実運用ログ</p>
+            <a href="https://x.com/VeloxSystemsHQ" target="_blank" rel="noopener noreferrer" data-i18n="official_log_hq_btn">@VeloxSystemsHQ を見る ↗</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="secQuickStart" style="max-width:1120px;margin:0 auto;padding:40px 20px 56px;">
+      <div style="text-align:center;margin-bottom:18px;">
+        <h2 class="sec-h2" style="font-size:1.7rem;margin:0;" data-i18n="qs_h2">約3分で開始する、3つの手順</h2>
+      </div>
+      <div class="qs-grid">
+        <div class="qs-card">
+          <h3 data-i18n="qs_1_title">01｜X とワンクリック連携</h3>
+          <p data-i18n="qs_1_body">公式 OAuth 2.0 で接続します。通常の自動投稿なら、別アカウントや自動化ラベルは不要です。</p>
+        </div>
+        <div class="qs-card">
+          <h3 data-i18n="qs_2_title">02｜URL か人物像を入れるだけ</h3>
+          <p data-i18n="qs_2_body">紹介ページか、育てたいアカウント像を保存します。今の Bio 改善案も同時に確認できます。</p>
+        </div>
+        <div class="qs-card">
+          <h3 data-i18n="qs_3_title">03｜開始を押して、あとはおまかせ</h3>
+          <p data-i18n="qs_3_body">時間枠に合わせて作成・予約・学習が続きます。直したいときだけ編集や別案に切り替えられます。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: 開発思想・エンジニアリング原則 -->
+        <section id="secReviews" class="editorial-sec">
+      <div style="text-align:center;max-width:820px;margin:0 auto 28px;">
+        <span style="background:#EFF6FF;color:#2563EB;padding:4px 14px;border-radius:999px;font-size:0.75rem;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;" data-i18n="philo_badge">PHILOSOPHY & PRINCIPLES</span>
+        <h2 class="sec-h2" style="font-size:2.1rem;margin:10px 0 12px;" data-i18n="philo_h2">なぜ「次の1投稿だけ」なのか —— 質の高いX運用を成立させる4つの設計</h2>
+        <p style="font-size:0.95rem;color:#475569;line-height:1.7;" data-i18n="philo_desc">
+          調査・執筆・審査・公開後の学習を、1投稿ごとに一巡させます。
+        </p>
+      </div>
+
+      <div class="media-quotes-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="media-card" style="border-top: 3px solid #2563EB;">
+          <h3 style="font-size:1.02rem;font-weight:900;color:#0F172A;margin-bottom:8px;" data-i18n="philo_card1_title">01. Webサイトの精密読解と事実検証</h3>
+          <p style="font-size:0.86rem;line-height:1.65;color:#475569;" data-i18n="philo_card1_desc">登録ページのほか、同一サイト内の関連ページ（料金・機能・FAQなど主要な案内。あわせて最大3ページ）を参照し、ページにない数値は送信前に止めます。URLがなくても、書いたアカウント像と過去の投稿から次の1本を組み立てます。</p>
+          <span style="color:#2563EB;font-weight:800;font-size:0.75rem;" data-i18n="philo_card1_tag">PAGE FACTS ONLY</span>
+        </div>
+        <div class="media-card" style="border-top: 3px solid #059669;">
+          <h3 style="font-size:1.02rem;font-weight:900;color:#0F172A;margin-bottom:8px;" data-i18n="philo_card2_title">02. 「あなたの声」と信用段階の設計</h3>
+          <p style="font-size:0.86rem;line-height:1.65;color:#475569;" data-i18n="philo_card2_desc">今の自己紹介と固定ポストを見て、誰向けか・何を出すか・導線の助言を出します。口調は過去の投稿に合わせ、宣伝は反応が安定したときか、紹介を希望したときに限って混ぜます。</p>
+          <span style="color:#059669;font-weight:800;font-size:0.75rem;" data-i18n="philo_card2_tag">ACCOUNT VOICE</span>
+        </div>
+        <div class="media-card" style="border-top: 3px solid #4F46E5;">
+          <h3 style="font-size:1.02rem;font-weight:900;color:#0F172A;margin-bottom:8px;" data-i18n="philo_card3_title">03. 2段階設計と投稿審査・形式最適化</h3>
+          <p style="font-size:0.86rem;line-height:1.65;color:#475569;" data-i18n="philo_card3_desc">本文の前に「誰に・なぜ今・どの根拠か」を決め、その理由を画面に出します。長さはXのプランと検索状態に合わせ、長文1本・2本・リンクなし短文を使い分けます。</p>
+          <span style="color:#4F46E5;font-weight:800;font-size:0.75rem;" data-i18n="philo_card3_tag">QUALITY &amp; SHAPE</span>
+        </div>
+        <div class="media-card" style="border-top: 3px solid #7C3AED;">
+          <h3 style="font-size:1.02rem;font-weight:900;color:#0F172A;margin-bottom:8px;" data-i18n="philo_card4_title">04. 実測を反映するため、次の1本だけを毎回組み直す</h3>
+          <p style="font-size:0.86rem;line-height:1.65;color:#475569;" data-i18n="philo_card4_desc">公開2〜6時間後と24〜36時間後の実測を見て、次の1本だけを組み直します。今のフォロワーと反応も同じ画面に出します。手で直した予約は上書きしません。</p>
+          <span style="color:#7C3AED;font-weight:800;font-size:0.75rem;" data-i18n="philo_card4_tag">ADAPTIVE LOOP</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: 5大コアアーキテクチャ -->
+        <section id="secExplorer" class="interactive-explorer-sec">
+      <div class="sec-center">
+        <span class="sec-eyebrow" data-i18n="arch_badge">SYSTEM ARCHITECTURE</span>
+        <h2 class="sec-h2" data-i18n="arch_h2">次の1投稿を支える4つのコア技術</h2>
+        <p class="sec-lead" data-i18n="arch_desc">公式API連携、サイト読解と文体解析、2段階生成と審査ゲート、公開後の実測学習。アカウントを増やす機能はありません。</p>
+      </div>
+
+      <div class="explorer-tabs-bar">
+        <button type="button" class="exp-tab-btn active" id="etab_0" onclick="switchExplorerTab(0)">
+          <span data-i18n="arch_tab0">01. X公式API連携と暗号化</span><span class="plus-circle">＋</span>
+        </button>
+        <button type="button" class="exp-tab-btn" id="etab_1" onclick="switchExplorerTab(1)">
+          <span data-i18n="arch_tab1">02. サイト読解と文体解析</span><span class="plus-circle">＋</span>
+        </button>
+        <button type="button" class="exp-tab-btn" id="etab_2" onclick="switchExplorerTab(2)">
+          <span data-i18n="arch_tab2">03. 2段階設計と送信前ゲート</span><span class="plus-circle">＋</span>
+        </button>
+        <button type="button" class="exp-tab-btn" id="etab_3" onclick="switchExplorerTab(3)">
+          <span data-i18n="arch_tab3">04. 実測学習と到達率保護</span><span class="plus-circle">＋</span>
+        </button>
+      </div>
+
+      <div class="explorer-stage">
+        <div class="explorer-visual-pane">
+          <div class="explorer-img-wrap" style="background:#FFFFFF; border:1.5px solid #E2E8F0; display:flex; flex-direction:column; justify-content:space-between; align-items:center; padding:22px; border-radius:18px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.04); min-height:420px;">
+            <div style="flex:1; display:flex; align-items:center; justify-content:center; width:100%; padding:10px 0;">
+              <img id="explorerStageImg" src="/images/feature-cloud-vault-3d.png?v=20261113_6" alt="Cloud Vault Enterprise Architecture" style="width:100%; max-height:220px; object-fit:contain; display:block; transition:opacity 0.2s;" />
+            </div>
+            <div id="explorerLiveTelemetry" style="margin-top:14px; width:100%; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div id="expTelemTitle" style="font-size:0.78rem; font-weight:900; color:#0F172A;">X Official API v2 / AES-256-GCM Vault</div>
+                <div id="expTelemSub" style="font-size:0.7rem; color:#059669; font-weight:800;">● X公式API v2 連携・スパム的自動操作なし</div>
+              </div>
+              <span id="expTelemBadge" style="background:#ECFDF5; color:#059669; font-size:0.7rem; font-weight:800; padding:4px 12px; border-radius:999px;">公式 OAuth 2.0</span>
+            </div>
+          </div>
+          <div class="explorer-desc-card">
+            <div style="font-size:0.76rem;font-weight:900;color:#2563EB;letter-spacing:0.06em;margin-bottom:8px;" id="expCardTag">OFFICIAL API SECURITY</div>
+            <h3 id="expCardTitle">X公式API v2 連携 ＆ AES-256-GCM暗号化基盤</h3>
+            <p style="font-size:0.94rem;color:#4B5563;line-height:1.75;" id="expCardBody">
+              公式 OAuth 2.0 で連携し、認証情報は AES-256-GCM で保管します。無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、受信メンションへの返信支援は確認制（1クリック送信）です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。
+            </p>
+            <div class="spec-mini-list" id="expSpecList">
+              <div class="spec-mini-row"><span>認証方式</span><strong>公式 OAuth 2.0</strong></div>
+              <div class="spec-mini-row"><span>資格情報の保管</span><strong>AES-256-GCM暗号化</strong></div>
+              <div class="spec-mini-row"><span>投稿前の管理</span><strong>公開前に確認・編集可能</strong></div>
+              <div class="spec-mini-row"><span>禁止された挙動</span><strong>無差別自動いいね・一斉リプなし</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: 性能と高可用性 -->
+    
+    <!-- SECTION 4: 性能と高可用性 -->
+    <section id="secPerformance" class="sec-container" style="padding-top:32px;">
+      <div style="max-width:1140px; margin:36px auto; border-radius:24px; overflow:hidden; background:linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%) !important; border:1.5px solid #BFDBFE; padding:36px 40px; color:#0F172A !important; position:relative; box-shadow:0 10px 30px -10px rgba(37,99,235,0.08); text-align:center;">
+        <div style="position:relative; z-index:2; background:transparent !important; color:#0F172A !important;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:800;color:#2563EB;letter-spacing:0.1em;margin-bottom:12px;" data-i18n="pipe_strip">
+            OFFICIAL X API × ONE NEXT POST
+          </div>
+          <h3 style="font-size:clamp(1.5rem,3vw,2.2rem);font-weight:900;letter-spacing:-0.03em;line-height:1.35;max-width:850px;color:#0F172A;margin:0 auto;" data-i18n="pipe_h1">
+            ページの読解から、検証・予約配信・振り返りまで。<br><span style="color:#2563EB;">次の1本を、毎回組み直して届ける。</span>
+          </h3>
+        </div>
+      </div>
+
+      <div class="sec-center" style="margin-top:48px;">
+        <span class="sec-eyebrow" data-i18n="pipe_eyebrow">POSTING WORKFLOW</span>
+        <h2 class="sec-h2" data-i18n="pipe_h2">設定ひとつで、執筆から学習まで完結。</h2>
+        <p class="sec-lead" data-i18n="pipe_lead">
+          ホームページのURLか、育てたいアカウント像のどちらか一方（または両方）から構成を設計し、審査を通した次の1本を公式APIで予約します。公開後の実測も、同じ画面から次の切り口へ反映できます。
+        </p>
+      </div>
+
+      <div class="dual-feature-grid">
+        <div class="soft-feature-card">
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#4B5563;">AI-Assisted <strong style="font-size:2.2rem;color:#2563EB;">Workflow</strong></div>
+            <h3 data-i18n="pipe_f1_title">公開後の反応を、次の投稿案へ戻す。</h3>
+            <p data-i18n="pipe_f1_desc">いいね、返信、リポスト、ブックマーク（保存）など、公式APIから取得できる指標を時間帯と切り口に紐づけます。それらの反応データをもとに、次の1本で「誰に・なぜ今・どの根拠を届けるか」を組み直します。</p>
+          </div>
+          <div class="card-visual-slot" style="padding:16px; background:#FFFFFF; border:1.5px solid #E2E8F0; border-radius:18px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.04); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <img src="/images/feature-growth-3d.png?v=20261113_6" alt="Post performance reporting" style="width:100%; max-height:200px; object-fit:contain; display:block;" />
+            <div style="margin-top:12px; width:100%; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:6px 12px; font-size:0.75rem; color:#1E40AF; text-align:center; font-weight:800;" data-i18n="pipe_f1_badge">
+              📈 実測した反応を、次の1本の設計へ
+            </div>
+          </div>
+        </div>
+
+        <div class="soft-feature-card">
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#4B5563;">Official <strong style="font-size:2.2rem;color:#2563EB;">X API v2</strong> Compliant</div>
+            <h3 data-i18n="pipe_f2_title">X公式API v2 で予約配信する。</h3>
+            <p data-i18n="pipe_f2_desc">投稿はX公式API v2の正規の認証経路で予約します。無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、受信メンションへの返信支援は確認制（下書きを確認して1クリック送信）です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。認証情報はAES-256-GCMで暗号化して保存します。</p>
+          </div>
+          <div class="card-visual-slot" style="padding:16px; background:#FFFFFF; border:1.5px solid #E2E8F0; border-radius:18px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.04); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <img src="/images/feature-compliance-tile-3d.png?v=20261113_6" alt="Official Compliance Verification" style="width:100%; max-height:200px; object-fit:contain; display:block;" />
+            <div style="margin-top:12px; width:100%; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:6px 12px; font-size:0.75rem; color:#166534; text-align:center; font-weight:800;" data-i18n="pipe_f2_badge">
+              🛡️ X公式API v2 • 無差別な自動いいね・一斉リプライは行いません
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: マルチアカウント運用と投稿実績 -->
+    <section id="secMultiStream" class="sec-container">
+      <div class="visual-story-block">
+        <span class="sec-eyebrow" data-i18n="multi_eyebrow">ONE ACCOUNT, DAILY SLOTS</span>
+        <h2 class="sec-h2" data-i18n="multi_h2">1日の検証枠と、公開後のフィードバック設計</h2>
+        <p class="sec-lead" style="max-width:760px;margin:0 auto;" data-i18n="multi_lead">
+          品質のエンジンは全プラン共通です。違いは、1日に何回「次の1本」を検証できるかです。
+        </p>
+
+        <div class="story-split-row">
+          <div class="story-img-card" style="background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:18px;padding:20px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F1F5F9;padding-bottom:10px;">
+              <span style="font-size:0.75rem;font-weight:900;color:#0F172A;" data-i18n="multi_lanes_title">⚡ 1日の時間帯</span>
+              <span style="background:#EFF6FF;color:#2563EB;font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:999px;" data-i18n="multi_lanes_badge">配信スケジュール構成例</span>
+            </div>
+            <!-- Lane 1 -->
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:0.75rem;font-weight:800;color:#2563EB;" data-i18n="multi_lane1_title">● 朝 8:30目安</span>
+                <span style="font-size:0.65rem;color:#059669;font-weight:bold;background:#ECFDF5;padding:1px 6px;border-radius:4px;" data-i18n="multi_lane1_status">Starter</span>
+              </div>
+              <div style="font-size:0.75rem;color:#334155;line-height:1.4;" data-i18n="multi_lane1_text">Starter の基本枠。1日1回、その日最も適した切り口を配信します。</div>
+            </div>
+            <!-- Lane 2 -->
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:0.75rem;font-weight:800;color:#059669;" data-i18n="multi_lane2_title">● 昼 12:30目安</span>
+                <span style="font-size:0.65rem;color:#2563EB;font-weight:bold;background:#EFF6FF;padding:1px 6px;border-radius:4px;" data-i18n="multi_lane2_status">Pro</span>
+              </div>
+              <div style="font-size:0.75rem;color:#334155;line-height:1.4;" data-i18n="multi_lane2_text">Pro 以上で追加される昼・夜枠。1日3回、異なる論点を日内で検証します。</div>
+            </div>
+            <!-- Lane 3 -->
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:0.75rem;font-weight:800;color:#7C3AED;" data-i18n="multi_lane3_title">● 夜 20:00目安</span>
+                <span style="font-size:0.65rem;color:#7C3AED;font-weight:bold;background:#F5F3FF;padding:1px 6px;border-radius:4px;" data-i18n="multi_lane3_status">Business</span>
+              </div>
+              <div style="font-size:0.75rem;color:#334155;line-height:1.4;" data-i18n="multi_lane3_text">Business の1日5枠。8:30 / 12:30 / 17:30 / 20:00 / 22:30 で検証サイクルを最大化します。</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:0.78rem;font-weight:900;color:#2563EB;letter-spacing:0.06em;margin-bottom:8px;" data-i18n="multi_promo_eyebrow">DAILY SLOTS</div>
+            <h3 style="font-size:1.65rem;font-weight:900;letter-spacing:-0.025em;margin-bottom:12px;color:#111827;" data-i18n="multi_promo_title">
+              時間帯ごとに、次の1本の切り口を変える
+            </h3>
+            <p style="font-size:0.95rem;color:#4B5563;line-height:1.75;" data-i18n="multi_promo_desc">
+              Starterは朝の基本枠（1日1枠）、Proは昼・夜を加えた1日3枠、Businessは夕・深夜を含む1日5枠まで対応します。予約待機させておくのは常に「次の1本」だけで、手動で編集した予約は上書きせずに残します。
+            </p>
+          </div>
+        </div>
+
+        <div class="story-split-row" style="margin-top:44px;">
+          <div>
+            <div style="font-size:0.78rem;font-weight:900;color:#6D28D9;letter-spacing:0.06em;margin-bottom:8px;" data-i18n="outreach_eyebrow">AFTER IT IS PUBLISHED</div>
+            <h3 style="font-size:1.65rem;font-weight:900;letter-spacing:-0.025em;margin-bottom:12px;color:#111827;" data-i18n="outreach_title">
+              公開後の反応を、すぐ次の投稿案へ。
+            </h3>
+            <p style="font-size:0.95rem;color:#4B5563;line-height:1.75;" data-i18n="outreach_desc">
+              公開後24〜36時間の表示回数、ブックマーク率、返信数を時間帯・切り口別に集計し、週次レポートと次回生成に反映します。到達率が直近の水準から大きく下がった場合は、無理に攻めず回復向けの投稿構成へ自動調整します。
+            </p>
+          </div>
+          <div class="story-img-card" style="background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:18px;padding:20px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F1F5F9;padding-bottom:10px;">
+              <span style="font-size:0.75rem;font-weight:900;color:#6D28D9;" data-i18n="outreach_demo_title">📊 投稿実績の表示例</span>
+              <span style="background:#F5F3FF;color:#7C3AED;font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:999px;" data-i18n="outreach_demo_badge">画面イメージ</span>
+            </div>
+            <!-- Prospect tweet -->
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <span style="font-size:0.75rem;font-weight:800;color:#0F172A;" data-i18n="outreach_tweet_lbl">投稿案（例）</span>
+                <span style="font-size:0.68rem;color:#64748B;">POST DRAFT</span>
+              </div>
+              <div style="font-size:0.75rem;color:#334155;line-height:1.4;" data-i18n="outreach_tweet_txt">「サービスの使い方を3つの手順で紹介する投稿案（表示例）」</div>
+            </div>
+            <!-- AI Reply -->
+            <div style="background:#F5F3FF;border:1.5px solid #DDD6FE;border-radius:10px;padding:10px 12px;margin-left:14px;position:relative;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:0.75rem;font-weight:900;color:#6D28D9;" data-i18n="outreach_reply_author">取得可能な投稿指標</span>
+                  <span style="background:#7C3AED;color:#FFF;font-size:0.6rem;font-weight:bold;padding:1px 6px;border-radius:4px;">METRICS</span>
+                </div>
+                <span style="font-size:0.65rem;color:#7C3AED;font-weight:800;" data-i18n="outreach_reply_badge">取得できる範囲で表示</span>
+              </div>
+              <div style="font-size:0.75rem;color:#4C1D95;line-height:1.4;" data-i18n="outreach_reply_txt">
+                24〜36時間の保存・返信を時間帯別に見て、次の1本の論点を組み直します。
+              </div>
+            </div>
+            <div style="background:#ECFDF5;border:1px solid #A7F3D0;padding:6px 10px;border-radius:8px;font-size:0.72rem;color:#065F46;text-align:center;font-weight:800;" data-i18n="outreach_stat">
+              ✓ 初速と確定値を、次の1本の設計へ戻す
+            </div>
+            <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px;">
+              <div style="font-size:0.75rem;font-weight:900;color:#92400E;margin-bottom:4px;" data-i18n="outreach_insight_title">💡 画面イメージ：今回の狙い・Bio助言・運用方針</div>
+              <div style="font-size:0.75rem;color:#78350F;line-height:1.55;" data-i18n="outreach_insight_txt">数字の集計に加え、なぜこの1本か、今の自己紹介への助言、価値提供と案内のバランスまで同じ画面に出ます。これは表示例で、実績の数値ではありません。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: セキュリティ＆コンプライアンス基盤 -->
+    <section id="secSecurity" class="sec-container">
+      <div class="knox-shield-sec">
+        <div class="knox-top-row">
+          <div>
+            <span class="sec-eyebrow" data-i18n="sec_eyebrow">ACCOUNT & DATA PROTECTION</span>
+            <h2 class="sec-h2" style="font-size:2.3rem;" data-i18n="sec_h2">認証情報の保護と、運用上の注意点。</h2>
+            <p class="sec-lead" data-i18n="sec_lead">
+              Xの認証情報は AES-256-GCM で暗号化して保管し、決済は Stripe Checkout を使います。データの取り扱いと提供条件は、フッターの法務ページで確認できます。
+            </p>
+          </div>
+          <div class="knox-img-box" style="background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:18px;padding:12px;overflow:hidden;position:relative;box-shadow:0 10px 25px -5px rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center;">
+            <img src="/images/aes256-vault-security.png?v=20261113_6" alt="AES-256-GCM Military Grade Security Vault" style="width:100%;max-width:240px;height:auto;object-fit:contain;display:block;" />
+            <div style="position:absolute;bottom:12px;left:12px;right:12px;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);padding:8px 12px;border-radius:8px;font-size:11px;color:#FFF;font-weight:700;text-align:center;">
+              🔐 AES-256-GCM credential encryption
+            </div>
+          </div>
+        </div>
+
+        <div class="knox-3col">
+          <div class="knox-sub-card">
+            <h4 data-i18n="sec_c1_title">🏛️ プライバシーと規約の確認</h4>
+            <p data-i18n="sec_c1_desc">個人情報の取り扱いはプライバシーポリシーに記載しています。外部サービスとの連携・処理内容をご確認のうえご利用ください。</p>
+          </div>
+          <div class="knox-sub-card">
+            <h4 data-i18n="sec_c2_title">🤝 おまかせ中も、いつでも確認・微調整</h4>
+            <p data-i18n="sec_c2_desc">自動作成された次の1本はダッシュボードでいつでも確認でき、こだわりたい時だけ自分の言葉へ修正・別案再生成・即時停止が可能です。</p>
+          </div>
+          <div class="knox-sub-card">
+            <h4 data-i18n="sec_c3_title">💳 Stripe Checkoutによる決済</h4>
+            <p data-i18n="sec_c3_desc">Stripe Checkoutを利用します。利用可能な支払方法と決済書類は、決済画面およびStripeの案内をご確認ください。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: インタラクティブ・AI確認制シミュレーター（無料体験） -->
+    <section id="liveDemoSection" class="sec-container">
+      <div class="try-studio-sec">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <span class="sec-eyebrow" style="margin-bottom:4px;" data-i18n="demo_eyebrow">FREE POST-DRAFT PREVIEW</span>
+            <h2 style="font-size:2rem;font-weight:900;letter-spacing:-0.03em;color:#111827;" data-i18n="demo_h2">AI投稿案のサンプルを無料で体験</h2>
+          </div>
+          <div class="loc-pill">
+            <span class="loc-dot"></span>
+            <span data-i18n="demo_council_active">AI POST DRAFT PREVIEW</span>
+          </div>
+        </div>
+        <p style="color:#4B5563;font-size:0.95rem;margin-top:8px;margin-bottom:20px;" data-i18n="demo_lead">
+          本番エンジンで作った完成見本を、日本語と英語でキャッシュ表示します。自社URLの分析は無料登録後の管理画面で行います。
+        </p>
+
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <button type="button" id="samplePillJa" data-i18n="demo_pill_ja" onclick="selectShowcaseLang('ja')" style="border:1px solid #BFDBFE;background:#EFF6FF;color:#1D4ED8;border-radius:999px;padding:8px 14px;font-weight:800;">🇯🇵 日本語見本 (@VeloxSystemsV4)</button>
+          <button type="button" id="samplePillEn" data-i18n="demo_pill_en" onclick="selectShowcaseLang('en')" style="border:1px solid #E2E8F0;background:#FFFFFF;color:#334155;border-radius:999px;padding:8px 14px;font-weight:800;">🇺🇸 英語見本 (@VeloxSystemsHQ)</button>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+          <button type="button" class="btn-try-blue" id="btnRunFreeTest" onclick="runFreeBrowserExperience()" data-i18n="demo_btn_run">
+            完成見本を表示する
+          </button>
+          <button type="button" onclick="openAuthModal('register')" data-i18n="demo_btn_own" style="background:#FFFFFF;color:#2563EB;border:1.5px solid #BFDBFE;border-radius:12px;padding:12px 16px;font-weight:800;">
+            自分のURLで試す（無料登録）
+          </button>
+        </div>
+
+        <div class="console-log" id="expConsole"></div>
+      </div>
+    </section>
+
+    <!-- SECTION 8: 仕様一覧サマリー -->
+    <section id="secSpecs" class="sec-container">
+      <h2 class="sec-h2" style="font-size:2rem;margin-bottom:20px;" data-i18n="specs_h2">主要機能・スペック早見表</h2>
+      <div class="glance-bento-grid">
+        <div class="glance-card">
+          <div>
+            <div style="font-weight:800;font-size:0.88rem;color:#475569;" data-i18n="spec_c1_label">通信・セキュリティ</div>
+            <div class="glance-big" style="color:#059669;" data-i18n="spec_c1_big">X公式API v2</div>
+            <div style="font-size:0.84rem;color:#64748B;" data-i18n="spec_c1_desc">公式OAuth 2.0とAES-256-GCM。無差別な自動いいね・自動フォロー・一斉リプライは行いません。</div>
+          </div>
+          <div class="glance-thumb-wrap">
+            <img src="/images/spec-compliance-3d.png?v=20261113_6" alt="Platform Compliance" />
+          </div>
+        </div>
+        <div class="glance-card">
+          <div>
+            <div style="font-weight:800;font-size:0.88rem;color:#475569;" data-i18n="spec_c2_label">生成方式</div>
+            <div class="glance-big" style="color:#2563EB;" data-i18n="spec_c2_big">1投稿ずつ最適化</div>
+            <div style="font-size:0.84rem;color:#64748B;" data-i18n="spec_c2_desc">2段階設計・Critic審査・数値一致検証を通過した次の1本を、アカウントの文体とX側の契約状態（通常／X有料プラン）に合わせて作成します。</div>
+          </div>
+          <div class="glance-thumb-wrap">
+            <img src="/images/spec-council-3d.png?v=20261113_6" alt="次の1投稿" />
+          </div>
+        </div>
+        <div class="glance-card">
+          <div>
+            <div style="font-weight:800;font-size:0.88rem;color:#475569;" data-i18n="spec_c3_label">配信リズム</div>
+            <div class="glance-big" style="color:#7C3AED;" data-i18n="spec_c3_big">1日1〜5枠</div>
+            <div style="font-size:0.84rem;color:#64748B;" data-i18n="spec_c3_desc">全プランでAIの品質エンジンは共通です。Starter（1枠）・Pro（3枠）・Business（5枠）で1日の検証回数が変わります。</div>
+          </div>
+          <div class="glance-thumb-wrap">
+            <img src="/images/spec-satellite-3d.png?v=20261113_6" alt="1日の投稿枠" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 9: 料金プラン体系 (Editions) -->
+    <section id="secEditions" class="sec-container">
+      <div class="compare-editions-sec">
+        <div class="sec-center" style="margin-bottom:32px;">
+          <span class="sec-eyebrow" data-i18n="editions_eyebrow">SELECT YOUR EDITION</span>
+          <h2 class="sec-h2" style="font-size:2.2rem;" data-i18n="editions_h2">1アカウントの検証回数に合わせた3つのプラン</h2>
+          <p class="sec-lead" data-i18n="editions_lead">ページ読解、文体、2段階生成、Critic審査、公式APIは3プラン共通です。違いは1日に回せる検証の回数です。</p>
+        </div>
+
+        <div class="plans-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+          <!-- 個人/副業向け -->
+          <div class="p-card" onclick="openUnlockModal('starter')">
+            <div>
+              <div class="p-tier" style="color:#2563EB; font-size:0.75rem;" data-i18n="plan1_tier">👤 CREATOR & SOLO</div>
+              <div class="p-title" style="font-size: 1.4rem;">Solo Starter</div>
+              <div class="p-price" id="plan1Price" data-i18n="plan1_price">¥4,980 <span>/ 月（税込・$39）</span></div>
+              <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;" data-i18n="plan1_desc">
+                個人・1ブランドの継続発信に。朝8:30目安の1日1枠で、登録ページや育てたいアカウント像に沿った投稿と週次の振り返りを継続できます。
+              </p>
+              <ul class="p-feats">
+                <li data-i18n="plan1_feat1"><span class="chk-svg">✓</span> <strong>1日1件</strong>まで。次の1件を自動で用意</li>
+                <li data-i18n="plan1_feat2"><span class="chk-svg">✓</span> <strong>朝 8:30目安の1枠</strong></li>
+                <li data-i18n="plan1_feat3"><span class="chk-svg">✓</span> X公式API連携</li>
+                <li data-i18n="plan1_feat4"><span class="chk-svg">✓</span> 🧠 <strong>AI投稿案の作成・レビュー</strong></li>
+              </ul>
+            </div>
+            <button type="button" class="btn-select-plan" data-i18n="plan1_btn">14日間無料トライアルを開始 →</button>
+          </div>
+
+          <!-- 法人/スモールビジネス向け -->
+          <div class="p-card selected" onclick="openUnlockModal('pro')">
+            <div class="pop-tag" data-i18n="plan2_badge">定番 / 検証バランス</div>
+            <div>
+              <div class="p-tier" style="color:#1D4ED8; font-size:0.75rem;" data-i18n="plan2_tier">🏢 GROWTH PRO</div>
+              <div class="p-title" style="font-size: 1.4rem;">Agency Pro</div>
+              <div class="p-price" id="plan2Price" data-i18n="plan2_price">¥9,800 <span>/ 月（税込・$79）</span></div>
+              <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;" data-i18n="plan2_desc">
+                朝 8:30・昼 12:30・夜 20:00 の 1 日 3 枠。時間帯や切り口ごとの反応差を比べ、勝ち筋を見極めるプランです。
+              </p>
+              <ul class="p-feats">
+                <li data-i18n="plan2_feat1"><span class="chk-svg">✓</span> <strong>1日3件</strong>まで。次の1件を自動で用意</li>
+                <li data-i18n="plan2_feat2"><span class="chk-svg">✓</span> <strong>朝 8:30・昼 12:30・夜 20:00目安</strong></li>
+                <li data-i18n="plan2_feat3"><span class="chk-svg">✓</span> 🧠 <strong>AI投稿案の作成・レビュー</strong></li>
+                <li data-i18n="plan2_feat4"><span class="chk-svg">✓</span> 投稿スケジュール管理</li>
+              </ul>
+            </div>
+            <button type="button" class="btn-select-plan" data-i18n="plan2_btn">14日間無料トライアルを開始 →</button>
+          </div>
+
+          <!-- エンタープライズ/複数事業向け -->
+          <div class="p-card" onclick="openUnlockModal('business')">
+            <div class="ai-tag" data-i18n="plan3_badge">1日5枠・高速検証</div>
+            <div>
+              <div class="p-tier" style="color:#7C3AED; font-size:0.75rem;" data-i18n="plan3_tier">🌐 SYNDICATE</div>
+              <div class="p-title" style="font-size: 1.4rem;">Syndicate Business</div>
+              <div class="p-price" id="plan3Price" data-i18n="plan3_price">¥19,800 <span>/ 月（税込・$179）</span></div>
+              <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;" data-i18n="plan3_desc">
+                朝・昼・夕 17:30・夜・深夜 22:30 の 1 日 5 枠で学習サイクルを回す高頻度プランです。全時間帯のデータを集め、最短周期で切り口を洗練します。
+              </p>
+              <ul class="p-feats">
+                <li data-i18n="plan3_feat1"><span class="chk-svg">✓</span> <strong>1日5件</strong>まで。次の1件を自動で用意</li>
+                <li data-i18n="plan3_feat2"><span class="chk-svg">✓</span> <strong>朝・昼・夕 17:30・夜・深夜 22:30目安</strong></li>
+                <li data-i18n="plan3_feat3"><span class="chk-svg">✓</span> 🧠 <strong>全プラン共通のAI投稿案作成支援</strong></li>
+                <li data-i18n="plan3_feat4"><span class="chk-svg">✓</span> 投稿スケジュール管理</li>
+              </ul>
+            </div>
+            <button type="button" class="btn-select-plan" data-i18n="plan3_btn">14日間無料トライアルを開始 →</button>
+          </div>
+        </div>
+
+        <!-- 個人事業主・法人向け クリーン決済＆インボイス保証バー -->
+        <div style="margin-top:28px;padding:18px 24px;background:#FFFFFF;border:1.5px solid #CBD5E1;border-radius:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;box-shadow:0 4px 12px rgba(0,0,0,0.03);">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="font-size:26px;">🏛️</div>
+            <div>
+              <div style="font-size:0.92rem;font-weight:900;color:#0F172A;" data-i18n="guarantee_title">まずは14日間。続けるかどうかは体験してから。</div>
+              <div style="font-size:0.8rem;color:#475569;margin-top:2px;" data-i18n="guarantee_desc">
+                ✓ <b>14日間無料</b>　✓ <b>終了後は選択プランの月額で自動更新</b>　✓ <b>管理画面から、いつでもボタン1つで自動更新を停止できます。14日間の無料トライアル中に停止すれば料金はかかりません。</b>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;background:#F1F5F9;padding:6px 14px;border-radius:999px;font-size:0.75rem;font-weight:800;color:#1E293B;">
+            <span>🔒 Stripe公式 PCI-DSS Level 1 暗号化</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 10: よくある質問 (FAQ) -->
+    <section id="secFaq" class="faq-sec">
+      <h2 class="sec-h2" style="font-size:2rem;margin-bottom:28px;" data-i18n="faq_h2">よくあるご質問</h2>
+      
+      <div class="faq-item open">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q1">一般的な自動投稿ツール（Bot）との違いは何ですか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a1">
+          URLかアカウント像を入れるだけで始められます。ページにない数値は作らず、口調はアカウントに合わせ、2〜6時間後と24〜36時間後の実測で次の1本を組み直します。Bioの助言と、この投稿を選んだ理由も同じ画面で見られます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q2">アカウントの制限や凍結を防げますか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a2">
+          無差別な自動いいね・自動フォロー・一斉リプライは行わず、X公式 OAuth 2.0、投稿間隔、重複ガード、根拠の範囲チェックで運用します。プラットフォーム側の仕様や規約の詳細は利用規約に記載しています。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q3">個人事業主やフリーランスでも利用できますか？ 法人での契約も可能ですか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a3">
+          はい。個人・法人を問わずご利用いただけます。利用可能な支払方法はStripeの決済画面に表示されます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q4">適格請求書（インボイス制度）に対応した領収書は発行されますか？ 経費精算は可能ですか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a4">
+          Stripe Checkout の決済完了後に発行される領収書・請求書を利用できます。詳細は Stripe の決済確認画面に出ます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q5">無差別スパムや過度な煽りで、自社ブランドの社会的信用を落とすリスクはありませんか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a5">
+          ページにある事実、アカウントの文体、入れたくない表現の除外、公開前の品質審査で投稿を整えます。公開前に自分の言葉へ直すこともできます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q6">解約方法を教えてください。</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a6">
+          管理画面から、いつでもボタン1つで自動更新（次回以降の請求）を停止できます。14日間の無料トライアル中に停止すれば料金はかかりません。解約・更新条件の詳細は特定商取引法に基づく表記をご確認ください。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q7">投稿案の作成にどんなデータを使いますか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a7">
+          URLがあれば同一サイトの料金・機能・FAQを使います。無ければアカウント像と過去投稿です。実測は次の1本の「誰に・なぜ今」に使い、ページにない数値は除外します。今のアカウント状態も同じ画面に出します。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q8">投稿後の自動いいねや自動返信も行いますか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a8">
+          無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、受信メンションへの返信支援は確認制（下書きを確認して1クリック送信）です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。VELOX AI は根拠やアカウント像に基づく投稿案の作成、予約配信、公式APIで取得可能な反応指標の確認に特化しています。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q9">AIが生成した投稿案は事前に確認・修正できますか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a9">
+          はい。投稿案は公開前に確認・編集できます。選んだ理由とBioの助言も、その画面で一緒に見られます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span data-i18n="faq_q10">14日間の無料期間後はどうなりますか？</span><span>＋</span>
+        </button>
+        <div class="faq-a" data-i18n="faq_a10">
+          申込み時にStripe Checkoutでご登録いただいた決済方法により、14日間の無料期間終了後は選択したプランの月額料金で自動更新されます。管理画面から、いつでもボタン1つで自動更新（次回以降の請求）を停止でき、14日間の無料トライアル中に停止すれば料金はかかりません。
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 11: 開発チームからの見解 -->
+    <section class="reviews-sec">
+      <h2 class="sec-h2" style="font-size:2rem;margin-bottom:24px;" data-i18n="edit_h2">導入してから毎日続く、4つの安心設計</h2>
+      <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); text-align: left;">
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1E293B; margin-bottom: 16px; border-left: 4px solid #2563EB; padding-left: 12px;" data-i18n="edit_h3_1">普段はおまかせ、直したいときだけ1クリック調整</h3>
+        <p style="font-size: 0.95rem; color: #475569; line-height: 1.8; margin-bottom: 20px;" data-i18n="edit_p_1">
+          X連携とURL（または人物像）を登録したら、時間枠に合わせた投稿作成から予約配信、反応の学習まで自動で進みます。気になった投稿だけ公開前に編集したり別案を作り直したりでき、人が編集した予定は上書きしません。
+        </p>
+
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1E293B; margin-bottom: 16px; border-left: 4px solid #10B981; padding-left: 12px;" data-i18n="edit_h3_2">投稿だけでなく、Bio・固定ポストまでトータル助言</h3>
+        <p style="font-size: 0.95rem; color: #475569; line-height: 1.8; margin-bottom: 20px;" data-i18n="edit_p_2">
+          投稿づくりと同じ品質エンジン（根拠抽出・文体再現・審査ゲート）は全プラン共通です。さらに現在のプロフィールを踏まえたBio改善案や固定ポストのヒントも管理画面で提示し、フォローにつながりやすい土台づくりまで支えます。
+        </p>
+
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1E293B; margin-bottom: 16px; border-left: 4px solid #F59E0B; padding-left: 12px;" data-i18n="edit_h3_3">「いま何を見て、なぜこの1本か」が毎回わかる</h3>
+        <p style="font-size: 0.95rem; color: #475569; line-height: 1.8; margin-bottom: 20px;" data-i18n="edit_p_3">
+          ブラックボックス任せにせず、現在のアカウント状態、いま優先している運用バランス（価値提供中心か自然な案内か）、次の投稿の狙いまで管理画面に明示します。理由がわかるから安心して任せられます。
+        </p>
+
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1E293B; margin-bottom: 16px; border-left: 4px solid #4F46E5; padding-left: 12px;" data-i18n="edit_h3_4">1アカウント完結・公式API準拠のクリーン運用</h3>
+        <p style="font-size: 0.95rem; color: #475569; line-height: 1.8;" data-i18n="edit_p_4">
+          無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、確認制の返信支援（1クリック送信）であれば複雑な別アカウント設定も不要です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。不要になったときはボタン1つでいつでも停止・解約できます（規約条件の詳細は利用規約に記載）。
+        </p>
+      </div>
+    </section>
+
+    <div class="mobile-bottom-cta">
+      <a href="#liveDemoSection" style="flex:1;text-align:center;padding:11px;border-radius:999px;background:#F1F5F9;color:#0F172A;font-weight:800;font-size:0.8rem;text-decoration:none;border:1px solid #CBD5E1;" data-i18n="mobile_cta_demo">⚡ 無料ライブデモ</a>
+      <button type="button" onclick="openUnlockModal()" style="flex:1.2;padding:11px;border-radius:999px;background:#2563EB;color:#FFFFFF;font-weight:800;font-size:0.8rem;border:none;box-shadow:0 6px 16px -4px rgba(37,99,235,0.5);" data-i18n="mobile_cta_unlock">🔓 14日間無料で試す →</button>
+    </div>
+    <footer style="text-align:center;padding:44px 20px 48px;background:#0F172A;color:#94A3B8;font-size:0.85rem;line-height:1.8;">
+      <div style="margin-bottom:18px;display:flex;justify-content:center;gap:22px;flex-wrap:wrap;">
+        <a href="/views/compliance_tokushoho.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;" data-i18n="footer_tokushoho">特定商取引法に基づく表記</a>
+        <a href="/views/compliance_terms.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;" data-i18n="footer_terms">利用規約</a>
+        <a href="/views/compliance_privacy.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;" data-i18n="footer_privacy">プライバシーポリシー</a>
+        <a href="/views/compliance_company.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;" data-i18n="footer_company">運営事業者情報</a>
+      </div>
+      <div style="max-width:880px;margin:0 auto;">
+        <p style="margin-bottom:12px;font-size:0.75rem;color:#94A3B8;line-height:1.75;" data-i18n="footer_disclosure">
+          VeloxPost Cloud は X 公式 API と Stripe Checkout を利用した X 運用支援 SaaS です。提供条件、免責、返金および解約条件は、上記の利用規約と特定商取引法に基づく表記に記載しています。
+        </p>
+        <div style="font-size:0.75rem;color:#64748B;">
+          © 2026 VeloxPost Cloud. All rights reserved. &nbsp;|&nbsp; AES-256-GCM credential encryption
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal-card" style="max-width:480px;padding:34px 32px;">
+      <button type="button" class="modal-close" onclick="closeAuthModal()">✕</button>
+      <h2 style="font-size:1.45rem;font-weight:900;color:#090D16;margin-bottom:6px;" id="authModalTitle" data-i18n="auth_modal_title">新規登録</h2>
+      <p style="font-size:0.85rem;color:#475569;margin-bottom:20px;" data-i18n="auth_modal_sub">
+        VELOX AI の管理画面へログイン、または新しいアカウントを作成します。
+      </p>
+
+      <div style="display:flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+        <!-- Google ログインボタン (1クリック即時登録) -->
+        <button type="button" onclick="startSocialLogin('google')" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 13px; border-radius: 12px; border: 1.5px solid #E2E8F0; background: #FFFFFF; color: #1E293B; font-weight: 700; font-size: 0.92rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width: 20px; height: 20px;" />
+          <span data-i18n="auth_btn_google">Googleアカウントでログイン / 新規登録</span>
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <hr style="flex: 1; border: none; border-top: 1px solid #E2E8F0;" />
+        <span style="padding: 0 10px; font-size: 0.8rem; color: #64748B; font-weight: 700;" data-i18n="auth_lbl_or">またはメールアドレスで登録</span>
+        <hr style="flex: 1; border: none; border-top: 1px solid #E2E8F0;" />
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#F1F5F9;padding:6px;border-radius:12px;margin-bottom:20px;">
+        <button type="button" id="tabBtnReg" onclick="switchAuthTab('register')" style="padding:10px;border-radius:9px;border:none;font-weight:800;font-size:0.84rem;cursor:pointer;background:#2563EB;color:#FFFFFF;" data-i18n="auth_tab_reg">新規登録</button>
+        <button type="button" id="tabBtnLogin" onclick="switchAuthTab('login')" style="padding:10px;border-radius:9px;border:none;font-weight:800;font-size:0.84rem;cursor:pointer;background:transparent;color:#475569;" data-i18n="auth_tab_login">ログイン</button>
+      </div>
+
+      <div class="field">
+        <label data-i18n="auth_lbl_email">📧 メールアドレス</label>
+        <input type="email" id="authEmail" placeholder="you@company.com" autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label data-i18n="auth_lbl_pass">🔑 パスワード（8文字以上）</label>
+        <input type="password" id="authPass1" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+
+      <div class="field" id="authPass2Wrap">
+        <label data-i18n="auth_lbl_pass2">🔑 パスワード確認</label>
+        <input type="password" id="authPass2" placeholder="•••••••• (確認用)" autocomplete="new-password" />
+      </div>
+
+      <button type="button" class="btn-try-blue" id="btnSubmitAuth" onclick="submitAuthForm()" style="margin-top:8px;">
+        <span data-i18n="auth_btn_submit">✅ 新規登録して管理画面へ進む →</span>
+      </button>
+
+      <div style="margin-top: 20px; font-size: 0.75rem; color: #94A3B8; text-align: center; line-height: 1.5;">
+        <span data-i18n="auth_legal_prefix">ログインすることで、</span><a href="/views/compliance_terms.html" target="_blank" style="color: #64748B;" data-i18n="auth_terms">利用規約</a><span data-i18n="auth_legal_and">および</span><a href="/views/compliance_privacy.html" target="_blank" style="color: #64748B;" data-i18n="auth_privacy">プライバシーポリシー</a><span data-i18n="auth_legal_suffix">に同意したものとみなされます。</span>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNLOCK MODAL (Stripe公式決済・旧ISP完全撤廃版) -->
+  <div class="modal-backdrop" id="unlockModal">
+    <div class="modal-card" style="max-width: 860px;">
+      <button type="button" class="modal-close" onclick="closeUnlockModal()">✕</button>
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="background:#EFF6FF; color:#2563EB; font-size:0.75rem; font-weight:900; padding:4px 12px; border-radius:999px; letter-spacing:0.05em;">STRIPE SECURE CHECKOUT</span>
+        <h2 style="font-size:1.7rem; font-weight:900; letter-spacing:-0.03em; margin: 8px 0 4px; color: #0F172A;" data-i18n="modal_title">プラン選択・決済</h2>
+        <p style="font-size:0.9rem; color:#475569;" data-i18n="modal_desc">ページ読解、文体、2段階生成、Critic審査、公式APIは共通です。違いは1日の検証回数です。</p>
+      </div>
+
+      <div class="plans-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <!-- Starter -->
+        <div class="p-card" id="pcard_starter" onclick="choosePlan('starter')" style="cursor:pointer; border-radius:16px; padding:20px;">
+          <div>
+            <div class="p-tier" style="color:#2563EB; font-size:0.75rem; font-weight:800;">👤 SOLO & CREATOR</div>
+            <div class="p-title" style="font-size:1.3rem;">Solo Starter</div>
+            <div class="p-price" style="font-size:1.8rem;"><span id="modal_price_starter">¥4,980 / 月（税込）($39)</span></div>
+            <ul class="p-feats" style="font-size:0.82rem; margin:14px 0;">
+              <li data-i18n="modal_starter_features"><span class="chk-svg">✓</span> 1日1枠（朝 8:30目安）<br><span class="chk-svg">✓</span> 事実抽出・声・検証・公式API</li>
+              <li data-i18n="modal_billing_api">✓ X公式API連携</li>
+              <li data-i18n="modal_feat_next">✓ 登録ページやアカウント像をもとに次の1本を作成</li>
+            </ul>
+          </div>
+          <button type="button" class="btn-select-plan" id="pbtn_starter" style="width:100%; font-weight:800;" data-i18n="modal_btn_starter">Solo Starter を選択</button>
+        </div>
+
+        <!-- Pro -->
+        <div class="p-card" id="pcard_pro" onclick="choosePlan('pro')" style="cursor:pointer; border-radius:16px; padding:20px;">
+          <div class="pop-tag" data-i18n="plan2_badge">定番 / 検証バランス</div>
+          <div>
+            <div class="p-tier" style="color:#1D4ED8; font-size:0.75rem; font-weight:800;">🏢 GROWTH PRO</div>
+            <div class="p-title" style="font-size:1.3rem;">Agency Pro</div>
+            <div class="p-price" style="font-size:1.8rem; color:#2563EB;"><span id="modal_price_pro">¥9,800 / 月（税込）($79)</span></div>
+            <ul class="p-feats" style="font-size:0.82rem; margin:14px 0;">
+              <li data-i18n="modal_pro_features"><span class="chk-svg">✓</span> 1日3枠（朝 8:30・昼 12:30・夜 20:00目安）<br><span class="chk-svg">✓</span> Starter と同じ検証と次の1件</li>
+              <li data-i18n="modal_billing_api">✓ X公式API連携</li>
+              <li data-i18n="modal_feat_review">✓ AI投稿案の作成・レビュー</li>
+            </ul>
+          </div>
+          <button type="button" class="btn-select-plan" id="pbtn_pro" style="width:100%; font-weight:800;" data-i18n="modal_btn_pro">Agency Pro を選択</button>
+        </div>
+
+        <!-- Business -->
+        <div class="p-card" id="pcard_business" onclick="choosePlan('business')" style="cursor:pointer; border-radius:16px; padding:20px;">
+          <div class="ai-tag" data-i18n="plan3_badge">1日5枠・高速検証</div>
+          <div>
+            <div class="p-tier" style="color:#7C3AED; font-size:0.75rem; font-weight:800;">🌐 SYNDICATE</div>
+            <div class="p-title" style="font-size:1.3rem;">Syndicate Business</div>
+            <div class="p-price" style="font-size:1.8rem;"><span id="modal_price_business">¥19,800 / 月（税込）($179)</span></div>
+            <ul class="p-feats" style="font-size:0.82rem; margin:14px 0;">
+              <li data-i18n="modal_business_features"><span class="chk-svg">✓</span> 1日5枠（朝・昼・夕 17:30・夜・深夜 22:30目安）<br><span class="chk-svg">✓</span> Starter と同じ検証と次の1件</li>
+              <li data-i18n="modal_billing_api">✓ X公式API連携</li>
+              <li data-i18n="modal_feat_review">✓ AI投稿案の作成・レビュー</li>
+            </ul>
+          </div>
+          <button type="button" class="btn-select-plan" id="pbtn_business" style="width:100%; font-weight:800;" data-i18n="modal_btn_business">Syndicate Business を選択</button>
+        </div>
+      </div>
+
+      <!-- Checkout Action Card -->
+      <div style="background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%); border: 1.5px solid #BFDBFE; border-radius: 16px; padding: 22px; color: #0F172A; text-align: center;">
+        <div id="modalSelectedPlanText" style="font-size: 1.15rem; font-weight: 900; color: #2563EB; margin-bottom: 4px;">
+          選択中: 🥈 Agency Pro (14日間無料トライアル)
+        </div>
+        <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 16px;" data-i18n="checkout_trial_note">
+          Stripe Checkoutで決済方法をご登録ください。14日間無料で選択プランを利用でき、期間終了後は月額料金で自動更新されます。管理画面から、いつでもボタン1つで自動更新（次回以降の請求）を停止できます。14日間の無料トライアル中に停止すれば料金はかかりません。
+        </div>
+
+        <button type="button" id="btnStripeModalPay" onclick="handlePayClick(currentPlanId, event)" style="background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%); color: #FFF; border: none; padding: 14px 36px; border-radius: 12px; font-weight: 900; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 20px rgba(37,99,235,0.4); width: 100%; max-width: 420px; transition: all 0.2s;">
+          💳 14日間無料トライアルを開始 →
+        </button>
+
+        <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:14px; font-size:0.75rem; color:#64748B; flex-wrap:wrap;">
+          <span data-i18n="modal_billing_provider">✓ Stripe Checkout</span>
+          <span data-i18n="modal_billing_renewal">✓ 14日間トライアル後に月額自動更新</span>
+          <span data-i18n="modal_billing_cancel">✓ 管理画面から、いつでもボタン1つで自動更新を停止できます</span>
+          <span data-i18n="modal_billing_api">✓ X公式API連携</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/funnel-assets/funnel_client.js?v=20261119_2"></script>
+
+  <!-- Hidden compatibility nodes for removed legacy Dual-Engine controls -->
+  <div id="_legacyDualDomCompat" style="display:none !important;">
+    <span id="dualEngineTierBadge"></span>
+    <span id="aiExclusiveStatusBadge"></span>
+    <span id="modeBtnAutoPost"></span>
+    <span id="modeBadgeAutoPost"></span>
+    <input type="hidden" id="proAiKeywords" value="" />
+  </div>
+  <script>
+    let currentPlan = 'pro';
+    const savedBillingCurrency = localStorage.getItem('velox_billing_currency');
+    let billingCurrencyManuallySelected = savedBillingCurrency === 'jpy' || savedBillingCurrency === 'usd';
+    let currentCurrency = billingCurrencyManuallySelected
+      ? savedBillingCurrency
+      : 'jpy';
+    let pollOrderTimer = null;
+
+    const PLAN_NAMES = {
+      starter: '🥉 Solo Starter',
+      pro: '🥈 Agency Pro',
+      business: '🥇 Syndicate Business'
+    };
+
+    const PLAN_PRICES = {
+      jpy: { starter: '¥4,980', pro: '¥9,800', business: '¥19,800' },
+      usd: { starter: '$39', pro: '$79', business: '$179' }
+    };
+
+    function selectPlan(p, el) {
+      currentPlan = p;
+      window.currentPlanId = p;
+      document.querySelectorAll('.plan-box').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.plan-pay-btn').forEach(b => b.classList.remove('primary'));
+      
+      const box = document.getElementById('planBox_' + p);
+      if (box) box.classList.add('selected');
+      const btn = document.getElementById('btnPay_' + p);
+      if (btn) btn.classList.add('primary');
+
+      updateBottomPayBar();
+    }
+
+    function updateBottomPayBar() {
+      const price = PLAN_PRICES[currentCurrency]?.[currentPlan] || '¥9,800';
+      const label = document.getElementById('selectedPlanLabel');
+      const directBtn = document.getElementById('btnPayDirect');
+      const isEn = currentLandingLang === 'en';
+      const unit = currentCurrency === 'jpy'
+        ? (isEn ? ' / month (tax included)' : ' / 月（税込）')
+        : (isEn ? ' / month' : ' / 月');
+      
+      if (label) {
+        label.innerText = (isEn ? 'Selected: ' : '現在選択中: ')
+          + PLAN_NAMES[currentPlan] + ' (' + price + unit + '・'
+          + (isEn ? '14-day free trial' : '14日間無料トライアル') + ')';
+      }
+      if (directBtn) {
+        directBtn.href = '#';
+        directBtn.innerText = isEn
+          ? '💳 Start 14-day free trial →'
+          : '💳 14日間無料トライアルを開始 ↗';
+        directBtn.onclick = function(e) { handlePayClick(currentPlan, e); };
+      }
+    }
+
+    function switchCurrency(cur, fromLanguage = false) {
+      if (cur !== 'jpy' && cur !== 'usd') return;
+      currentCurrency = cur;
+      if (!fromLanguage) {
+        billingCurrencyManuallySelected = true;
+        localStorage.setItem('velox_billing_currency', cur);
+      }
+      const btnJpy = document.getElementById('btnCurJpy');
+      const btnUsd = document.getElementById('btnCurUsd');
+      if (cur === 'jpy') {
+        btnJpy.style.background = '#2563EB';
+        btnJpy.style.color = '#FFF';
+        btnUsd.style.background = 'transparent';
+        btnUsd.style.color = '#64748B';
+      } else {
+        btnUsd.style.background = '#2563EB';
+        btnUsd.style.color = '#FFF';
+        btnJpy.style.background = 'transparent';
+        btnJpy.style.color = '#64748B';
+      }
+
+      ['starter', 'pro', 'business'].forEach(p => {
+        const pr = PLAN_PRICES[cur][p];
+        const isEn = currentLandingLang === 'en';
+        const unit = cur === 'jpy'
+          ? (isEn ? '/ month (tax included)' : '/月（税込）')
+          : (isEn ? '/ month' : '/月');
+        const priceEl = document.getElementById('price_' + p);
+        if (priceEl) priceEl.innerHTML = pr + '<span style="font-size:12px;color:#64748B;">' + unit + '</span>';
+        const b = document.getElementById('btnPay_' + p);
+        if (b) {
+          b.href = '#';
+          b.innerText = isEn ? '💳 Start 14-day free trial →' : '💳 14日間無料トライアルを開始 ↗';
+          b.onclick = function(e) { handlePayClick(p, e); };
+        }
+      });
+
+      updateBottomPayBar();
+    }
+
+    async function handlePayClick(p, e) {
+      if (e && e.preventDefault) e.preventDefault();
+      p = p || window.currentPlanId || window.currentPlan || 'pro';
+      const btn = e ? (e.target || e.currentTarget) : document.getElementById('btnStripeModalPay');
+      const isEnPay = currentLandingLang === 'en';
+      const originalText = btn ? btn.innerText : (isEnPay ? '💳 Continue to secure Stripe checkout →' : '💳 Stripeで安全に決済して機能を解放する →');
+      if (btn) {
+        btn.innerText = isEnPay ? '⏳ Redirecting to Stripe Checkout...' : '⏳ Stripe決済画面へ移動中...';
+        btn.style.pointerEvents = "none";
+      }
+
+      function promptLoginForPendingPlan(planCode, messageText, btn, originalText) {
+        localStorage.setItem('xsw_pending_plan', planCode);
+        localStorage.setItem('xsw_pending_currency', currentCurrency || 'jpy');
+        if (btn) {
+          btn.innerText = originalText;
+          btn.style.pointerEvents = 'auto';
+        }
+        const msg = messageText || (currentLandingLang === 'en'
+          ? 'Please log in first. After signing in, your selected plan trial will open automatically.'
+          : '先にログインしてください。ログイン後に選択したプランのトライアルへ進めます。');
+        if (typeof openAuthModal === 'function') {
+          openAuthModal('login');
+          if (typeof showDynamicToast === 'function') showDynamicToast(msg, 'info');
+          return;
+        }
+        const login = document.getElementById('login-box') || document.getElementById('topAuthBtn');
+        if (login && login.click) login.click();
+        else alert(msg);
+      }
+
+      try {
+        const email = localStorage.getItem('xsw_email') || '';
+        const uid = localStorage.getItem('xsw_uid') || '';
+        if (!uid) {
+          promptLoginForPendingPlan(p, null, btn, originalText);
+          return;
+        }
+        const res = await fetch("/api/billing/create-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            plan: p,
+            currency: currentCurrency,
+            lang: currentLandingLang,
+            email,
+            userId: uid
+          })
+        });
+        const data = await res.json();
+        if (res.status === 401 || data.code === 'login_required') {
+          promptLoginForPendingPlan(p, data.error, btn, originalText);
+          return;
+        }
+        if (data.ok && data.url) {
+          window.location.href = data.url;
+        } else {
+          alert((isEnPay ? 'Checkout preparation failed: ' : '決済の準備に失敗しました: ') + (data.error || ''));
+          if (btn) {
+            btn.innerText = originalText;
+            btn.style.pointerEvents = "auto";
+          }
+        }
+      } catch (err) {
+        alert((isEnPay ? 'Network error: ' : '通信エラーが発生しました: ') + err.message);
+        if (btn) {
+          btn.innerText = originalText;
+          btn.style.pointerEvents = "auto";
+        }
+      }
+    }
+    window.handlePayClick = handlePayClick;
+
+    async function verifyKeys() {
+      const msg = document.getElementById('keyMsg');
+      msg.style.display = 'block';
+      msg.style.background = '#EFF6FF';
+      msg.style.border = '1px solid #3B82F6';
+      msg.style.color = '#1D4ED8';
+      msg.innerText = '⏳ 公式APIキーを検証中...';
+
+      const body = {
+        apiKey: document.getElementById('inpApiKey').value,
+        apiSecret: document.getElementById('inpApiSecret').value,
+        accessToken: document.getElementById('inpAccessToken').value,
+        accessTokenSecret: document.getElementById('inpAccessTokenSecret').value
+      };
+
+      try {
+        const res = await fetch('/api/hybrid/verify-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const j = await res.json();
+        if (j.ok) {
+          msg.style.background = '#ECFDF5';
+          msg.style.border = '1px solid #10B981';
+          msg.style.color = '#065F46';
+          msg.innerHTML = j.message;
+        } else {
+          msg.style.background = '#FEF2F2';
+          msg.style.border = '1px solid #EF4444';
+          msg.style.color = '#991B1B';
+          msg.innerText = '❌ ' + j.error;
+        }
+      } catch (e) {
+        msg.style.background = '#FEF2F2';
+        msg.style.border = '1px solid #EF4444';
+        msg.style.color = '#991B1B';
+        msg.innerText = '❌ 通信エラー: ' + e.message;
+      }
+    }
+
+    async function launchAutopilot() {
+      const msg = document.getElementById('launchMsg');
+      msg.style.display = 'block';
+      msg.style.background = '#EFF6FF';
+      msg.style.border = '1px solid #3B82F6';
+      msg.style.color = '#1D4ED8';
+      msg.innerHTML = '🔍 <b>AIがURL先をスクレイピングし、市場・ペルソナ分析中...</b> (約10〜15秒かかります)';
+
+      const body = {
+        targetUrl: document.getElementById('inpTargetUrl').value,
+        plan: currentPlan
+      };
+
+      try {
+        const res = await fetch('/api/autopilot/launch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const j = await res.json();
+        if (j.ok) {
+          msg.style.background = '#ECFDF5';
+          msg.style.border = '1px solid #10B981';
+          msg.style.color = '#065F46';
+          msg.innerHTML = j.message + '<br><small style="color:#475569;">🎯 分析対象: ' + (j.marketAnalysis ? j.marketAnalysis.serviceName : '') + ' / ターゲット: ' + (j.marketAnalysis ? j.marketAnalysis.targetAudience : '') + '</small>';
+          loadJobs();
+        } else {
+          msg.style.background = '#FEF2F2';
+          msg.style.border = '1px solid #EF4444';
+          msg.style.color = '#991B1B';
+          msg.innerText = '❌ ' + j.error;
+        }
+      } catch (e) {
+        msg.style.background = '#FEF2F2';
+        msg.style.border = '1px solid #EF4444';
+        msg.style.color = '#991B1B';
+        msg.innerText = '❌ ' + e.message;
+      }
+    }
+
+    function getFormatBadge(fmt, isThread, threadLen) {
+      if (fmt === 'multi_thread_story' || (isThread && threadLen >= 3)) {
+        return '<span style="background:rgba(168,85,247,0.15);color:#7E22CE;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">🧵 ' + (threadLen || '3-4') + '段スレッド</span>';
+      }
+      if (fmt === 'two_tier_reply_link' || (isThread && threadLen === 2)) {
+        return '<span style="background:rgba(59,130,246,0.15);color:#1D4ED8;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">💬 2段リプ誘導</span>';
+      }
+      if (fmt === 'single_empathy') {
+        return '<span style="background:rgba(245,158,11,0.15);color:#B45309;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">☕ 単発共感</span>';
+      }
+      return '<span style="background:rgba(16,185,129,0.15);color:#047857;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">📌 単発ノウハウ</span>';
+    }
+
+    async function loadJobs() {
+      const cont = document.getElementById('jobsContainer');
+      if (!cont) return;
+      try {
+        const res = await fetch('/api/autopilot/jobs');
+        const j = await res.json();
+        if (j.ok && Array.isArray(j.jobs) && j.jobs.length > 0) {
+          let html = '';
+          j.jobs.forEach((job) => {
+            const isDone = job.status === 'posted';
+            const timeZone = job.scheduleTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const dateStr = job.scheduledAt
+              ? `${new Date(job.scheduledAt._seconds ? job.scheduledAt._seconds * 1000 : job.scheduledAt).toLocaleString('ja-JP', { timeZone })} (${timeZone})`
+              : '';
+            const tweets = Array.isArray(job.tweets) && job.tweets.length > 0 ? job.tweets : [job.text || ''];
+            const badge = getFormatBadge(job.format, job.isThread, tweets.length);
+
+            let tweetHtml = '<div style="font-size:13px;color:#1E293B;line-height:1.5;white-space:pre-wrap;margin-top:4px;">' + tweets[0] + '</div>';
+            if (tweets.length > 1) {
+              tweetHtml += '<details style="margin-top:8px;font-size:12px;color:#64748B;cursor:pointer;">' +
+                '<summary style="color:#2563EB;font-weight:700;">▼ 連動ツリーを表示（全' + tweets.length + '件）</summary>' +
+                '<div style="margin-top:6px;padding-left:10px;border-left:2px solid #38BDF8;">';
+              for (let t = 1; t < tweets.length; t++) {
+                tweetHtml += '<div style="margin-top:6px;color:#334155;white-space:pre-wrap;background:#F8FAFC;padding:6px 10px;border-radius:6px;border:1px solid #E2E8F0;"><b>(' + (t + 1) + '/' + tweets.length + ')</b> ' + tweets[t] + '</div>';
+              }
+              tweetHtml += '</div></details>';
+            }
+
+            html += '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
+              '<div style="max-width:75%;">' +
+                '<div style="display:flex;align-items:center;margin-bottom:4px;">' +
+                  badge +
+                  '<span style="font-size:12px;color:#64748B;font-weight:700;">[' + (job.angle || '自動最適化') + '] ' + dateStr + '</span>' +
+                '</div>' +
+                tweetHtml +
+              '</div>' +
+              '<div>' +
+                (isDone
+                  ? '<a href="' + job.tweetUrl + '" target="_blank" style="background:#059669;color:#FFF;padding:6px 14px;border-radius:8px;font-size:12px;text-decoration:none;font-weight:800;">✅ 投稿済 ↗</a>'
+                  : '<span style="background:#E2E8F0;color:#64748B;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">⏳ 待機中</span>'
+                ) +
+              '</div>' +
+            '</div>';
+          });
+          cont.innerHTML = html;
+        }
+      } catch (e) {}
+    }
+
+    // ========================================================================
+    // 🏛️ AI評議会（Multi-AI Deliberation Council）アカウント自律成長エンジン
+    // ========================================================================
+    let activeCouncilDeliberation = null;
+
+    async function startGrowthEngine() {
+      const launchMsg = document.getElementById('launchMsg');
+      if (launchMsg) {
+        launchMsg.style.display = 'block';
+        launchMsg.style.background = '#EFF6FF';
+        launchMsg.style.border = '1px solid #3B82F6';
+        launchMsg.style.color = '#1D4ED8';
+        const isEn = currentLandingLang === 'en';
+        launchMsg.innerHTML = isEn
+          ? '🏛️ <b>AI council started...</b> Preparing post suggestions from your inputs and available data.'
+          : '🏛️ <b>サンプルを作っています...</b> 入力したURLから投稿案の見本を1本作っています。';
+      }
+
+      const studio = document.getElementById('councilStudioSection');
+      if (studio) studio.scrollIntoView({ behavior: 'smooth' });
+
+      await startCouncilDeliberation('');
+    }
+
+    async function submitCouncilFeedback() {
+      const fbInput = document.getElementById('userCouncilFeedback');
+      const fb = (fbInput ? fbInput.value : '').trim();
+      if (!fb) {
+        alert(currentLandingLang === 'en' ? 'Please enter revision instructions for the AI Council (e.g., "more casual tone", "stronger CTA", etc.)' : 'AI確認への修正指示を入力してください（例: 「もっとフランクに」「URL誘導を強めて」「時間は明日の昼に」など）');
+        return;
+      }
+      const studio = document.getElementById('councilStudioSection');
+      if (studio) studio.scrollIntoView({ behavior: 'smooth' });
+      await startCouncilDeliberation(fb);
+    }
+
+    async function startCouncilDeliberation(userFeedback = '') {
+      const wrap = document.getElementById('councilResultWrap');
+      const loader = document.getElementById('councilLoading');
+      const btnMain = document.getElementById('btnMainLaunch');
+      const btnAgain = document.getElementById('btnDeliberateAgain');
+      const btnFb = document.getElementById('btnSubmitFeedback');
+      const statusMsg = document.getElementById('councilCommitStatus');
+      const launchMsg = document.getElementById('launchMsg');
+
+      if (statusMsg) statusMsg.style.display = 'none';
+      if (loader) loader.style.display = 'block';
+      if (wrap) wrap.style.display = 'none';
+      if (btnMain) btnMain.disabled = true;
+      if (btnAgain) btnAgain.disabled = true;
+      if (btnFb) btnFb.disabled = true;
+
+      const body = {
+        userId: localStorage.getItem('xsw_uid') || 'default_user',
+        targetUrl: document.getElementById('inpTargetUrl').value || '',
+        userFeedback: userFeedback || '',
+        currentDraft: activeCouncilDeliberation ? activeCouncilDeliberation.proposedPost : null,
+        plan: currentPlan,
+        lang: currentLandingLang
+      };
+
+      try {
+        const res = await fetch('/api/autopilot/council/deliberate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (res.status === 401) {
+          if (loader) loader.style.display = 'none';
+          if (btnMain) btnMain.disabled = false;
+          if (btnAgain) btnAgain.disabled = false;
+          if (btnFb) btnFb.disabled = false;
+          const isEn = currentLandingLang === 'en';
+          const msg = isEn 
+            ? 'Scheduling posts for your X account requires an active plan. Start a 14-day free trial or sign in below.'
+            : 'Xアカウントの予約配信には有効なプランが必要です。14日間無料トライアルを開始するか、ログインしてください。';
+          alert(msg);
+          const paySec = document.getElementById('price_' + currentPlan) || document.getElementById('login-box');
+          if (paySec) paySec.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+        const d = await res.json();
+        if (loader) loader.style.display = 'none';
+        if (btnMain) btnMain.disabled = false;
+        if (btnAgain) btnAgain.disabled = false;
+        if (btnFb) btnFb.disabled = false;
+
+        if (!d || !d.ok) {
+          const errText = (d && d.error) || '確認の実行に失敗しました';
+          alert('AI確認エラー: ' + errText);
+          if (launchMsg) {
+            launchMsg.style.background = '#FEF2F2';
+            launchMsg.style.border = '1px solid #EF4444';
+            launchMsg.style.color = '#991B1B';
+            launchMsg.innerText = '❌ 確認エラー: ' + errText;
+          }
+          return;
+        }
+
+        activeCouncilDeliberation = d;
+        if (launchMsg) {
+          const isEn = currentLandingLang === 'en';
+          launchMsg.style.background = '#ECFDF5';
+          launchMsg.style.border = '1px solid #10B981';
+          launchMsg.style.color = '#065F46';
+          launchMsg.innerHTML = isEn
+            ? '🎉 <b>A sample draft is ready.</b> This is only a preview. The product schedules one next post from the registered page and the account.'
+            : '🎉 <b>サンプルの投稿案ができました。</b> これは見本です。本番は登録ページとアカウントから次の1投稿だけを予約します。';
+        }
+        renderCouncilResult(d);
+      } catch (err) {
+        if (loader) loader.style.display = 'none';
+        if (btnMain) btnMain.disabled = false;
+        if (btnAgain) btnAgain.disabled = false;
+        if (btnFb) btnFb.disabled = false;
+        alert('通信エラー: ' + err.message);
+      }
+    }
+
+    function renderCouncilResult(data) {
+      const wrap = document.getElementById('councilResultWrap');
+      const grid = document.getElementById('councilDebateGrid');
+      const formatBadge = document.getElementById('councilFormatBadge');
+      const postAngle = document.getElementById('councilPostAngle');
+      const timeBadge = document.getElementById('councilTimeBadge');
+      const preview = document.getElementById('councilTweetsPreview');
+      const reason = document.getElementById('councilScheduleReason');
+      const verdictBox = document.getElementById('userFeedbackVerdictBox');
+
+      // ユーザー指示に対する評議会の是々非々審査判定（妥協なき審査・プロ的否定＆代替案提示）
+      if (verdictBox) {
+        const rev = data.userFeedbackReview;
+        if (rev && rev.verdict && rev.verdict !== 'none') {
+          let bg = '#FFFBEB';
+          let border = '#F59E0B';
+          let textCol = '#78350F';
+          let badgeCol = '#D97706';
+          let badgeText = '⚠️ 評議会是々非々審査: 却下・プロ対案を採択';
+
+          if (rev.verdict === 'accepted') {
+            bg = '#ECFDF5';
+            border = '#10B981';
+            textCol = '#065F46';
+            badgeCol = '#059669';
+            badgeText = '✅ 評議会是々非々審査: 指示を全面採択';
+          } else if (rev.verdict === 'partially_accepted') {
+            bg = '#EFF6FF';
+            border = '#3B82F6';
+            textCol = '#1E40AF';
+            badgeCol = '#2563EB';
+            badgeText = '💡 評議会是々非々審査: 一部採択＆アルゴリズム補正';
+          }
+
+          verdictBox.style.display = 'block';
+          verdictBox.style.background = bg;
+          verdictBox.style.border = `1.5px solid ${border}`;
+          verdictBox.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <span style="background:${badgeCol};color:#FFF;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:900;">${badgeText}</span>
+              <span style="font-size:12px;font-weight:800;color:${textCol};">${rev.verdictTitle || 'ユーザー指示に対するプロ審査判定'}</span>
+            </div>
+            <div style="font-size:13px;line-height:1.5;color:${textCol};margin-bottom:6px;">
+              <b>【プロ審査・率直な批評】:</b> ${rev.critique || ''}
+            </div>
+            ${rev.counterProposal ? `
+              <div style="font-size:12px;line-height:1.5;color:${textCol};background:rgba(255,255,255,0.7);padding:8px 12px;border-radius:8px;border:1px dashed ${border};">
+                <b>💡 評議会が採用した最適代替策:</b> ${rev.counterProposal}
+              </div>
+            ` : ''}
+          `;
+        } else {
+          verdictBox.style.display = 'none';
+          verdictBox.innerHTML = '';
+        }
+      }
+
+      const debate = data.councilDebate || {};
+      const post = data.proposedPost || {};
+      const sched = data.recommendedSchedule || {};
+
+      const scoreBoard = document.getElementById('aiScoreBoard');
+      const scoreRank = document.getElementById('aiScoreRank');
+      const scoreNum = document.getElementById('aiScoreNum');
+      const scoreImp = document.getElementById('aiScoreImp');
+      const scoreReason = document.getElementById('aiScoreReason');
+
+      // AI動的スコアボードのレンダリング
+      if (scoreBoard && data.metricsAnalyzed && data.metricsAnalyzed.aiScore) {
+        const scoreData = data.metricsAnalyzed.aiScore;
+        const rankColors = {
+          'S': '#FDE047', // ゴールド
+          'A': '#60A5FA', // ブルー
+          'B': '#34D399', // エメラルド
+          'C': '#FBBF24', // オレンジ
+          'D': '#F87171'  // レッド
+        };
+        const rankColor = rankColors[scoreData.rank] || '#CBD5E1';
+        
+        scoreRank.innerText = 'RANK ' + scoreData.rank;
+        scoreRank.style.color = rankColor;
+        scoreNum.innerText = '(' + scoreData.score + '/100pt)';
+        scoreImp.innerText = currentLandingLang === 'en' ? 'Reference only' : '参考値です';
+        scoreReason.innerText = scoreData.rankReason;
+        
+        scoreBoard.style.display = 'block';
+      } else if (scoreBoard) {
+        scoreBoard.style.display = 'none';
+      }
+
+      // サンプル投稿のカード生成
+      let debateHtml = '';
+      if (debate.hookAnalyst) {
+        debateHtml += `
+          <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#B45309;">🎯 AI ① トレンド＆フック分析官</span>
+              <span style="background:#F59E0B;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">スコア: ${debate.hookAnalyst.score || 9}/10</span>
+            </div>
+            <div style="font-size:12px;color:#78350F;line-height:1.4;margin-bottom:4px;"><b>批評:</b> ${debate.hookAnalyst.critique}</div>
+            <div style="font-size:11px;color:#92400E;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 提案フック:</b> ${debate.hookAnalyst.suggestion}</div>
+          </div>
+        `;
+      }
+      if (debate.empathyPsychologist) {
+        debateHtml += `
+          <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#1D4ED8;">💬 AI ② 共感＆心理ストーリー官</span>
+              <span style="background:#2563EB;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">スコア: ${debate.empathyPsychologist.score || 9}/10</span>
+            </div>
+            <div style="font-size:12px;color:#1E3A8A;line-height:1.4;margin-bottom:4px;"><b>批評:</b> ${debate.empathyPsychologist.critique}</div>
+            <div style="font-size:11px;color:#1D4ED8;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 心理誘導:</b> ${debate.empathyPsychologist.suggestion}</div>
+          </div>
+        `;
+      }
+      if (debate.algorithmOptimizer) {
+        debateHtml += `
+          <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#6D28D9;">📊 AI ③ アルゴリズム＆時間最適化官</span>
+              <span style="background:#7C3AED;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">推奨: ${debate.algorithmOptimizer.recommendedTimeJst || '20:30'}</span>
+            </div>
+            <div style="font-size:12px;color:#4C1D95;line-height:1.4;margin-bottom:4px;"><b>推奨枠:</b> ${debate.algorithmOptimizer.recommendedSlotName || '夜のゴールデンタイム'}</div>
+            <div style="font-size:11px;color:#5B21B6;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 根拠:</b> ${debate.algorithmOptimizer.reason}</div>
+          </div>
+        `;
+      }
+      if (debate.brandGuardian) {
+        debateHtml += `
+          <div style="background:#FDF2F8;border:1px solid #FBCFE8;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#BE185D;">🛡️ AI ④ 脱AI臭＆ブランド防御官</span>
+              <span style="background:#EC4899;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">人間味: ${debate.brandGuardian.score || 9.5}/10</span>
+            </div>
+            <div style="font-size:12px;color:#9D174D;line-height:1.4;margin-bottom:4px;"><b>検閲:</b> ${debate.brandGuardian.critique}</div>
+            <div style="font-size:11px;color:#BE185D;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 人間味演出:</b> ${debate.brandGuardian.suggestion}</div>
+          </div>
+        `;
+      }
+      if (debate.arbiterConsensus) {
+        debateHtml += `
+          <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#15803D;">🏛️ AI ⑤ 統括確認議長</span>
+              <span style="background:#16A34A;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">確認一致</span>
+            </div>
+            <div style="font-size:12px;color:#14532D;line-height:1.4;margin-bottom:4px;"><b>確認総括:</b> ${debate.arbiterConsensus.decisionSummary}</div>
+            <div style="font-size:11px;color:#166534;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 指示反映:</b> ${debate.arbiterConsensus.userFeedbackReflected || '最適化済み'}</div>
+          </div>
+        `;
+      }
+      grid.innerHTML = debateHtml;
+
+      // 🧠 自己学習ナレッジ（成功・失敗事例）の描画
+      const knowBox = document.getElementById('aiKnowledgeEvolutionBox');
+      const knowLevel = document.getElementById('aiKnowledgeLevelBadge');
+      const knowMeta = document.getElementById('aiKnowledgeMetaInfo');
+      const knowGrid = document.getElementById('aiKnowledgeCasesGrid');
+      const knowTakeaway = document.getElementById('aiKnowledgeTakeawayBox');
+
+      if (knowBox && data.userKnowledge) {
+        const uk = data.userKnowledge;
+        if (knowLevel) knowLevel.innerText = 'AI Level ' + (uk.level || 1);
+        if (knowMeta) knowMeta.innerText = `分析済: ${uk.learnedPostsCount || 0}件 / 成功蓄積: ${uk.successfulCasesCount || 0}件 / 反省蓄積: ${uk.failedCasesCount || 0}件`;
+        
+        let casesHtml = '';
+        const topSuccess = (uk.successfulCases && uk.successfulCases[0]) || null;
+        const topFailed = (uk.failedCases && uk.failedCases[0]) || null;
+
+        if (topSuccess) {
+          casesHtml += `
+            <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:11px;font-weight:900;color:#065F46;">🏆 学習した成功要因</span>
+                <span style="font-size:10px;color:#047857;font-weight:800;">${topSuccess.impressions ? topSuccess.impressions.toLocaleString() + ' IMP' : '高反響'}</span>
+              </div>
+              <div style="font-size:11px;color:#064E3B;line-height:1.4;">${topSuccess.whyItSucceeded || topSuccess.title}</div>
+            </div>
+          `;
+        }
+        if (topFailed) {
+          casesHtml += `
+            <div style="background:#FFF1F2;border:1px solid #FECDD3;border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:11px;font-weight:900;color:#9F1239;">⚠️ 学習した失敗・反省点</span>
+                <span style="font-size:10px;color:#BE123C;font-weight:800;">回避対象</span>
+              </div>
+              <div style="font-size:11px;color:#881337;line-height:1.4;">${topFailed.flawReason || topFailed.improvementPoint}</div>
+            </div>
+          `;
+        }
+        if (knowGrid) knowGrid.innerHTML = casesHtml;
+
+        if (knowTakeaway && data.knowledgeEvolution && data.knowledgeEvolution.newTakeaway) {
+          knowTakeaway.style.display = 'block';
+          knowTakeaway.innerHTML = `<b>💡 今回の確認による進化:</b> ${data.knowledgeEvolution.newTakeaway}`;
+        } else if (knowTakeaway) {
+          knowTakeaway.style.display = 'none';
+        }
+
+        knowBox.style.display = 'block';
+      } else if (knowBox) {
+        knowBox.style.display = 'none';
+      }
+
+      // 投稿プレビューの初期化 (Plan A をデフォルト選択)
+      currentActivePlanType = 'planA';
+      switchPlanOption('planA');
+      const isEn = currentLandingLang === 'en';
+      timeBadge.innerText = (isEn ? '⏰ Suggested time: ' : '⏰ 推奨投稿時間: ')
+        + (sched.displayTime || (isEn ? 'Today 20:30' : '本日 20:30'));
+      reason.innerHTML = '<b>' + (isEn ? '💡 Note: ' : '💡 提案理由: ')
+        + '</b>' + (sched.reason || (isEn
+          ? 'A suggestion based on the provided instructions and available data.'
+          : '入力内容と利用可能なデータに基づく提案です。'));
+
+      wrap.style.display = 'block';
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    let currentActivePlanType = 'planA';
+
+    function switchPlanOption(planKey) {
+      if (!activeCouncilDeliberation || !activeCouncilDeliberation.proposedPost) return;
+      currentActivePlanType = planKey;
+      const proposed = activeCouncilDeliberation.proposedPost;
+      const planData = (proposed && proposed[planKey]) || proposed.planA || proposed;
+      
+      const tabA = document.getElementById('tabBtnPlanA');
+      const tabB = document.getElementById('tabBtnPlanB');
+      const badgeA = document.getElementById('planABadge');
+      const badgeB = document.getElementById('planBBadge');
+
+      if (planKey === 'planA') {
+        if (tabA) { tabA.style.border = '2px solid #059669'; tabA.style.background = '#ECFDF5'; tabA.style.color = '#065F46'; tabA.style.fontWeight = '900'; }
+        if (tabB) { tabB.style.border = '1.5px solid #CBD5E1'; tabB.style.background = '#FFFFFF'; tabB.style.color = '#475569'; tabB.style.fontWeight = '800'; }
+        if (badgeA) { badgeA.style.background = '#059669'; badgeA.style.color = '#FFF'; badgeA.innerText = currentLandingLang === 'en' ? 'Selected' : '選択中'; }
+        if (badgeB) { badgeB.style.background = '#E2E8F0'; badgeB.style.color = '#64748B'; badgeB.innerText = currentLandingLang === 'en' ? 'Alternative' : '別案'; }
+      } else {
+        if (tabA) { tabA.style.border = '1.5px solid #CBD5E1'; tabA.style.background = '#FFFFFF'; tabA.style.color = '#475569'; tabA.style.fontWeight = '800'; }
+        if (tabB) { tabB.style.border = '2px solid #7C3AED'; tabB.style.background = '#F5F3FF'; tabB.style.color = '#5B21B6'; tabB.style.fontWeight = '900'; }
+        if (badgeA) { badgeA.style.background = '#E2E8F0'; badgeA.style.color = '#64748B'; badgeA.innerText = currentLandingLang === 'en' ? 'Alternative' : '別案'; }
+        if (badgeB) { badgeB.style.background = '#7C3AED'; badgeB.style.color = '#FFF'; badgeB.innerText = currentLandingLang === 'en' ? 'Selected' : '選択中'; }
+      }
+
+      // 投稿プレビューの更新
+      const formatBadge = document.getElementById('councilFormatBadge');
+      const postAngle = document.getElementById('councilPostAngle');
+      const preview = document.getElementById('councilTweetsPreview');
+
+      if (formatBadge) formatBadge.innerHTML = getFormatBadge(planData.format || 'two_tier_reply_link', true, (planData.tweets || []).length);
+      if (postAngle) postAngle.innerText = planData.angle || 'AI確認最適化ポスト';
+
+      let tweetPreviewHtml = '';
+      const tweets = Array.isArray(planData.tweets) && planData.tweets.length > 0 ? planData.tweets : [planData.text || ''];
+      tweets.forEach((t, idx) => {
+        if (idx === 0) {
+          tweetPreviewHtml += `<div style="background:#FFFFFF;border:1px solid #BBF7D0;border-radius:8px;padding:12px;margin-bottom:6px;"><b>【親ポスト】</b>\n${t}</div>`;
+        } else {
+          tweetPreviewHtml += `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px;margin-bottom:6px;font-size:13px;color:#334155;"><b>【連動リプライ (${idx + 1}/${tweets.length})】</b>\n${t}</div>`;
+        }
+      });
+      if (preview) preview.innerHTML = tweetPreviewHtml;
+    }
+
+    const reDeliberateWithUserFeedback = submitCouncilFeedback;
+
+    async function commitCouncilSchedule() {
+      if (!activeCouncilDeliberation || !activeCouncilDeliberation.deliberationId) {
+        alert('確定する確認セッションがありません');
+        return;
+      }
+      const btn = document.getElementById('btnCommitCouncil');
+      const statusMsg = document.getElementById('councilCommitStatus');
+      btn.disabled = true;
+      btn.innerText = '⏳ スケジュール確定中...';
+
+      try {
+        const res = await fetch('/api/autopilot/council/commit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: localStorage.getItem('xsw_uid') || 'default_user',
+            deliberationId: activeCouncilDeliberation.deliberationId,
+            selectedPlan: currentActivePlanType,
+            plan: currentPlan
+          })
+        });
+        const j = await res.json();
+        btn.disabled = false;
+        const isEn = currentLandingLang === 'en';
+        btn.innerText = isEn ? '✅ Confirm scheduled post' : '✅ この投稿案を予約';
+
+        if (j.ok) {
+          statusMsg.style.display = 'block';
+          statusMsg.style.background = '#ECFDF5';
+          statusMsg.style.border = '1px solid #10B981';
+          statusMsg.style.color = '#065F46';
+          statusMsg.innerHTML = isEn
+            ? '🎉 <b>Your post draft was added to the schedule.</b><br>It is scheduled to publish through the X API at the selected time. Publishing depends on X API availability and applicable limits.'
+            : '🎉 <b>投稿案を予約スケジュールに登録しました。</b><br>指定時刻にX API経由で投稿される予定です。投稿の実行はX APIの利用状況や制限に左右されます。';
+          loadJobs();
+        } else {
+          statusMsg.style.display = 'block';
+          statusMsg.style.background = '#FEF2F2';
+          statusMsg.style.border = '1px solid #EF4444';
+          statusMsg.style.color = '#991B1B';
+          statusMsg.innerText = '❌ ' + (j.code === 'council_already_approved'
+            ? (isEn
+              ? 'This draft has already been used for a reservation. Check your schedule; generate a new draft for another post.'
+              : 'この確認結果は既に予約に使用されています。予約一覧を確認し、別の投稿を予約する場合は新しい案を生成してください。')
+            : j.code === 'council_conflict'
+              ? (isEn
+                ? 'This draft changed. Check your schedule before trying again.'
+                : '確認セッションが変更されました。予約一覧を確認してから再度お試しください。')
+              : j.error);
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerText = currentLandingLang === 'en' ? '✅ Confirm scheduled post' : '✅ この投稿案を予約';
+        alert('エラー: ' + e.message);
+      }
+    }
+
+    // ========================================================================
+    // 🌐 多言語 i18n ハイブリッドエンジン (全面ビジネス日本語 / 全面ビジネス英語)
+    // ========================================================================
+    const I18N_LANDING = {
+      ja: {
+        // Navigation
+        nav_philosophy: "開発思想",
+        nav_tech: "主な機能",
+        nav_engine: "投稿ワークフロー",
+        nav_sales: "実績レポート",
+        nav_security: "セキュリティ",
+        nav_demo: "無料デモ",
+        nav_pricing: "料金プラン",
+        nav_faq: "FAQ",
+        nav_dashboard: "🚀 ダッシュボードを開く",
+        nav_login: "ログイン",
+        nav_signup: "新規登録",
+
+        // Hero
+        hero_telem1_label: "公式API接続",
+        hero_telem1_sub: "公式 OAuth 2.0 準拠",
+        hero_telem2_label: "学習サイクル",
+        hero_telem2_value: "毎回更新",
+        hero_telem2_sub: "実測反応を次投稿へ反映",
+        hero_telem3_label: "生成ポリシー",
+        hero_telem3_value: "根拠限定",
+        hero_telem3_sub: "未確認の数値・誇張を遮断",
+        hero_h1: "VELOX AI<br><span style=\"color:#2563EB;\">反応を学びながら「次の1本」を届け続けるX運用AI。</span>",
+        hero_desc: "URLか、育てたいアカウント像を入れるだけです。投稿の作成・予約・反応の学習はおまかせし、今のアカウント状態、Bioの改善助言、AIがこの投稿を選んだ理由まで、一つの画面で確認できます。14日間無料で、管理画面からいつでも解約できます。",
+        hero_exhibit_pill: "🏆 X公式 Developer Exhibit 掲載アプリ ↗",
+        hero_badge1: "🔗 X公式API v2 正規連携",
+        hero_badge2: "🧠 根拠と本来の文体を忠実に反映",
+        hero_badge3: "💳 14日間無料トライアル",
+        hero_badge4: "🔄 公開後の実測から毎回再設計",
+        hero_btn_select: "14日間無料で試す →",
+        hero_btn_demo: "無料デモで投稿案を試す",
+        hero_cancel_assurance: "✓ 14日間は ¥0 ・ 管理画面のボタン1つでいつでも解約できます",
+        official_exhibit_kicker: "OFFICIAL X DEVELOPER DIRECTORY",
+        official_exhibit_url: "developer.x.com/exhibit/veloxpostcloud",
+        official_banner_title: "X公式「Developer Exhibit」掲載アプリ",
+        official_banner_body: "X 公式のアプリ展示ギャラリー「Developer Exhibit」に、OAuth 2.0 準拠のコンテンツ作成・予約配信 SaaS として公開掲載されています。実運用での挙動は、日本・Global の各公式アカウント上でも日々公開しています。",
+        official_jp_role: "🇯🇵 Japan Official",
+        official_jp_note: "日本語・国内向けの実運用ログ",
+        official_hq_role: "🌐 Global Official",
+        official_hq_note: "英語・海外向けの実運用ログ",
+        official_log_jp_btn: "@VeloxSystemsV4 を見る ↗",
+        official_log_hq_btn: "@VeloxSystemsHQ を見る ↗",
+        official_exhibit_btn: "🏆 X公式 Exhibit ページを見る ↗",
+
+        // Section 2: Philosophy
+        philo_badge: "PHILOSOPHY & PRINCIPLES",
+        philo_h2: "なぜ「次の1投稿だけ」なのか —— 質の高いX運用を成立させる4つの設計",
+        philo_desc: "調査・執筆・審査・公開後の学習を、1投稿ごとに一巡させます。",
+        philo_card1_title: "01. Webサイトの精密読解と事実検証",
+        philo_card1_desc: "登録ページのほか、同一サイト内の関連ページ（料金・機能・FAQなど主要な案内。あわせて最大3ページ）を参照し、ページにない数値は送信前に止めます。URLがなくても、書いたアカウント像と過去の投稿から次の1本を組み立てます。",
+        philo_card1_tag: "PAGE FACTS ONLY",
+        philo_card2_title: "02. 「あなたの声」と信用段階の設計",
+        philo_card2_desc: "今の自己紹介と固定ポストを見て、誰向けか・何を出すか・導線の助言を出します。口調は過去の投稿に合わせ、宣伝は反応が安定したときか、紹介を希望したときに限って混ぜます。",
+        philo_card2_tag: "ACCOUNT VOICE",
+        philo_card3_title: "03. 2段階設計と投稿審査・形式最適化",
+        philo_card3_desc: "本文の前に「誰に・なぜ今・どの根拠か」を決め、その理由を画面に出します。長さはXのプランと検索状態に合わせ、長文1本・2本・リンクなし短文を使い分けます。",
+        philo_card3_tag: "QUALITY & SHAPE",
+        philo_card4_title: "04. 実測を反映するため、次の1本だけを毎回組み直す",
+        philo_card4_desc: "公開2〜6時間後と24〜36時間後の実測を見て、次の1本だけを組み直します。今のフォロワーと反応も同じ画面に出します。手で直した予約は上書きしません。",
+        philo_card4_tag: "ADAPTIVE LOOP",
+
+        // Section 3: Architecture
+        arch_badge: "SYSTEM ARCHITECTURE",
+        arch_h2: "次の1投稿を支える4つのコア技術",
+        arch_desc: "公式API連携、サイト読解と文体解析、2段階生成と審査ゲート、公開後の実測学習。アカウントを増やす機能はありません。",
+        arch_tab0: "01. X公式API連携と暗号化",
+        arch_tab1: "02. サイト読解と文体解析",
+        arch_tab2: "03. 2段階設計と送信前ゲート",
+        arch_tab3: "04. 実測学習と到達率保護",
+
+        // Section 4: Continuous Pipeline
+        pipe_strip: "OFFICIAL X API × ONE NEXT POST",
+        pipe_h1: "ページの読解から、検証・予約配信・振り返りまで。<br><span style=\"color:#2563EB;\">次の1本を、毎回組み直して届ける。</span>",
+        pipe_eyebrow: "POSTING WORKFLOW",
+        pipe_h2: "設定ひとつで、執筆から学習まで完結。",
+        pipe_lead: "ホームページのURLか、育てたいアカウント像のどちらか一方（または両方）から構成を設計し、審査を通した次の1本を公式APIで予約します。公開後の実測も、同じ画面から次の切り口へ反映できます。",
+        pipe_f1_title: "公開後の反応を、次の投稿案へ戻す。",
+        pipe_f1_desc: "いいね、返信、リポスト、ブックマーク（保存）など、公式APIから取得できる指標を時間帯と切り口に紐づけます。それらの反応データをもとに、次の1本で「誰に・なぜ今・どの根拠を届けるか」を組み直します。",
+        pipe_f1_badge: "📈 実測した反応を、次の1本の設計へ",
+        pipe_f2_title: "X公式API v2 で予約配信する。",
+        pipe_f2_desc: "投稿はX公式API v2の正規の認証経路で予約します。無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、受信メンションへの返信支援は確認制（下書きを確認して1クリック送信）です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。認証情報はAES-256-GCMで暗号化して保存します。",
+        pipe_f2_badge: "🛡️ X公式API v2 • 無差別な自動いいね・一斉リプライは行いません",
+
+        // Section 5: Multi-Stream & Outreach
+        multi_eyebrow: "ONE ACCOUNT, DAILY SLOTS",
+        multi_h2: "1日の検証枠と、公開後のフィードバック設計",
+        multi_lead: "品質のエンジンは全プラン共通です。違いは、1日に何回「次の1本」を検証できるかです。",
+        multi_lanes_title: "⚡ 1日の時間帯",
+        multi_lanes_badge: "配信スケジュール構成例",
+        multi_lane1_title: "● 朝 8:30目安",
+        multi_lane1_status: "Starter",
+        multi_lane1_text: "Starter の基本枠。1日1回、その日最も適した切り口を配信します。",
+        multi_lane2_title: "● 昼 12:30目安",
+        multi_lane2_status: "Pro",
+        multi_lane2_text: "Pro 以上で追加される昼・夜枠。1日3回、異なる論点を日内で検証します。",
+        multi_lane3_title: "● 夜 20:00目安",
+        multi_lane3_status: "Business",
+        multi_lane3_text: "Business の1日5枠。8:30 / 12:30 / 17:30 / 20:00 / 22:30 で検証サイクルを最大化します。",
+        multi_promo_eyebrow: "DAILY SLOTS",
+        multi_promo_title: "時間帯ごとに、次の1本の切り口を変える",
+        multi_promo_desc: "Starterは朝の基本枠（1日1枠）、Proは昼・夜を加えた1日3枠、Businessは夕・深夜を含む1日5枠まで対応します。予約待機させておくのは常に「次の1本」だけで、手動で編集した予約は上書きせずに残します。",
+        outreach_eyebrow: "AFTER IT IS PUBLISHED",
+        outreach_title: "公開後の反応を、すぐ次の投稿案へ。",
+        outreach_desc: "公開後24〜36時間の表示回数、ブックマーク率、返信数を時間帯・切り口別に集計し、週次レポートと次回生成に反映します。到達率が直近の水準から大きく下がった場合は、無理に攻めず回復向けの投稿構成へ自動調整します。",
+        outreach_demo_title: "📊 投稿実績の表示例",
+        outreach_demo_badge: "画面イメージ",
+        outreach_tweet_lbl: "投稿案（例）",
+        outreach_tweet_txt: "「サービスの使い方を3つの手順で紹介する投稿案（表示例）」",
+        outreach_reply_author: "取得可能な投稿指標",
+        outreach_reply_badge: "取得できる範囲で表示",
+        outreach_reply_txt: "24〜36時間の保存・返信を時間帯別に見て、次の1本の論点を組み直します。",
+        outreach_stat: "✓ 初速と確定値を、次の1本の設計へ戻す",
+
+        // Section 6: Security
+        sec_eyebrow: "ACCOUNT & DATA PROTECTION",
+        sec_h2: "認証情報の保護と、運用上の注意点。",
+        sec_lead: "Xの認証情報は AES-256-GCM で暗号化して保管し、決済は Stripe Checkout を使います。データの取り扱いと提供条件は、フッターの法務ページで確認できます。",
+        sec_c1_title: "🏛️ プライバシーと規約の確認",
+        sec_c1_desc: "個人情報の取り扱いはプライバシーポリシーに記載しています。外部サービスとの連携・処理内容をご確認のうえご利用ください。",
+        sec_c2_title: "🤝 おまかせ中も、いつでも確認・微調整",
+        sec_c2_desc: "自動作成された次の1本はダッシュボードでいつでも確認でき、こだわりたい時だけ自分の言葉へ修正・別案再生成・即時停止が可能です。",
+        sec_c3_title: "💳 Stripe Checkoutによる決済",
+        sec_c3_desc: "Stripe Checkoutを利用します。利用可能な支払方法と決済書類は、決済画面およびStripeの案内をご確認ください。",
+
+        // Section 7: Live Demo
+        demo_eyebrow: "FREE POST-DRAFT PREVIEW",
+        demo_h2: "AI投稿案のサンプルを無料で体験",
+        demo_council_active: "AI POST DRAFT PREVIEW",
+        demo_lead: "本番エンジンで作った完成見本を、日本語と英語でキャッシュ表示します。自社URLの分析は無料登録後の管理画面で行います。",
+        demo_lbl_handle: "日本語見本",
+        demo_ph_handle: "@VeloxSystemsV4",
+        demo_lbl_url: "English Sample",
+        demo_ph_url: "@VeloxSystemsHQ",
+        demo_lbl_prompt: "自社URLの分析",
+        demo_ph_prompt: "無料登録後の管理画面",
+        demo_btn_run: "完成見本を表示する",
+        demo_btn_own: "自分のURLで試す（無料登録）",
+        demo_pill_ja: "🇯🇵 日本語見本 (@VeloxSystemsV4)",
+        demo_pill_en: "🇺🇸 英語見本 (@VeloxSystemsHQ)",
+        demo_cta_text: "デモで作成の流れを試したら、14日間無料トライアルで実際の投稿ワークフローを体験できます。",
+        demo_cta_login: "👤 無料アカウント作成 / ログイン",
+        demo_cta_unlock: "🔓 エディションを選択して開始 →",
+        demo_debate_header: "📋 AI投稿案の生成プロセス",
+        demo_score_label: "AIによる参考評価",
+        demo_score_value: "投稿データに基づく参考値",
+        cockpit_status_sub: "プランごとの1日の枠数まで、次の1件を用意します。",
+        checkout_url_title: "宣伝・集客したいURLを入力",
+        checkout_url_label: "対象のWebページURL（自社LP、ブログ、ショップ等）",
+        checkout_plan_title: "プランを選択",
+        checkout_currency_jpy: "🇯🇵 JPY (日本円)",
+        checkout_currency_usd: "🇺🇸 USD (米ドル)",
+        checkout_starter_name: "🥉 Solo Starter",
+        checkout_pro_name: "🥈 Agency Pro",
+        checkout_business_name: "🥇 Syndicate Business",
+        checkout_starter_features: "1日1枠（朝 8:30目安）<br>事実抽出・声・検証・公式API",
+        checkout_pro_features: "1日3件まで。次の1本を自動で用意<br>予約待機は常に「次の1本」だけです",
+        checkout_business_features: "1日5件まで。次の1本を自動で用意<br>予約待機は常に「次の1本」だけです",
+        checkout_trial_note: "Stripe Checkoutで決済方法をご登録ください。14日間無料で選択プランを利用でき、期間終了後は月額料金で自動更新されます。管理画面から、いつでもボタン1つで自動更新（次回以降の請求）を停止できます。14日間の無料トライアル中に停止すれば料金はかかりません。",
+        modal_title: "プラン選択・決済",
+        modal_desc: "ページ読解、文体、2段階生成、Critic審査、公式APIは共通です。違いは1日の検証回数です。",
+        modal_starter_features: "✓ 1日1枠（朝 8:30目安）<br>✓ 事実抽出・声・検証・公式API",
+        modal_pro_features: "✓ 1日3枠（朝 8:30・昼 12:30・夜 20:00目安）<br>✓ Starter と同じ検証と次の1件",
+        modal_business_features: "✓ 1日5枠（朝・昼・夕 17:30・夜・深夜 22:30目安）<br>✓ Starter と同じ検証と次の1件",
+        modal_billing_provider: "✓ Stripe Checkout",
+        modal_billing_renewal: "✓ 14日間トライアル後に月額自動更新",
+        modal_billing_cancel: "✓ 管理画面から、いつでもボタン1つで自動更新を停止できます",
+        modal_billing_api: "✓ X公式API連携",
+        modal_feat_next: "✓ 登録ページやアカウント像をもとに次の1本を作成",
+        modal_feat_review: "✓ AI投稿案の作成・レビュー",
+        modal_btn_starter: "Solo Starter を選択",
+        modal_btn_pro: "Agency Pro を選択",
+        modal_btn_business: "Syndicate Business を選択",
+
+        // Section 8: Specs
+        specs_h2: "主要機能・スペック早見表",
+        spec_c1_label: "通信・セキュリティ",
+        spec_c1_big: "X公式API v2",
+        spec_c1_desc: "公式OAuth 2.0とAES-256-GCM。無差別な自動いいね・自動フォロー・一斉リプライは行いません。",
+        spec_c2_label: "生成方式",
+        spec_c2_big: "1投稿ずつ最適化",
+        spec_c2_desc: "2段階設計・Critic審査・数値一致検証を通過した次の1本を、アカウントの文体とX側の契約状態（通常／X有料プラン）に合わせて作成します。",
+        spec_c3_label: "配信リズム",
+        spec_c3_big: "1日1〜5枠",
+        spec_c3_desc: "全プランでAIの品質エンジンは共通です。Starter（1枠）・Pro（3枠）・Business（5枠）で1日の検証回数が変わります。",
+
+        // Section 9: Pricing Editions
+        editions_eyebrow: "SELECT YOUR EDITION",
+        editions_h2: "1アカウントの検証回数に合わせた3つのプラン",
+        editions_lead: "ページ読解、文体、2段階生成、Critic審査、公式APIは3プラン共通です。違いは1日に回せる検証の回数です。",
+        plan1_tier: "👤 CREATOR & SOLO",
+        plan1_price: "¥4,980 <span>/ 月（税込・$39）</span>",
+        plan1_desc: "個人・1ブランドの継続発信に。朝8:30目安の1日1枠で、登録ページや育てたいアカウント像に沿った投稿と週次の振り返りを継続できます。",
+        plan1_feat1: "✓ <strong>1日1件</strong>まで。次の1件を自動で用意",
+        plan1_feat2: "✓ <strong>朝 8:30目安の1枠</strong>",
+        plan1_feat3: "✓ X公式API連携",
+        plan1_feat4: "✓ 🧠 <strong>AI投稿案の作成・レビュー</strong>",
+        plan1_btn: "14日間無料トライアルを開始 →",
+        plan2_badge: "定番 / 検証バランス",
+        plan2_tier: "🏢 GROWTH PRO",
+        plan2_price: "¥9,800 <span>/ 月（税込・$79）</span>",
+        plan2_desc: "朝 8:30・昼 12:30・夜 20:00 の 1 日 3 枠。時間帯や切り口ごとの反応差を比べ、勝ち筋を見極めるプランです。",
+        plan2_feat1: "✓ <strong>1日3件</strong>まで。次の1件を自動で用意",
+        plan2_feat2: "✓ <strong>朝 8:30・昼 12:30・夜 20:00目安</strong>",
+        plan2_feat3: "✓ 🧠 <strong>AI投稿案の作成・レビュー</strong>",
+        plan2_feat4: "✓ 投稿スケジュール管理",
+        plan2_btn: "14日間無料トライアルを開始 →",
+        plan3_badge: "1日5枠・高速検証",
+        plan3_tier: "🌐 SYNDICATE",
+        plan3_price: "¥19,800 <span>/ 月（税込・$179）</span>",
+        plan3_desc: "朝・昼・夕 17:30・夜・深夜 22:30 の 1 日 5 枠で学習サイクルを回す高頻度プランです。全時間帯のデータを集め、最短周期で切り口を洗練します。",
+        plan3_feat1: "✓ <strong>1日5件</strong>まで。次の1件を自動で用意",
+        plan3_feat2: "✓ <strong>朝・昼・夕 17:30・夜・深夜 22:30目安</strong>",
+        plan3_feat3: "✓ 🧠 <strong>全プラン共通のAI投稿案作成支援</strong>",
+        plan3_feat4: "✓ 投稿スケジュール管理",
+        plan3_btn: "14日間無料トライアルを開始 →",
+        guarantee_title: "まずは14日間。続けるかどうかは体験してから。",
+        guarantee_desc: "✓ <b>14日間無料</b>　✓ <b>終了後は選択プランの月額で自動更新</b>　✓ <b>管理画面から、いつでもボタン1つで自動更新を停止できます。14日間の無料トライアル中に停止すれば料金はかかりません。</b>",
+
+        // Section 10: FAQ
+        faq_h2: "よくあるご質問",
+        faq_q1: "一般的な自動投稿ツール（Bot）との違いは何ですか？",
+        faq_a1: "URLかアカウント像を入れるだけで始められます。ページにない数値は作らず、口調はアカウントに合わせ、2〜6時間後と24〜36時間後の実測で次の1本を組み直します。Bioの助言と、この投稿を選んだ理由も同じ画面で見られます。",
+        faq_q2: "アカウントの制限や凍結を防げますか？",
+        faq_a2: "無差別な自動いいね・自動フォロー・一斉リプライは行わず、X公式 OAuth 2.0、投稿間隔、重複ガード、根拠の範囲チェックで運用します。プラットフォーム側の仕様や規約の詳細は利用規約に記載しています。",
+        faq_q3: "個人事業主やフリーランスでも利用できますか？ 法人での契約も可能ですか？",
+        faq_a3: "はい。個人・法人を問わずご利用いただけます。利用可能な支払方法はStripeの決済画面に表示されます。",
+        faq_q4: "適格請求書（インボイス制度）に対応した領収書は発行されますか？ 経費精算は可能ですか？",
+        faq_a4: "Stripe Checkout の決済完了後に発行される領収書・請求書を利用できます。詳細は Stripe の決済確認画面に出ます。",
+        faq_q5: "無差別スパムや過度な煽りで、自社ブランドの社会的信用を落とすリスクはありませんか？",
+        faq_a5: "ページにある事実、アカウントの文体、入れたくない表現の除外、公開前の品質審査で投稿を整えます。公開前に自分の言葉へ直すこともできます。",
+        faq_q6: "解約方法を教えてください。",
+        faq_a6: "管理画面から、いつでもボタン1つで自動更新（次回以降の請求）を停止できます。14日間の無料トライアル中に停止すれば料金はかかりません。解約・更新条件の詳細は特定商取引法に基づく表記をご確認ください。",
+        faq_q7: "投稿案の作成にどんなデータを使いますか？",
+        faq_a7: "URLがあれば同一サイトの料金・機能・FAQを使います。無ければアカウント像と過去投稿です。実測は次の1本の「誰に・なぜ今」に使い、ページにない数値は除外します。今のアカウント状態も同じ画面に出します。",
+        faq_q8: "投稿後の自動いいねや自動返信も行いますか？",
+        faq_a8: "無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、受信メンションへの返信支援は確認制（下書きを確認して1クリック送信）です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。VELOX AI は根拠やアカウント像に基づく投稿案の作成、予約配信、公式APIで取得可能な反応指標の確認に特化しています。",
+        faq_q9: "AIが生成した投稿案は事前に確認・修正できますか？",
+        faq_a9: "はい。投稿案は公開前に確認・編集できます。選んだ理由とBioの助言も、その画面で一緒に見られます。",
+        faq_q10: "14日間の無料期間後はどうなりますか？",
+        faq_a10: "申込み時にStripe Checkoutでご登録いただいた決済方法により、14日間の無料期間終了後は選択したプランの月額料金で自動更新されます。管理画面から、いつでもボタン1つで自動更新（次回以降の請求）を停止でき、14日間の無料トライアル中に停止すれば料金はかかりません。",
+
+        // Section 11: Editorial
+        edit_h2: "導入してから毎日続く、4つの安心設計",
+        edit_h3_1: "普段はおまかせ、直したいときだけ1クリック調整",
+        edit_p_1: "X連携とURL（または人物像）を登録したら、時間枠に合わせた投稿作成から予約配信、反応の学習まで自動で進みます。気になった投稿だけ公開前に編集したり別案を作り直したりでき、人が編集した予定は上書きしません。",
+        edit_h3_2: "投稿だけでなく、Bio・固定ポストまでトータル助言",
+        edit_p_2: "投稿づくりと同じ品質エンジン（根拠抽出・文体再現・審査ゲート）は全プラン共通です。さらに現在のプロフィールを踏まえたBio改善案や固定ポストのヒントも管理画面で提示し、フォローにつながりやすい土台づくりまで支えます。",
+        edit_h3_3: "「いま何を見て、なぜこの1本か」が毎回わかる",
+        edit_p_3: "ブラックボックス任せにせず、現在のアカウント状態、いま優先している運用バランス（価値提供中心か自然な案内か）、次の投稿の狙いまで管理画面に明示します。理由がわかるから安心して任せられます。",
+        edit_h3_4: "1アカウント完結・公式API準拠のクリーン運用",
+        edit_p_4: "無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、確認制の返信支援（1クリック送信）であれば複雑な別アカウント設定も不要です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。不要になったときはボタン1つでいつでも停止・解約できます（規約条件の詳細は利用規約に記載）。",
+
+        // Mobile CTA & Footer
+        mobile_cta_demo: "⚡ 無料ライブデモ",
+        mobile_cta_unlock: "🔓 14日間無料で試す →",
+        footer_tokushoho: "特定商取引法に基づく表記",
+        footer_terms: "利用規約",
+        footer_privacy: "プライバシーポリシー",
+        footer_company: "運営事業者情報",
+        footer_disclosure: "VeloxPost Cloud は X 公式 API と Stripe Checkout を利用した X 運用支援 SaaS です。提供条件、免責、返金および解約条件は、上記の利用規約と特定商取引法に基づく表記に記載しています。",
+        qs_h2: "約3分で開始する、3つの手順",
+        qs_1_title: "01｜X とワンクリック連携",
+        qs_1_body: "公式 OAuth 2.0 で接続します。通常の自動投稿なら、別アカウントや自動化ラベルは不要です。",
+        qs_2_title: "02｜URL か人物像を入れるだけ",
+        qs_2_body: "紹介ページか、育てたいアカウント像を保存します。今の Bio 改善案も同時に確認できます。",
+        qs_3_title: "03｜開始を押して、あとはおまかせ",
+        qs_3_body: "時間枠に合わせて作成・予約・学習が続きます。直したいときだけ編集や別案に切り替えられます。",
+        outreach_insight_title: "💡 画面イメージ：今回の狙い・Bio助言・運用方針",
+        outreach_insight_txt: "数字の集計に加え、なぜこの1本か、今の自己紹介への助言、価値提供と案内のバランスまで同じ画面に出ます。これは表示例で、実績の数値ではありません。",
+
+        // Auth Modal
+        auth_modal_title: "新規登録",
+        auth_modal_sub: "VELOX AI の管理画面へログイン、または新しいアカウントを作成します。",
+        auth_btn_google: "Googleアカウントでログイン / 新規登録",
+        auth_btn_x: "X (旧Twitter) でログイン",
+        auth_lbl_or: "またはメールアドレスで登録",
+        auth_tab_reg: "新規登録",
+        auth_tab_login: "ログイン",
+        auth_lbl_email: "📧 メールアドレス",
+        auth_lbl_pass: "🔑 パスワード（8文字以上）",
+        auth_lbl_pass2: "🔑 パスワード確認",
+        auth_btn_submit: "✅ 新規登録して管理画面へ進む →",
+        auth_legal_prefix: "ログインすることで、",
+        auth_terms: "利用規約",
+        auth_legal_and: "および",
+        auth_privacy: "プライバシーポリシー",
+        auth_legal_suffix: "に同意したものとみなされます。"
+      },
+      en: {
+        // Navigation
+        nav_philosophy: "Philosophy",
+        nav_tech: "Main Features",
+        nav_engine: "Posting Workflow",
+        nav_sales: "Performance Reports",
+        nav_security: "Security & Trust",
+        nav_demo: "Live Demo",
+        nav_pricing: "Pricing",
+        nav_faq: "FAQ",
+        nav_dashboard: "🚀 Open dashboard",
+        nav_login: "Log In",
+        nav_signup: "Get Started",
+
+        // Hero
+        hero_telem1_label: "Official API",
+        hero_telem1_sub: "Official OAuth 2.0",
+        hero_telem2_label: "Learning cycle",
+        hero_telem2_value: "Every post",
+        hero_telem2_sub: "Measured response shapes the next post",
+        hero_telem3_label: "Generation policy",
+        hero_telem3_value: "Facts only",
+        hero_telem3_sub: "Unverified numbers and hype are blocked",
+        hero_h1: "VELOX AI<br><span style=\"color:#2563EB;\">An X system that learns from every post and delivers the next one.</span>",
+        hero_desc: "Enter a URL or the account you want to grow. Drafting, scheduling, and learning from responses run from there. One screen shows the current account, Bio notes, and why this post was chosen. Try it free for 14 days and cancel from the dashboard.",
+        hero_exhibit_pill: "🏆 Listed on X Developer Exhibit ↗",
+        hero_badge1: "🔗 Official X API v2",
+        hero_badge2: "🧠 Grounded facts and account voice",
+        hero_badge3: "💳 14-day free trial",
+        hero_badge4: "🔄 Redesigned from measurements after each post",
+        hero_btn_select: "Start a 14-day free trial →",
+        hero_btn_demo: "Preview an AI draft for free",
+        hero_cancel_assurance: "✓ 14 days free ($0 today) · Cancel anytime with one button in your dashboard",
+        official_exhibit_kicker: "OFFICIAL X DEVELOPER DIRECTORY",
+        official_exhibit_url: "developer.x.com/exhibit/veloxpostcloud",
+        official_banner_title: "Featured on X's Official Developer Exhibit",
+        official_banner_body: "Published in X's official Developer Exhibit as an OAuth 2.0 content drafting and scheduling platform. Live daily operations are demonstrated openly on our Japan and Global accounts.",
+        official_jp_role: "🇯🇵 Japan Official",
+        official_jp_note: "Japanese live account and product logs",
+        official_hq_role: "🌐 Global Official",
+        official_hq_note: "English global live account",
+        official_log_jp_btn: "Open @VeloxSystemsV4 ↗",
+        official_log_hq_btn: "Open @VeloxSystemsHQ ↗",
+        official_exhibit_btn: "🏆 View on X Developer Exhibit ↗",
+
+        // Section 2: Philosophy
+        philo_badge: "PHILOSOPHY & PRINCIPLES",
+        philo_h2: "Why only the next post — four designs that make careful X publishing work",
+        philo_desc: "Research, writing, review, and learning after publication run once for every post.",
+        philo_card1_title: "01. Close reading and fact checks",
+        philo_card1_desc: "Besides the registered page, related pages on the same site are read, such as pricing, features, and FAQ, up to three pages in total. Numbers that are not on those pages are stopped. Without a URL, the next post follows the account direction you wrote and past posts.",
+        philo_card1_tag: "PAGE FACTS ONLY",
+        philo_card2_title: "02. This account's voice, and a trust stage",
+        philo_card2_desc: "The current bio and pinned post get notes on who it is for, what it publishes, and the next step. Voice follows past posts. A marked introduction is mixed in only after response steadies, or when you ask.",
+        philo_card2_tag: "ACCOUNT VOICE",
+        philo_card3_title: "03. Two-step design, critic review, and shape",
+        philo_card3_desc: "Before the text, it decides who, why now, and which proof, and shows that reason. Length follows the X plan and search state: one long post, two posts, or one short post with no link.",
+        philo_card3_tag: "QUALITY & SHAPE",
+        philo_card4_title: "04. Rebuild only the next post from measurements",
+        philo_card4_desc: "Measurements at 2–6 hours and 24–36 hours rebuild only the next post. Followers and recent response stay on the same screen. A reservation you edited by hand is left in place.",
+        philo_card4_tag: "ADAPTIVE LOOP",
+
+        // Section 3: Architecture
+        arch_badge: "SYSTEM ARCHITECTURE",
+        arch_h2: "Four core layers behind every post",
+        arch_desc: "Official API access, site reading and voice profiling, two-step drafting with quality gates, and metric-driven optimization.",
+        arch_tab0: "01. Official API & encryption",
+        arch_tab1: "02. Site reading & voice",
+        arch_tab2: "03. Two-step draft & gate",
+        arch_tab3: "04. Metric learning & guard",
+
+        // Section 4: Continuous Pipeline
+        pipe_strip: "OFFICIAL X API × ONE NEXT POST",
+        pipe_h1: "From reading the page to review, scheduling, and learning.<br><span style=\"color:#2563EB;\">The next post is rebuilt every time.</span>",
+        pipe_eyebrow: "POSTING WORKFLOW",
+        pipe_h2: "One setup carries writing through learning.",
+        pipe_lead: "A brief is designed from a homepage URL, the account direction you want to grow, or both. The next post that passes review is scheduled through the official API. Measurements return to the same screen as the next angle.",
+        pipe_f1_title: "Send the response after publishing back into the next draft.",
+        pipe_f1_desc: "Likes, replies, reposts, and bookmarks from the official API are tied to time of day and angle. Those response figures decide who, why now, and which proof the next post carries.",
+        pipe_f1_badge: "📈 Measured response, back into the next post",
+        pipe_f2_title: "Schedule through the official X API v2.",
+        pipe_f2_desc: "Posts are scheduled on the official X API v2 path. No unsolicited likes or mass replies. In regular operation, inbound mention support is opt-in: review the draft and send it in one click. Fully automatic replies run only when a separate managing account and X's Automated label requirements are set. Credentials are stored with AES-256-GCM.",
+        pipe_f2_badge: "🛡️ Official X API v2 • No unsolicited auto-likes or mass replies",
+
+        // Section 5: Multi-Stream & Outreach
+        multi_eyebrow: "ONE ACCOUNT, DAILY SLOTS",
+        multi_h2: "Daily verification slots and post-publish feedback",
+        multi_lead: "The quality engine is the same on every plan. Plans differ by how many times a day the next post can be tested.",
+        multi_lanes_title: "⚡ Times of day",
+        multi_lanes_badge: "Sample schedule",
+        multi_lane1_title: "● Morning, about 8:30",
+        multi_lane1_status: "Starter",
+        multi_lane1_text: "Starter's base slot. Once a day, the angle that fits that day.",
+        multi_lane2_title: "● Noon, about 12:30",
+        multi_lane2_status: "Pro",
+        multi_lane2_text: "Noon and evening, added on Pro. Three posts a day, each with a different angle.",
+        multi_lane3_title: "● Evening, about 20:00",
+        multi_lane3_status: "Business",
+        multi_lane3_text: "Business runs five slots: 8:30, 12:30, 17:30, 20:00, and 22:30.",
+        multi_promo_eyebrow: "DAILY SLOTS",
+        multi_promo_title: "Change the angle of the next post by time of day",
+        multi_promo_desc: "Starter is the morning slot, one post a day. Pro adds noon and evening, three a day. Business adds late afternoon and late night, up to five a day. Only the next post is kept waiting, and a reservation you edited by hand is not overwritten.",
+        outreach_eyebrow: "AFTER IT IS PUBLISHED",
+        outreach_title: "Turn the response into the next draft.",
+        outreach_desc: "Views, bookmark rate, and replies at 24–36 hours are grouped by time and angle, then used in the weekly report and the next draft. If reach drops well below the recent level, the next post shifts to a recovery shape.",
+        outreach_demo_title: "📊 Example post metrics",
+        outreach_demo_badge: "Illustrative preview",
+        outreach_tweet_lbl: "Example draft",
+        outreach_tweet_txt: "“A sample post introducing a product in three practical steps.”",
+        outreach_reply_author: "Metrics available through the API",
+        outreach_reply_badge: "When available",
+        outreach_reply_txt: "Saves and replies at 24–36 hours, by time of day, reset the angle of the next post.",
+        outreach_stat: "✓ Early pace and settled counts go back into the next post",
+
+        // Section 6: Security
+        sec_eyebrow: "ACCOUNT & DATA PROTECTION",
+        sec_h2: "Credential protection and responsible use.",
+        sec_lead: "X credentials are stored with AES-256-GCM encryption, and payments use Stripe Checkout. Data handling and the service terms are on the legal pages in the footer.",
+        sec_c1_title: "🏛️ Review privacy and platform policies",
+        sec_c1_desc: "The privacy policy describes how personal information is handled. Review the processing and integrations of external services before using the service.",
+        sec_c2_title: "🤝 Full visibility and 1-click edits anytime",
+        sec_c2_desc: "Review upcoming scheduled posts on the dashboard whenever you like, tweak wording in your own voice, request a fresh angle, or pause with one click.",
+        sec_c3_title: "💳 Payments through Stripe Checkout",
+        sec_c3_desc: "Payments use Stripe Checkout. Check the checkout page and Stripe's guidance for available payment methods and payment documents.",
+
+        // Section 7: Live Demo
+        demo_eyebrow: "FREE POST-DRAFT PREVIEW",
+        demo_h2: "Preview an AI-generated post draft for free",
+        demo_council_active: "AI POST DRAFT PREVIEW",
+        demo_lead: "This is a cached production sample generated by the live pipeline, in Japanese and English. Custom URL analysis runs in the free dashboard after sign-up.",
+        demo_lbl_handle: "Japanese sample",
+        demo_ph_handle: "@VeloxSystemsV4",
+        demo_lbl_url: "English Sample",
+        demo_ph_url: "@VeloxSystemsHQ",
+        demo_lbl_prompt: "Your own URL",
+        demo_ph_prompt: "Free dashboard after sign-up",
+        demo_btn_run: "Show the cached sample",
+        demo_btn_own: "Try with your own URL (Free sign-up)",
+        demo_pill_ja: "🇯🇵 Japanese Sample (@VeloxSystemsV4)",
+        demo_pill_en: "🇺🇸 English Sample (@VeloxSystemsHQ)",
+        demo_cta_text: "Once you have previewed the workflow, try it with your X account during a 14-day free trial.",
+        demo_cta_login: "👤 Sign Up / Log In",
+        demo_cta_unlock: "🔓 Choose Your Edition →",
+        demo_debate_header: "📋 AI post-drafting process",
+        demo_score_label: "AI-generated reference assessment",
+        demo_score_value: "Reference only; based on available post data",
+        cockpit_status_sub: "Each plan prepares the next post up to its daily slot count.",
+        checkout_url_title: "Enter the URL you want to promote",
+        checkout_url_label: "Target webpage URL (website, blog, store, etc.)",
+        checkout_plan_title: "Choose a plan",
+        checkout_currency_jpy: "🇯🇵 JPY",
+        checkout_currency_usd: "🇺🇸 USD",
+        checkout_starter_name: "🥉 Solo Starter",
+        checkout_pro_name: "🥈 Agency Pro",
+        checkout_business_name: "🥇 Syndicate Business",
+        checkout_starter_features: "1 slot a day (about 8:30)<br>Facts, voice, checks, official API",
+        checkout_pro_features: "3 slots a day (about 8:30, 12:30, 20:00)<br>Same checks and next-post flow as Starter",
+        checkout_business_features: "5 slots a day (morning, noon, 17:30, evening, 22:30)<br>Same checks and next-post flow as Starter",
+        checkout_trial_note: "Add a payment method through Stripe Checkout. Your selected plan is free for 14 days; monthly billing begins when the trial ends. From the dashboard, you can stop automatic renewal and future charges at any time with one button. Stopping during the 14-day free trial means you are not charged.",
+        modal_title: "Choose a plan and check out",
+        modal_desc: "Page reading, voice, two-step drafts, critic review, and the official API are shared. Plans differ by how many tests fit in a day.",
+        modal_starter_features: "✓ 1 slot a day (about 8:30)<br>✓ Facts, voice, checks, official API",
+        modal_pro_features: "✓ 3 slots (about 8:30, 12:30, 20:00)<br>✓ Same checks and next post as Starter",
+        modal_business_features: "✓ 5 slots (morning, noon, 17:30, evening, 22:30)<br>✓ Same checks and next post as Starter",
+        modal_billing_provider: "✓ Stripe Checkout",
+        modal_billing_renewal: "✓ Monthly auto-renewal after the 14-day trial",
+        modal_billing_cancel: "✓ Stop renewal anytime with one button from the dashboard",
+        modal_billing_api: "✓ Official X API connection",
+        modal_feat_next: "✓ Draft the next post from the registered page or account direction",
+        modal_feat_review: "✓ Draft and review AI post ideas",
+        modal_btn_starter: "Select Solo Starter",
+        modal_btn_pro: "Select Agency Pro",
+        modal_btn_business: "Select Syndicate Business",
+
+        // Section 8: Specs
+        specs_h2: "System Architecture & Engineering Specifications",
+        spec_c1_label: "Connection and security",
+        spec_c1_big: "Official X API v2",
+        spec_c1_desc: "Official OAuth 2.0 and AES-256-GCM. No unsolicited auto-likes, auto-follows, or mass replies.",
+        spec_c2_label: "How drafts are made",
+        spec_c2_big: "One post at a time",
+        spec_c2_desc: "A two-step brief, critic review, and a number check, then one post in this account's voice and its X standing (standard or paid X plan).",
+        spec_c3_label: "Publishing rhythm",
+        spec_c3_big: "1 to 5 a day",
+        spec_c3_desc: "The quality engine is shared. Starter tests once a day, Pro three times, Business five times.",
+
+        // Section 9: Pricing Editions
+        editions_eyebrow: "SELECT YOUR EDITION",
+        editions_h2: "Three plans for how often one account is tested",
+        editions_lead: "Page reading, voice, two-step drafts, critic review, and the official API are shared. Plans differ by how many tests fit in a day.",
+        plan1_tier: "👤 CREATOR & SOLO",
+        plan1_price: "$39 <span>/ month (¥4,980)</span>",
+        plan1_desc: "For one person or one brand. One morning slot at about 8:30, posts from a registered page or the account direction you want, and a weekly look back.",
+        plan1_feat1: "✓ <strong>Up to 1 post a day</strong>. The next one is prepared automatically",
+        plan1_feat2: "✓ <strong>One morning slot, about 8:30</strong>",
+        plan1_feat3: "✓ Official X API connection",
+        plan1_feat4: "✓ 🧠 <strong>AI-assisted post drafting and review</strong>",
+        plan1_btn: "Start a 14-day free trial →",
+        plan2_badge: "Balanced testing",
+        plan2_tier: "🏢 GROWTH PRO",
+        plan2_price: "$79 <span>/ month (¥9,800)</span>",
+        plan2_desc: "Three slots, about 8:30, 12:30, and 20:00. Compare how time of day and angle respond, and keep the angle that holds.",
+        plan2_feat1: "✓ <strong>Up to 3 posts a day</strong>. The next one is prepared automatically",
+        plan2_feat2: "✓ <strong>About 8:30, 12:30, and 20:00</strong>",
+        plan2_feat3: "✓ 🧠 <strong>AI-assisted post drafting and review</strong>",
+        plan2_feat4: "✓ Post scheduling tools",
+        plan2_btn: "Start a 14-day free trial →",
+        plan3_badge: "Five slots, faster testing",
+        plan3_tier: "🌐 SYNDICATE",
+        plan3_price: "$179 <span>/ month (¥19,800)</span>",
+        plan3_desc: "Five slots: morning, noon, 17:30, evening, and 22:30. Collect every time of day and refine the angle on the shortest cycle.",
+        plan3_feat1: "✓ <strong>Up to 5 posts a day</strong>. The next one is prepared automatically",
+        plan3_feat2: "✓ <strong>Morning, noon, 17:30, evening, and 22:30</strong>",
+        plan3_feat3: "✓ 🧠 <strong>AI-assisted post drafting and review</strong>",
+        plan3_feat4: "✓ Post scheduling tools",
+        plan3_btn: "Start a 14-day free trial →",
+        guarantee_title: "Try it for 14 days. Decide after you experience the workflow.",
+        guarantee_desc: "✓ <b>14-day free trial</b> &nbsp; ✓ <b>Then renews at the selected monthly price</b> &nbsp; ✓ <b>Stop renewal anytime with one button in the dashboard. Stopping during the 14-day free trial means you are not charged.</b>",
+
+        // Section 10: FAQ
+        faq_h2: "Frequently Asked Questions",
+        faq_q1: "How is this different from a bulk scheduler or an automatic posting bot?",
+        faq_a1: "Start with a URL or an account direction. Numbers that are not on the page are not invented, the voice stays with the account, and measurements at 2–6 hours and 24–36 hours rebuild only the next post. Bio notes and the reason for this post are on the same screen.",
+        faq_q2: "Can the service prevent account restrictions or suspension?",
+        faq_a2: "The service does not send unsolicited auto-likes, auto-follows, or mass replies. It uses official OAuth 2.0, spacing, a duplicate guard, and a check that claims stay within the page. Platform rules are described in the terms.",
+        faq_q3: "Can freelancers, solo operators, and corporate entities subscribe?",
+        faq_a3: "Yes. Individuals and organizations can use the service. Available payment methods are shown on the Stripe checkout page.",
+        faq_q4: "Do you issue tax-compliant invoices and receipts?",
+        faq_a4: "After Stripe Checkout completes, you can use the receipt or invoice Stripe issues. The details appear on Stripe's confirmation screen.",
+        faq_q5: "Will automated posts damage our executive brand reputation?",
+        faq_a5: "Posts stay with facts on the page, the account's voice, phrases you want left out, and a quality check before publishing. You can also rewrite a draft in your own words before it goes out.",
+        faq_q6: "How do I cancel?",
+        faq_a6: "From the dashboard, you can stop automatic renewal and future charges at any time with one button. Stopping during the 14-day free trial means you are not charged. See the Specified Commercial Transactions disclosure for cancellation and renewal terms.",
+        faq_q7: "What data is used to help create post drafts?",
+        faq_a7: "A URL uses same-site pricing, features, and FAQ. Without one, drafts follow the account direction and past posts. Measurements set who and why now for the next post. Numbers not on the page are removed. The current account state is on the same screen.",
+        faq_q8: "Does VELOX AI automatically like or reply to posts?",
+        faq_a8: "No unsolicited likes or mass replies. In regular operation, inbound mention support is opt-in: review the draft and send it in one click. Fully automatic replies run only when a separate managing account and X's Automated label requirements are set. VELOX AI focuses on grounded draft generation, scheduled publishing, and reviewing available API metrics.",
+        faq_q9: "Can I review and edit a draft before it is published?",
+        faq_a9: "Yes. Review and edit a draft before it is published. The reason it was chosen, and the Bio notes, are on that same screen.",
+        faq_q10: "What happens after the 14-day free trial?",
+        faq_a10: "Add a payment method through Stripe Checkout. After 14 days, your selected plan renews automatically at its monthly price. From the dashboard, you can stop automatic renewal and future charges at any time with one button. Stopping during the 14-day free trial means you are not charged.",
+
+        // Section 11: Editorial
+        edit_h2: "Four practical strengths built into daily use",
+        edit_h3_1: "Leave it running, and adjust a post in one click when you want",
+        edit_p_1: "After you connect X and save a URL or an account direction, drafting, scheduling, and learning from responses continue on the time slots. Edit one post or request another angle before it goes out. A post you edited is not overwritten.",
+        edit_h3_2: "Advice covers the posts, the bio, and the pinned post",
+        edit_p_2: "The same writing engine—page facts, voice, and the review gate—is included on every plan. The dashboard also suggests a bio and a pinned post from the current profile.",
+        edit_h3_3: "See what it is looking at, and why this post",
+        edit_p_3: "The dashboard shows the current account, whether the balance is useful notes or a natural introduction, and the aim of the next post. The reason is visible, so you can leave the rest running.",
+        edit_h3_4: "One account, on the official API",
+        edit_p_4: "No unsolicited likes or mass replies. In regular operation, reviewed reply support (one-click send) does not need a separate account setup. Fully automatic replies run only when a separate managing account and X's Automated label requirements are set. Stop or cancel with one button. The terms hold the conditions.",
+
+        // Mobile CTA & Footer
+        mobile_cta_demo: "⚡ Free post preview",
+        mobile_cta_unlock: "🔓 Start 14-day trial →",
+        footer_tokushoho: "Commercial Disclosures",
+        footer_terms: "Terms of Service",
+        footer_privacy: "Privacy Policy",
+        footer_company: "Company Information",
+        footer_disclosure: "VeloxPost Cloud is an X operations service that uses the official X API and Stripe Checkout. The terms and the specified commercial transactions page cover the service conditions, disclaimers, refunds, and cancellation.",
+        qs_h2: "Three steps, about three minutes",
+        qs_1_title: "01 | Connect X in one click",
+        qs_1_body: "Connect with official OAuth 2.0. Regular scheduled posts do not need a second account or an Automated label.",
+        qs_2_title: "02 | Add a URL or an account direction",
+        qs_2_body: "Save a page or the account you want to grow. You can also review a bio suggestion at the same time.",
+        qs_3_title: "03 | Press start, then leave it running",
+        qs_3_body: "Drafting, scheduling, and learning continue on the time slots. Edit or request another angle only when you want to.",
+        outreach_insight_title: "Sample view: aim, bio notes, and operating plan",
+        outreach_insight_txt: "Beside the counts, the screen shows why this post, notes on the current bio, and the balance of useful notes and introductions. This is a sample layout, not a measured result.",
+
+        // Auth Modal
+        auth_modal_title: "Create Account",
+        auth_modal_sub: "Sign in or create an account to access your VELOX AI workspace.",
+        auth_btn_google: "Sign in with Google",
+        auth_btn_x: "Sign in with X",
+        auth_lbl_or: "or continue with email",
+        auth_tab_reg: "Sign Up",
+        auth_tab_login: "Log In",
+        auth_lbl_email: "📧 Email Address",
+        auth_lbl_pass: "🔑 Password (8+ characters)",
+        auth_lbl_pass2: "🔑 Confirm Password",
+        auth_btn_submit: "✅ Continue to Dashboard →",
+        auth_legal_prefix: "By signing in, you agree to our ",
+        auth_terms: "Terms of Service",
+        auth_legal_and: " and ",
+        auth_privacy: "Privacy Policy",
+        auth_legal_suffix: "."
+      }
+    };
+
+    // 🔬 5大アーキテクチャ詳細データ（日英ハイブリッド）
+    const EXPLORER_I18N_DATA = {
+      ja: [
+        {
+          img: "/images/feature-cloud-vault-3d.png?v=20261113_6",
+          telemTitle: "X Official API v2 / AES-256-GCM Vault",
+          telemSub: "● X公式API v2 連携・スパム的自動操作なし",
+          telemBadge: "公式 OAuth 2.0",
+          tag: "OFFICIAL API SECURITY",
+          title: "X公式API v2 連携 ＆ AES-256-GCM暗号化基盤",
+          desc: "公式 OAuth 2.0 で連携し、認証情報は AES-256-GCM で保管します。無差別な自動いいね・自動フォロー・一斉リプライは行いません。通常の自動運用では、受信メンションへの返信支援は確認制（1クリック送信）です。完全自動返信は、管理用の別アカウントと X の Automated ラベル要件を満たした限定設定時のみ動作します。",
+          specs: [
+            ["認証方式", "公式 OAuth 2.0"],
+            ["資格情報の保管", "AES-256-GCM暗号化"],
+            ["投稿前の管理", "公開前に確認・編集可能"],
+            ["禁止された挙動", "無差別自動いいね・一斉リプなし"]
+          ]
+        },
+        {
+          img: "/images/spec-council-3d.png?v=20261113_6",
+          telemTitle: "Site Grounding + Account Voice Profile",
+          telemSub: "● 同一サイト内の料金・機能・FAQまで精密に抽出",
+          telemBadge: "文体・段階対応",
+          tag: "SITE GROUNDING & VOICE",
+          title: "根拠の整理と、アカウントの声・発信段階の設計",
+          desc: "登録ページのほか、同一サイト内の関連ページ（料金・機能・FAQなど主要な案内。あわせて最大3ページ）を参照します。今のBioと固定ポストへの助言も出します。口調は過去の投稿に合わせます。宣伝は反応が安定したときか、紹介を希望したときだけです。",
+          specs: [
+            ["ページ読解", "同サイトの料金・機能・FAQ巡回"],
+            ["文体の再現", "一人称・語尾・句読点・改行を継承"],
+            ["立ち上がり期", "一次情報の発信を優先"],
+            ["宣伝枠", "反応安定後、または紹介希望時"]
+          ]
+        },
+        {
+          img: "/images/feature-growth-3d.png?v=20261113_6",
+          telemTitle: "2-Stage Drafting + Critic & Verification Gate",
+          telemSub: "● 未確認の数値・誇張・重複書き出しを自動遮断",
+          telemBadge: "送信前審査",
+          tag: "TWO-STEP QUALITY GATE",
+          title: "構成設計からの2段階執筆と、厳格な送信前審査",
+          desc: "誰に・なぜ今・どの根拠かを先に決め、その狙いを画面に出します。長さはXのプランと検索状態に合わせ、未確認の数値は止めます。",
+          specs: [
+            ["数値ゲート", "ページ記載の数値・桁一致のみ許可"],
+            ["品質審査", "構成設計 → Critic審査・自動修正"],
+            ["PR分離規定", "【PR】明記・本文URL直貼り禁止"],
+            ["重複ガード", "直近投稿と重なる書き出しを停止"]
+          ]
+        },
+        {
+          img: "/images/spec-satellite-3d.png?v=20261113_6",
+          telemTitle: "Closed-Loop Metric Optimization (2-6h / 24-36h)",
+          telemSub: "● 毎回振り返りながら「次の1本」だけを組み直す",
+          telemBadge: "毎回再設計",
+          tag: "CLOSED-LOOP OPTIMIZATION",
+          title: "公開後の実測から学習し、次の1本だけを毎回更新",
+          desc: "2〜6時間後と24〜36時間後の実測で、次の1本だけを組み直します。今のフォロワーと反応は同じ画面に出ます。手で直した予約は残します。",
+          specs: [
+            ["初速観測 (2〜6時間)", "反応に応じて未投稿の論点を再検討"],
+            ["確定指標 (24〜36時間)", "保存率・返信率を時間帯別に学習"],
+            ["到達率セーフティ", "低下時はPRを抑え回復構成を優先"],
+            ["手動予約の保護", "人が編集した予約は上書きしない"]
+          ]
+        }
+      ],
+      en: [
+        {
+          img: "/images/feature-cloud-vault-3d.png?v=20261113_6",
+          telemTitle: "X Official API v2 / AES-256-GCM Vault",
+          telemSub: "● Connects through the official X API v2",
+          telemBadge: "Official OAuth 2.0",
+          tag: "OFFICIAL API SECURITY",
+          title: "Official X API v2 connection & AES-256-GCM encryption",
+          desc: "Connects through official OAuth 2.0 and stores credentials with AES-256-GCM. No unsolicited likes or mass replies. In regular operation, inbound mention support is opt-in: review the draft and send it in one click. Fully automatic replies run only when a separate managing account and X's Automated label requirements are set.",
+          specs: [
+            ["Authentication", "Official OAuth 2.0"],
+            ["Credential storage", "AES-256-GCM encryption"],
+            ["Pre-publish control", "Review and edit before sending"],
+            ["Disallowed behavior", "No unsolicited likes or mass replies"]
+          ]
+        },
+        {
+          img: "/images/spec-council-3d.png?v=20261113_6",
+          telemTitle: "Site Grounding + Account Voice Profile",
+          telemSub: "● Same-site pricing, features, and FAQ extraction",
+          telemBadge: "Voice & Stage",
+          tag: "SITE GROUNDING & VOICE",
+          title: "Page grounding and account voice matching",
+          desc: "Besides the registered page, related pages on the same site are read, such as pricing, features, and FAQ, up to three pages in total. The screen also notes the current bio and pinned post. Voice follows past posts. A marked introduction waits until response steadies, or until you ask.",
+          specs: [
+            ["Site reading", "Same-site pricing, features, and FAQ"],
+            ["Voice preservation", "Person, endings, punctuation, line breaks"],
+            ["Early response", "First-hand notes come first"],
+            ["Promo slot", "After response steadies, or when you ask"]
+          ]
+        },
+        {
+          img: "/images/feature-growth-3d.png?v=20261113_6",
+          telemTitle: "2-Stage Drafting + Critic & Verification Gate",
+          telemSub: "● Unverified numbers, hype, and repeats are blocked",
+          telemBadge: "Pre-send Gate",
+          tag: "TWO-STEP QUALITY GATE",
+          title: "Two-step drafting and deterministic verification gate",
+          desc: "It decides who, why now, and which proof first, and shows that aim. Length follows the X plan and search state. Numbers that are not on the page are stopped.",
+          specs: [
+            ["Number check", "Only exact digits written on the site"],
+            ["Quality review", "Design brief -> Critic review & repair"],
+            ["Promo separation", "[Ad] disclosure; no URL in first post"],
+            ["Duplicate guard", "Blocks openings repeated from recent posts"]
+          ]
+        },
+        {
+          img: "/images/spec-satellite-3d.png?v=20261113_6",
+          telemTitle: "Closed-Loop Metric Optimization (2-6h / 24-36h)",
+          telemSub: "● Rebuilds only the next post from measured response",
+          telemBadge: "Next Post Only",
+          tag: "CLOSED-LOOP OPTIMIZATION",
+          title: "Closed-loop learning for only the next post",
+          desc: "Measurements at 2–6 hours and 24–36 hours rebuild only the next post. Followers and recent response stay on the same screen. A hand-edited reservation stays in place.",
+          specs: [
+            ["Early window (2–6h)", "Can adjust the pending post angle"],
+            ["Frozen window (24–36h)", "Feeds bookmarks & replies by slot"],
+            ["Reach protection", "Shifts to recovery when reach dips"],
+            ["Manual protection", "Typed reservations are preserved"]
+          ]
+        }
+      ]
+    };
+
+    let currentLandingLang = 'ja';
+    let currentExplorerIdx = 0;
+
+    function switchExplorerTab(idx) {
+      currentExplorerIdx = idx;
+      const dataArr = EXPLORER_I18N_DATA[currentLandingLang] || EXPLORER_I18N_DATA.ja;
+      const tabData = dataArr[idx] || dataArr[0];
+
+      // Update active tab buttons
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById('etab_' + i);
+        if (btn) {
+          if (i === idx) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+      }
+
+      // Update Stage
+      const img = document.getElementById('explorerStageImg');
+      if (img) img.src = tabData.img;
+
+      const tTitle = document.getElementById('expTelemTitle');
+      if (tTitle) tTitle.innerText = tabData.telemTitle;
+
+      const tSub = document.getElementById('expTelemSub');
+      if (tSub) tSub.innerText = tabData.telemSub;
+
+      const tBadge = document.getElementById('expTelemBadge');
+      if (tBadge) tBadge.innerText = tabData.telemBadge;
+
+      const cTag = document.getElementById('expCardTag');
+      if (cTag) cTag.innerText = tabData.tag;
+
+      const cTitle = document.getElementById('expCardTitle');
+      if (cTitle) cTitle.innerText = tabData.title;
+
+      const cBody = document.getElementById('expCardBody');
+      if (cBody) cBody.innerText = tabData.desc;
+
+      const sList = document.getElementById('expSpecList');
+      if (sList && Array.isArray(tabData.specs)) {
+        sList.innerHTML = tabData.specs.map(s => `
+          <div class="spec-mini-row"><span>${s[0]}</span><strong>${s[1]}</strong></div>
+        `).join('');
+      }
+    }
+
+    function toggleLangMenu(e) {
+      if (e) e.stopPropagation();
+      const pop = document.getElementById('langMenuPop');
+      if (pop) {
+        pop.style.display = (pop.style.display === 'block') ? 'none' : 'block';
+      }
+    }
+
+    document.addEventListener('click', () => {
+      const pop = document.getElementById('langMenuPop');
+      if (pop) pop.style.display = 'none';
+    });
+
+    function selectSiteLanguage(lang, btn) {
+      currentLandingLang = lang;
+      window.currentLandingLang = lang;
+      if (!billingCurrencyManuallySelected) {
+        switchCurrency(lang === 'en' ? 'usd' : 'jpy', true);
+      }
+      document.documentElement.lang = lang;
+      localStorage.setItem('velox_lang', lang);
+      document.cookie = 'velox_lang=' + lang + '; path=/; max-age=31536000';
+      
+      const lbl = document.getElementById('curLangLabel');
+      if (lbl) lbl.innerText = lang === 'en' ? '🌐 EN' : '🌐 JA';
+
+      document.querySelectorAll('.lang-opt').forEach(b => b.classList.remove('active'));
+      const activeOpt = document.querySelector(`.lang-opt[data-lang="${lang}"]`);
+      if (activeOpt) activeOpt.classList.add('active');
+      else if (btn) btn.classList.add('active');
+      
+      const pop = document.getElementById('langMenuPop');
+      if (pop) pop.style.display = 'none';
+
+      const dict = I18N_LANDING[lang] || I18N_LANDING.ja;
+
+      // 1. Replace all data-i18n
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        // 認証状態と連動するトップボタンは syncViewByAuthStatus で制御するため個別除外
+        if (el.id === 'topAuthBtn' || el.id === 'topUnlockBtn' || el.id === 'topDashboardBtn') return;
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) {
+          el.innerHTML = dict[key];
+        }
+      });
+
+      // 2. Replace all data-i18n-ph (placeholder)
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.getAttribute('data-i18n-ph');
+        if (dict[key]) {
+          el.setAttribute('placeholder', dict[key]);
+        }
+      });
+
+      // 3. Update current explorer tab stage
+      switchExplorerTab(currentExplorerIdx);
+
+      // 4. 認証状態の最新同期（ボタンの多重表示や文言不整合を防止）
+      if (typeof syncViewByAuthStatus === 'function') {
+        syncViewByAuthStatus();
+      }
+      applyDemoLanguageDefaults(lang);
+    }
+
+    function bindDemoFieldEdits() {
+      if (window.__demoEditBound) return;
+      window.__demoEditBound = true;
+      ['demoXUsername', 'demoTargetUrl'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => { el.dataset.userEdited = '1'; });
+      });
+    }
+
+    function applyDemoLanguageDefaults(lang) {
+      bindDemoFieldEdits();
+      const handle = document.getElementById('demoXUsername');
+      const url = document.getElementById('demoTargetUrl');
+      if (!handle || !url || handle.dataset.userEdited === '1' || url.dataset.userEdited === '1') return;
+      if (lang === 'en') {
+        handle.value = '@VeloxSystemsHQ';
+        url.value = 'https://veloxpostapp.com/?lang=en';
+      } else {
+        handle.value = '@VeloxSystemsV4';
+        url.value = 'https://veloxpostapp.com';
+      }
+    }
+
+    function initLandingLanguage() {
+      const queryLang = new URLSearchParams(window.location.search).get('lang');
+      const cookie = document.cookie.split('; ').find(row => row.startsWith('velox_lang='));
+      const cookieLang = cookie ? decodeURIComponent(cookie.split('=')[1] || '') : '';
+      const saved = localStorage.getItem('velox_lang');
+      let lang = 'ja';
+      if (queryLang === 'en' || queryLang === 'ja') {
+        lang = queryLang;
+      } else if (cookieLang === 'en' || cookieLang === 'ja') {
+        lang = cookieLang;
+      } else if (saved === 'en' || saved === 'ja') {
+        lang = saved;
+      } else {
+        // Detect browser language: If Japanese, default to ja. Otherwise, default to en!
+        const navLang = (navigator.languages && navigator.languages.length ? navigator.languages[0] : (navigator.language || navigator.userLanguage || '')).toLowerCase();
+        lang = navLang.startsWith('ja') ? 'ja' : 'en';
+      }
+      selectSiteLanguage(lang);
+    }
+
+    function startSocialLogin(provider) {
+      if (provider === 'google') {
+        window.location.href = '/api/auth/google';
+      } else if (provider === 'twitter') {
+        window.location.href = '/api/auth/twitter';
+      }
+    }
+
+    initLandingLanguage();
+    setTimeout(() => { 
+      if (typeof loadJobs === 'function') loadJobs(); 
+    }, 1200);
+  </script>
+</body>
+</html>

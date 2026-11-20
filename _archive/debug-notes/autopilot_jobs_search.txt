@@ -1,0 +1,82 @@
+src/autonomous_promo_ai.js.bak_audit2:1212:      const oldJobsSnap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js.bak_audit2:1250:      const jobRef = db.collection('autopilot_jobs').doc(job.jobId);
+src/autonomous_promo_ai.js.bak_audit2:1256:      const pendingSnap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js.bak_audit2:1322:  const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/autonomous_promo_ai.js.bak_audit2:1433:  const snap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js.bak_audit2:1463:    const jobRef = db.collection('autopilot_jobs').doc(job.id);
+src/official_api_client.js:1061:          const postedJobsSnap = await db.collection('autopilot_jobs')
+src/ai_deliberation_council.js:363:    const fetchPromise = db.collection('autopilot_jobs')
+src/ai_deliberation_council.js:923: * ユーザーが承認した合議結果を正式スケジュールキュー（autopilot_jobs）へコミット
+src/ai_deliberation_council.js:1008:  await targetDb.collection('autopilot_jobs').doc(jobId).set(jobData);
+src/ab_experiment_engine.js:89: * @param {Object} job - autopilot_jobs ドキュメント
+src/ab_experiment_engine.js:162: * @param {Array<Object>} allJobs - 対象期間の autopilot_jobs ドキュメント一覧
+src/hybrid_saas_routes.js:49:  const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js:353:    const oldJobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:373:    const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js:447:      const pJobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:491:    const stuckSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:518:      const snap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1234:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1298:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1327:          const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js:1387:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js:1420:      const jobSnap = await db.collection('autopilot_jobs').doc(jobId).get();
+src/hybrid_saas_routes.js:1506:        const snap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1512:        const snap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1518:        const snap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1527:          db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1531:          db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1535:          db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1539:          db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1814:      const userJobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1821:      const systemJobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js:1942:      const jobSnap = await db.collection('autopilot_jobs').doc(jobId).get();
+src/ai_deliberation_council.js.bak_trend:232:    const fetchPromise = db.collection('autopilot_jobs')
+src/ai_deliberation_council.js.bak_trend:714: * ユーザーが承認した合議結果を正式スケジュールキュー（autopilot_jobs）へコミット
+src/ai_deliberation_council.js.bak_trend:784:  await db.collection('autopilot_jobs').doc(jobId).set(jobData);
+src/reply_promo_engine.js:327:    // 2. autopilot_jobs から直近 post された公式ポストを取得
+src/reply_promo_engine.js:328:    const jSnap = await db.collection('autopilot_jobs')
+src/reply_promo_engine.js:789:    const snap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js:1701:      const oldJobsSnap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js:1739:      const jobRef = db.collection('autopilot_jobs').doc(job.jobId);
+src/autonomous_promo_ai.js:1745:      const pendingSnap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js:1814:  const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/autonomous_promo_ai.js:1927:  const snap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js:1961:    const jobRef = db.collection('autopilot_jobs').doc(job.id);
+src/autonomous_promo_ai.js:2160:    const postedJobsSnap = await db.collection('autopilot_jobs')
+src/autonomous_promo_ai.js:2593:  const jobsSnap = await db.collection('autopilot_jobs')
+src/shop.js:2891:    const jobsSnap = await db.collection('autopilot_jobs')
+src/ai_deliberation_council.js.bak_index:248:    const fetchPromise = db.collection('autopilot_jobs')
+src/ai_deliberation_council.js.bak_index:731: * ユーザーが承認した合議結果を正式スケジュールキュー（autopilot_jobs）へコミット
+src/ai_deliberation_council.js.bak_index:801:  await db.collection('autopilot_jobs').doc(jobId).set(jobData);
+src/hybrid_saas_routes.js.bak_audit:37:      const snap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:135:        const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:479:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:518:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:679:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:718:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:786:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:825:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:910:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:949:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1019:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1058:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1124:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1163:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1227:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1266:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1319:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1358:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1378:      const snap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1438:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1477:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1541:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1580:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1694:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1733:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/hybrid_saas_routes.js.bak_audit:1805:      const jobsSnap = await db.collection('autopilot_jobs')
+src/hybrid_saas_routes.js.bak_audit:1844:      const jobRef = db.collection('autopilot_jobs').doc(jobId);
+src/collective_intelligence.js:122:      const jSnap = await activeDb.collection('autopilot_jobs').where('status', '==', 'posted').limit(500).get();
+src/ai_deliberation_council.js.bak:72:    const fetchPromise = db.collection('autopilot_jobs')
+src/ai_deliberation_council.js.bak:427: * ユーザーが承認した合議結果を正式スケジュールキュー（autopilot_jobs）へコミット
+src/ai_deliberation_council.js.bak:473:  await db.collection('autopilot_jobs').doc(jobId).set(jobData);

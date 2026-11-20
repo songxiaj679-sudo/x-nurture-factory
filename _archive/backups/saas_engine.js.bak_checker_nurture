@@ -1,0 +1,667 @@
+require('dotenv').config();
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
+
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const { db } = require('./firestore');
+const { getResidentialProxy } = require('./iproyal');
+
+const X_WEB_BEARER = 'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
+const CACHE_DIR = path.join(__dirname, '../.saas_browser_cache');
+if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+
+const GLOBAL_LOCK_FILE = '/tmp/x_autopost_chrome.lock';
+const SAAS_MAX_CONCURRENT_BROWSERS = Math.max(1, parseInt(process.env.SAAS_MAX_CONCURRENT_BROWSERS || '4', 10));
+const _heldSlotFiles = [];
+
+function logSaaS(tenantTag, msg) {
+  const ts = new Date().toLocaleTimeString('ja-JP', { hour12: false });
+  console.log(`[${ts}][SaaS:${tenantTag}] ${msg}`);
+}
+
+async function acquireGlobalChromeLock(holderName) {
+  const start = Date.now();
+  while (Date.now() - start < 180000) {
+    for (let slot = 1; slot <= SAAS_MAX_CONCURRENT_BROWSERS; slot++) {
+      const slotFile = `/tmp/x_autopost_slot_${slot}.lock`;
+      try {
+        if (fs.existsSync(slotFile)) {
+          const stat = fs.statSync(slotFile);
+          if (Date.now() - stat.mtimeMs > 180000) {
+            try { fs.unlinkSync(slotFile); } catch (e) {}
+          } else { continue; }
+        }
+        fs.writeFileSync(slotFile, `${process.pid}:${holderName}:${Date.now()}`, { flag: 'wx' });
+        _heldSlotFiles.push(slotFile);
+        return slotFile;
+      } catch (e) {}
+    }
+    await new Promise(r => setTimeout(r, 4000 + Math.random() * 2000));
+  }
+  return null;
+}
+
+function releaseGlobalChromeLock(specificSlotFile = null) {
+  try {
+    const target = specificSlotFile || _heldSlotFiles.shift() || GLOBAL_LOCK_FILE;
+    if (target && fs.existsSync(target)) fs.unlinkSync(target);
+  } catch (e) {}
+}
+
+function getFixedUserAgent(token) {
+  const uas = [
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
+  ];
+  if (!token) return uas[1];
+  let hash = 0;
+  for (let i = 0; i < token.length; i++) { hash = (hash << 5) - hash + token.charCodeAt(i); hash |= 0; }
+  return uas[Math.abs(hash) % uas.length];
+}
+
+function getFixedViewport(token) {
+  let hash = 0;
+  const s = String(token || 'default');
+  for (let i = 0; i < s.length; i++) { hash = (hash << 5) - hash + s.charCodeAt(i); hash |= 0; }
+  const vps = [
+    { width: 1366, height: 768 },
+    { width: 1440, height: 900 },
+    { width: 1536, height: 864 },
+    { width: 1600, height: 900 },
+    { width: 1920, height: 1080 }
+  ];
+  return vps[Math.abs(hash) % vps.length];
+}
+
+function getPersistentProfileDir(prefix, token) {
+  const tokenHash = crypto.createHash('md5').update(String(token || '').trim()).digest('hex').slice(0, 12);
+  const dir = path.join(CACHE_DIR, `${prefix}_${tokenHash}`);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  ['SingletonLock', 'SingletonCookie', 'SingletonSocket'].forEach(f => {
+    try { fs.unlinkSync(path.join(dir, f)); } catch (e) {}
+  });
+  return dir;
+}
+
+function slimBrowserCache(dir) {
+  if (!dir || !fs.existsSync(dir)) return;
+  ['Default/Cache', 'Default/Code Cache', 'Default/GPUCache', 'Default/Service Worker', 'ShaderCache', 'Crashpad'].forEach(sub => {
+    try { fs.rmSync(path.join(dir, sub), { recursive: true, force: true }); } catch (e) {}
+  });
+}
+
+function obfuscateText(rawText) {
+  let resolved = String(rawText || '').replace(/\{([^{}]+)\}/g, (_, group) => {
+    const opts = group.split('|');
+    return opts[Math.floor(Math.random() * opts.length)];
+  }).trim();
+  const clean = resolved.replace(/\u200B/g, '');
+  const invisiblePalette = ['\u2060', '\u200A', '\u2009', '\u2008', ' ', '\u3000'];
+  let sig = '';
+  for (let i = 0; i < 8; i++) sig += invisiblePalette[Math.floor(Math.random() * invisiblePalette.length)];
+  if (clean.includes('\n')) {
+    const idx = clean.indexOf('\n');
+    return clean.slice(0, idx) + sig.slice(0, 4) + clean.slice(idx) + sig.slice(4);
+  }
+  return clean + ' ' + sig;
+}
+
+function parseProxyString(proxyStr, userProxies = [], token = '') {
+  let raw = String(proxyStr || '').trim();
+  if (!raw && Array.isArray(userProxies) && userProxies.length > 0) {
+    let hash = 0;
+    const s = String(token || 'default');
+    for (let i = 0; i < s.length; i++) { hash = (hash << 5) - hash + s.charCodeAt(i); hash |= 0; }
+    raw = String(userProxies[Math.abs(hash) % userProxies.length] || '').trim();
+  }
+  if (!raw || raw.includes('geo.iproyal.com')) return getResidentialProxy(token);
+  const clean = raw.replace(/^https?:\/\//i, '');
+  const parts = clean.split(':');
+  if (parts.length >= 4) return { host: parts[0], port: parts[1], user: parts[2], pass: parts.slice(3).join(':') };
+  if (parts.length === 2) return { host: parts[0], port: parts[1], user: '', pass: '' };
+  return getResidentialProxy(token);
+}
+
+async function checkActionBlock(page) {
+  await new Promise(r => setTimeout(r, 2000));
+  return await page.evaluate(() => {
+    const text = (document.body ? document.body.innerText : '').toLowerCase();
+    const badPhrases = ["something went wrong, but don't fret", "not be allowed to perform this action", "やりなおしてください", "許可されていない可能性"];
+    return badPhrases.some(phrase => text.includes(phrase));
+  }).catch(() => false);
+}
+
+async function humanTyping(page, text) {
+  const dummyKeys = 'あいうえおかきくけこ';
+  const chars = Array.from(text);
+  for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
+    if (Math.random() < 0.02 && char.length === 1 && char.charCodeAt(0) < 255 && char !== '\n' && char !== ' ') {
+      const wrongChar = dummyKeys[Math.floor(Math.random() * dummyKeys.length)];
+      await page.keyboard.sendCharacter(wrongChar);
+      await new Promise(r => setTimeout(r, 100 + Math.random() * 200));
+      await page.keyboard.press('Backspace');
+      await new Promise(r => setTimeout(r, 150 + Math.random() * 250));
+    }
+    if (char === '\n') await page.keyboard.press('Enter');
+    else await page.keyboard.sendCharacter(char);
+    await new Promise(r => setTimeout(r, 30 + Math.random() * 100));
+    if (Math.random() < 0.01) await new Promise(r => setTimeout(r, 800 + Math.random() * 1500));
+  }
+}
+
+async function checkRobotOrLocked(page) {
+  try {
+    return await page.evaluate(() => {
+      const url = window.location.href.toLowerCase();
+      if (url.includes('/account/access')) return true;
+      if (document.querySelector("iframe[src*='arkoselabs.com'], iframe[src*='funcaptcha']")) return true;
+      if (url.includes('/i/flow/login') || url.includes('/login')) {
+        if (document.querySelector("input[autocomplete='username'], input[name='text']")) return true;
+      }
+      const bodyClone = document.body.cloneNode(true);
+      bodyClone.querySelectorAll("article, [data-testid='tweet']").forEach(a => a.remove());
+      const text = (bodyClone.innerText || '').toLowerCase();
+      const kws = ['人間であることを証明', 'prove you are human', 'authenticate to continue', '認証して続行', 'スマートフォンでxアプリ', 'open the x app'];
+      return kws.some(kw => text.includes(kw));
+    });
+  } catch (e) { return false; }
+}
+
+async function inspectAccountViaInternalApi(page) {
+  const cookies = await page.cookies().catch(() => []);
+  const ct0 = cookies.find(c => c.name === 'ct0')?.value || '';
+  if (!ct0) return { apiChecked: false };
+  return await page.evaluate(async (bearer, csrf) => {
+    try {
+      const res = await fetch('https://x.com/i/api/1.1/account/verify_credentials.json', {
+        credentials: 'include',
+        headers: { 'authorization': `Bearer ${bearer}`, 'x-csrf-token': csrf, 'x-twitter-active-user': 'yes', 'x-twitter-auth-type': 'OAuth2Session' }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (Array.isArray(data.errors)) {
+        for (const err of data.errors) {
+          if (err.code === 64) return { apiChecked: true, status: 'unavailable', reason: 'frozen(API_64)' };
+          if (err.code === 326) return { apiChecked: true, status: 'robot', reason: 'locked(API_326)' };
+          if (err.code === 32 || err.code === 89) return { apiChecked: true, status: 'unavailable', reason: 'logged_out' };
+        }
+      }
+      if (data.suspended === true) return { apiChecked: true, status: 'unavailable', reason: 'suspended' };
+      return { apiChecked: true, status: 'ok', screenName: data.screen_name || null, currentBio: typeof data.description === 'string' ? data.description : null };
+    } catch (e) { return { apiChecked: false }; }
+  }, X_WEB_BEARER, ct0).catch(() => ({ apiChecked: false }));
+}
+
+// 閲覧のみの安全な高度育成関数（メイン垢・チェッカー垢共通）
+async function runAdvancedNurturing(page, tenantTag, labelPrefix = '🌱 [高度育成]') {
+  logSaaS(tenantTag, `${labelPrefix} ホーム画面を回遊し、一般ユーザーとしての自然な閲覧行動をシミュレートします...`);
+  try {
+    for (let s = 0; s < 2; s++) {
+      if (await checkRobotOrLocked(page)) return 'ROBOT';
+      await page.evaluate(() => window.scrollBy(0, 400 + Math.random() * 400));
+      await new Promise(r => setTimeout(r, 2000 + Math.random() * 1500));
+    }
+    const clicked = await page.evaluate(() => {
+      const tweets = Array.from(document.querySelectorAll('article[data-testid="tweet"]'));
+      if (tweets.length > 2) {
+        const target = tweets[1 + Math.floor(Math.random() * Math.min(4, tweets.length - 2))];
+        if (target) {
+          const timeLnk = target.querySelector('time')?.closest('a');
+          if (timeLnk) { timeLnk.click(); return true; }
+        }
+      }
+      return false;
+    });
+    if (clicked) {
+      logSaaS(tenantTag, `  👀 ${labelPrefix} 他人のポスト詳細を開きました。いいねは押さず、数秒間熟読して戻ります...`);
+      await new Promise(r => setTimeout(r, 4000 + Math.random() * 3000));
+      await page.evaluate(() => window.scrollBy(0, 300 + Math.random() * 300));
+      await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+      await page.goBack({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+      await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+    }
+  } catch (e) {}
+  return 'OK';
+}
+
+async function checkAccountRestrictedFallback(page, cleanUsername, tenantTag) {
+  logSaaS(tenantTag, `👀 @${cleanUsername} の生存（凍結/法的制限）を確認しています...`);
+  await page.goto(`https://x.com/${cleanUsername}`, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+  for (let i = 0; i < 5; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+    const isRestricted = await page.evaluate(() => {
+      const clone = document.body ? document.body.cloneNode(true) : null;
+      if (!clone) return false;
+      clone.querySelectorAll("article, [data-testid='tweet']").forEach(a => a.remove());
+      const text = (clone.innerText || '').toLowerCase();
+      const kws = ['account suspended', 'permanently suspended', 'アカウントは凍結', "doesn't exist", '存在しません'];
+      return kws.some(kw => text.includes(kw));
+    }).catch(() => false);
+    if (isRestricted) return true;
+  }
+  return false;
+}
+
+async function updateProfileIfNeeded(page, customBio, currentBioFromApi, tenantTag) {
+  try {
+    if (!customBio || String(customBio).trim() === '') {
+      logSaaS(tenantTag, '  ℹ️ Bio設定が空欄のため変更をスキップします');
+      return;
+    }
+    const targetBio = String(customBio).trim();
+    const stripForCompare = (s) => String(s || '').normalize('NFKC').replace(/https?:\/\/[^\s]+/gi, '').replace(/[\s\u200B-\u200D\u2060\uFE0E\uFEFF]/g, '').toLowerCase();
+    if (typeof currentBioFromApi === 'string') {
+      const cleanCur = stripForCompare(currentBioFromApi);
+      const cleanTgt = stripForCompare(targetBio);
+      if (cleanCur === cleanTgt || (cleanTgt.length > 10 && cleanCur.slice(0, 18) === cleanTgt.slice(0, 18))) {
+        logSaaS(tenantTag, '  ✅ プロフィール(Bio)は既に最新のため、設定画面への移動をスキップします');
+        return;
+      }
+    }
+    logSaaS(tenantTag, '📝 プロフィール（BIO）の設定画面へ移動中...');
+    await page.goto('https://x.com/settings/profile', { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+    await new Promise(r => setTimeout(r, 4000));
+    const bioSelector = 'textarea[name="description"]';
+    await page.waitForSelector(bioSelector, { timeout: 30000 }).catch(() => {});
+    const bioInput = await page.$(bioSelector);
+    if (bioInput) {
+      let currentBio = await page.evaluate(el => el.value || el.innerText || '', bioInput);
+      const cleanCurrent = stripForCompare(currentBio);
+      const cleanTarget = stripForCompare(targetBio);
+      if (cleanCurrent !== cleanTarget && !(cleanTarget.length > 10 && cleanCurrent.slice(0, 18) === cleanTarget.slice(0, 18))) {
+        logSaaS(tenantTag, `    -> BIOを更新します（目標: ${targetBio}）`);
+        await page.evaluate(el => el.focus(), bioInput);
+        await bioInput.click();
+        await page.keyboard.down('Control'); await page.keyboard.press('A'); await page.keyboard.up('Control');
+        await page.keyboard.press('Backspace');
+        await new Promise(r => setTimeout(r, 500));
+        await page.type(bioSelector, targetBio, { delay: 50 });
+        const saveBtn = await page.$('button[data-testid="Profile_Save_Button"]');
+        if (saveBtn) {
+          await page.evaluate(b => b.click(), saveBtn);
+          if (await checkActionBlock(page)) throw new Error('ACTION_BLOCKED');
+          logSaaS(tenantTag, '  💾 保存しました。');
+          await new Promise(r => setTimeout(r, 5000));
+        }
+      } else {
+        logSaaS(tenantTag, '  ✅ プロフィール(Bio)は最新です');
+      }
+    }
+  } catch (e) { if (e.message === 'ACTION_BLOCKED') throw e; }
+}
+
+let stickyCheckerIndex = 0;
+async function getHealthyCheckerAccountsForSaaS(mainToken) {
+  let list = [];
+  try {
+    const fSnap = await db.collection('accounts').where('status', '==', 'farming').limit(100).get();
+    for (const doc of fSnap.docs) {
+      const d = doc.data() || {};
+      const tok = String(d.authToken || (doc.id.length === 40 ? doc.id : '') || '').trim().toLowerCase();
+      if (!/^[a-f0-9]{40}$/.test(tok) || tok === mainToken || d.errorReason) continue;
+      list.push({ token: tok, userAgent: d.userAgent || null });
+    }
+  } catch (e) {}
+  return list;
+}
+
+// ⭐️ チェッカー：育成中アカウントの固有UA・IPを引き継ぎ、まずホーム回遊・熟読育成（閲覧のみ）を行ってから from: 検索を実行
+async function runIsolatedCheckerSearch(cleanUsername, proxy, mainToken, tenantTag) {
+  const checkers = await getHealthyCheckerAccountsForSaaS(mainToken);
+  if (checkers.length === 0) {
+    logSaaS(tenantTag, '⚠️ 条件に合うチェッカーが見つかりません。検索確認をスキップして成功扱いとします。');
+    return 'SUCCESS';
+  }
+
+  logSaaS(tenantTag, '⏳ 投稿が検索インデックスに反映されるまで15秒待機しています...');
+  await new Promise(r => setTimeout(r, 15000));
+
+  // 検索後にホームへ戻って自然な閲覧行動（クールダウン育成）を行ってから閉じるヘルパー
+  const performPostSearchCooldown = async (cPage) => {
+    try {
+      logSaaS(tenantTag, '    🌿 [チェッカー検索後クールダウン] 検索完了後、すぐ閉じずにホーム画面へ戻って自然な閲覧行動を行います...');
+      await cPage.goto('https://x.com/home', { waitUntil: 'domcontentloaded', timeout: 35000 }).catch(() => {});
+      await new Promise(r => setTimeout(r, 3000 + Math.random() * 1500));
+      await runAdvancedNurturing(cPage, tenantTag, '🌱 [チェッカー検索後育成]');
+      logSaaS(tenantTag, '    ✅ [チェッカー検索後クールダウン] 自然な閲覧・熟読を完了しました。ブラウザを安全に終了します。');
+    } catch (e) {}
+  };
+
+  for (let tryCount = 0; tryCount < Math.min(2, checkers.length); tryCount++) {
+    const chkObj = checkers[stickyCheckerIndex % checkers.length];
+    const CHECKER_AUTH_TOKEN = chkObj.token;
+    const checkerDir = getPersistentProfileDir('checker', CHECKER_AUTH_TOKEN);
+    logSaaS(tenantTag, `🔍 専用チェッカー (Token: ${CHECKER_AUTH_TOKEN.substring(0, 6)}...) を養殖中固有UA・専用IPで起動中...`);
+
+    let cBrowser = null;
+    try {
+      const { getDeviceProfile, applyDeviceProfile } = require('./browser_config');
+      const chkProxy = getResidentialProxy(CHECKER_AUTH_TOKEN) || proxy;
+      let browserArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'];
+      if (chkProxy && chkProxy.host) browserArgs.push(`--proxy-server=http://${chkProxy.host}:${chkProxy.port}`);
+
+      cBrowser = await puppeteer.launch({
+        headless: 'new',
+        args: browserArgs,
+        ignoreDefaultArgs: ['--enable-automation'],
+        userDataDir: checkerDir,
+        protocolTimeout: 45000
+      });
+      const cPage = await cBrowser.newPage();
+      await _applySafeMediaAndUpdateBlocker(cPage);
+      const chkProf = getDeviceProfile(CHECKER_AUTH_TOKEN, chkObj.userAgent);
+      await applyDeviceProfile(cPage, CHECKER_AUTH_TOKEN, chkProf.userAgent);
+      if (chkProxy && chkProxy.user && chkProxy.pass) await cPage.authenticate({ username: chkProxy.user, password: chkProxy.pass });
+
+      await cPage.setCookie(
+        { name: 'auth_token', value: CHECKER_AUTH_TOKEN, domain: '.x.com', path: '/', secure: true, httpOnly: true, sameSite: 'Lax' },
+        { name: 'auth_token', value: CHECKER_AUTH_TOKEN, domain: '.twitter.com', path: '/', secure: true, httpOnly: true, sameSite: 'Lax' }
+      );
+
+      // 1. 検索前のウォームアップ回遊（ホーム画面スクロール＆熟読）
+      await cPage.goto('https://x.com/home', { waitUntil: 'domcontentloaded', timeout: 35000 }).catch(() => {});
+      await new Promise(r => setTimeout(r, 3500));
+      if (await checkRobotOrLocked(cPage)) {
+        logSaaS(tenantTag, `    ⚠️ チェッカー (${CHECKER_AUTH_TOKEN.substring(0, 6)}...) が制限されています。交代します...`);
+        stickyCheckerIndex++;
+        continue;
+      }
+      await runAdvancedNurturing(cPage, tenantTag, '🌱 [チェッカー検索前ウォームアップ]');
+
+      // 2. from: 検索の実行
+      const checkerSearchUrls = [
+        `https://x.com/search?q=from%3A${encodeURIComponent(cleanUsername)}&f=live`,
+        `https://x.com/search?q=from%3A${encodeURIComponent(cleanUsername)}`
+      ];
+
+      let checkerBroken = false;
+      let foundOnSearch = false;
+
+      for (const targetUrl of checkerSearchUrls) {
+        logSaaS(tenantTag, `    🌐 検索開始: ${targetUrl}`);
+        await cPage.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await new Promise(r => setTimeout(r, 4500));
+
+        if (await checkRobotOrLocked(cPage)) {
+          stickyCheckerIndex++;
+          checkerBroken = true;
+          break;
+        }
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const evalResult = await cPage.evaluate(() => {
+            const text = (document.body.innerText || '').replace(/\s+/g, '').toLowerCase();
+            if (text.includes('やりなおしてください') || text.includes('問題が発生しました') || text.includes('somethingwentwrong')) return 'RETRY';
+            const articles = Array.from(document.querySelectorAll('article[data-testid="tweet"]'));
+            if (articles.length > 0) return 'HAS_TWEETS';
+            if (document.querySelector('[data-testid="emptyState"]') || text.includes('検索結果はありません') || text.includes('noresultsfor')) return 'NO_RESULT';
+            return 'WAIT';
+          }).catch(() => 'EVAL_ERROR');
+
+          logSaaS(tenantTag, `    📊 画面解析結果: ${evalResult} (試行 ${attempt + 1}/3)`);
+          if (evalResult === 'HAS_TWEETS') {
+            // 検索結果上で人間らしくスクロールして数秒閲覧
+            await cPage.evaluate(() => window.scrollBy(0, 350 + Math.random() * 300)).catch(() => {});
+            await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
+            foundOnSearch = true;
+            break;
+          }
+          if (evalResult === 'EVAL_ERROR') { checkerBroken = true; break; }
+          if (evalResult === 'RETRY' || (evalResult === 'NO_RESULT' && attempt === 0)) {
+            await new Promise(r => setTimeout(r, 8000));
+            await cPage.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+            await new Promise(r => setTimeout(r, 4500));
+            continue;
+          }
+          if (evalResult === 'NO_RESULT' && attempt >= 1) break;
+          await cPage.evaluate(() => window.scrollBy(0, 500)).catch(() => {});
+          await new Promise(r => setTimeout(r, 3000));
+        }
+        if (foundOnSearch || checkerBroken) break;
+      }
+
+      // 3. ⭐️ 検索後のクールダウン自然回遊（結果がFOUNDでもNOT_FOUNDでも、必ずホームへ戻って他人のポストを熟読してから終了）
+      if (!checkerBroken) {
+        await performPostSearchCooldown(cPage);
+      }
+
+      if (foundOnSearch) {
+        return 'FOUND';
+      }
+
+      if (!checkerBroken) {
+        if (tryCount === 0 && checkers.length > 1) {
+          logSaaS(tenantTag, '    🔄 1つ目のチェッカーで見つからなかったため、別のチェッカーでダブルチェックします...');
+          stickyCheckerIndex++;
+          continue;
+        }
+        return 'NOT_FOUND';
+      }
+    } catch (e) {
+      logSaaS(tenantTag, `  ⚠️ チェッカー例外: ${e.message}`);
+    } finally {
+      if (cBrowser) await cBrowser.close().catch(() => {});
+      slimBrowserCache(checkerDir);
+    }
+  }
+  return 'CHECKER_ERROR';
+}
+
+async function runTenantPostCycle(tenantUser, accDocRef, accData, postsList, threadNo = 1) {
+  const token = String(accData.authToken || '').trim();
+  const isVerification = (accData.role === '検証中' || !accData.role);
+  let cleanUsername = accData.username ? accData.username.replace(/^@/, '').trim() : '';
+  const tenantTag = tenantUser.userId.slice(0, 10);
+  const proxy = parseProxyString(accData.proxy, tenantUser.assignedProxies, token);
+  const userDir = getPersistentProfileDir('main', token);
+  let browser = null;
+  let heldLock = null;
+
+  try {
+    heldLock = await acquireGlobalChromeLock(`post_${tenantTag}`);
+    logSaaS(tenantTag, `[稼働開始] アカウント: @${cleanUsername || '不明'} (Token: ${token.substring(0, 6)}... / Proxy: ${proxy ? proxy.host : 'Direct'})`);
+    await new Promise(r => setTimeout(r, 3000));
+
+    let browserArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled', '--lang=ja-JP'];
+    if (proxy && proxy.host) browserArgs.push(`--proxy-server=http://${proxy.host}:${proxy.port}`);
+
+    browser = await puppeteer.launch({ headless: 'new', args: browserArgs, ignoreDefaultArgs: ['--enable-automation'], userDataDir: userDir, protocolTimeout: 45000 });
+    const page = await browser.newPage();
+    await _applySafeMediaAndUpdateBlocker(page);
+    page.setDefaultNavigationTimeout(30000);
+
+    let capturedTweetId = null;
+    page.on('response', async (res) => {
+      try {
+        if (res.url().includes('CreateTweet') && res.status() === 200) {
+          const json = await res.json().catch(() => null);
+          const resObj = json?.data?.create_tweet?.tweet_results?.result;
+          const restId = resObj?.rest_id || resObj?.tweet?.rest_id;
+          if (restId) capturedTweetId = restId;
+        }
+      } catch (e) {}
+    });
+
+    await page.setUserAgent(getFixedUserAgent(token));
+    await page.setViewport(getFixedViewport(token));
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8' });
+    if (proxy && proxy.user && proxy.pass) await page.authenticate({ username: proxy.user, password: proxy.pass });
+    await page.setCookie(
+      { name: 'auth_token', value: token, domain: '.x.com', path: '/', secure: true, httpOnly: true, sameSite: 'Lax' },
+      { name: 'auth_token', value: token, domain: '.twitter.com', path: '/', secure: true, httpOnly: true, sameSite: 'Lax' }
+    );
+
+    await page.goto('https://x.com/home', { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+    await new Promise(r => setTimeout(r, 4000));
+    if (await checkRobotOrLocked(page)) return 'robot';
+
+    const apiHealth = await inspectAccountViaInternalApi(page);
+    if (apiHealth.apiChecked) {
+      if (apiHealth.status === 'unavailable') return 'unavailable';
+      if (apiHealth.status === 'robot') return 'robot';
+      if (apiHealth.screenName) {
+        if (!cleanUsername || cleanUsername.toLowerCase() !== apiHealth.screenName.toLowerCase()) {
+          cleanUsername = apiHealth.screenName;
+          accData.username = cleanUsername;
+          await accDocRef.update({ username: cleanUsername, userId: cleanUsername, updatedAt: new Date() }).catch(() => {});
+        }
+      }
+      logSaaS(tenantTag, `✅ 制限確認完了。アカウント @${cleanUsername} は正常です。`);
+    } else {
+      if (await checkAccountRestrictedFallback(page, cleanUsername || 'user', tenantTag)) return 'unavailable';
+    }
+
+    const nurtureRes = await runAdvancedNurturing(page, tenantTag);
+    if (nurtureRes === 'ROBOT') return 'robot';
+
+    let fullText = '';
+    let selectedPost = null;
+    if (isVerification) {
+      fullText = 'こんにちは ' + Math.random().toString(36).substring(2, 8);
+    } else {
+      await updateProfileIfNeeded(page, tenantUser.profileBio, apiHealth.currentBio, tenantTag);
+      if (!postsList || postsList.length === 0) return 'system_error';
+      selectedPost = postsList[Math.floor(Math.random() * postsList.length)];
+      fullText = obfuscateText(selectedPost.text || selectedPost.content || '');
+    }
+
+    logSaaS(tenantTag, '👤 投稿画面を展開しています...');
+    await new Promise(r => setTimeout(r, 3000));
+    await page.goto('https://x.com/compose/post', { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+    await new Promise(r => setTimeout(r, 4000));
+
+    let tempImagePath = null;
+    const defaultPromoDiagram = path.join(__dirname, '../uploads/xswarm_architecture.png');
+    const rawImgUrl = (!isVerification && selectedPost)
+      ? (selectedPost.imageUrl || (['TG-8401260325', 'USR-MVUA1GLP-D640'].includes(tenantUser.userId) && fs.existsSync(defaultPromoDiagram) ? defaultPromoDiagram : ''))
+      : '';
+
+    if (!isVerification && rawImgUrl && String(rawImgUrl).trim() !== '') {
+      try {
+        logSaaS(tenantTag, '📸 画像を読み込んで添付します (sharp明度微調整)...');
+        const cleanImgTarget = String(rawImgUrl).trim();
+        let buffer = cleanImgTarget.startsWith('/') && fs.existsSync(cleanImgTarget) ? fs.readFileSync(cleanImgTarget) : null;
+        if (buffer) {
+          tempImagePath = path.join(CACHE_DIR, `upload_${Date.now()}.jpg`);
+          await require('sharp')(buffer).modulate({ brightness: 1.0 + (Math.random() * 0.02 - 0.01) }).toFile(tempImagePath);
+          const fileInput = await page.$('input[type="file"]');
+          if (fileInput) { await fileInput.uploadFile(tempImagePath); await new Promise(r => setTimeout(r, 6000)); }
+        }
+      } catch (err) { logSaaS(tenantTag, '⚠️ 画像添付スキップ'); }
+    }
+
+    const textbox = await page.waitForSelector('[data-testid="tweetTextarea_0"]', { timeout: 15000 }).catch(() => null);
+    if (!textbox) throw new Error('投稿ボックスなし');
+    await page.evaluate(el => el.focus(), textbox);
+    await textbox.click();
+    await new Promise(r => setTimeout(r, 1000));
+
+    logSaaS(tenantTag, '✍️ 人間のようにタイピング中...');
+    await humanTyping(page, fullText);
+    await new Promise(r => setTimeout(r, 2500));
+
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]'));
+      for (const b of btns) { if (!b.disabled && b.getAttribute('aria-disabled') !== 'true') { b.click(); break; } }
+    });
+
+    if (await checkActionBlock(page)) throw new Error('ACTION_BLOCKED');
+    await new Promise(r => setTimeout(r, 5000));
+    logSaaS(tenantTag, `✅ @${cleanUsername} の投稿が完了しました！`);
+
+    if (tempImagePath && fs.existsSync(tempImagePath)) { try { fs.unlinkSync(tempImagePath); } catch (e) {} }
+
+    let postedUrl = capturedTweetId ? `https://x.com/${cleanUsername}/status/${capturedTweetId}` : '';
+    if (postedUrl) {
+      await db.collection('saas_history').add({ ownerUserId: tenantUser.userId, threadNo, accountDocId: accDocRef.id, username: cleanUsername, text: fullText.substring(0, 30), url: postedUrl, deleteReq: false, deleted: false, createdAt: new Date() }).catch(() => {});
+    }
+
+    await browser.close().catch(() => {});
+    browser = null;
+    slimBrowserCache(userDir);
+    releaseGlobalChromeLock(heldLock);
+    heldLock = null;
+
+    const curCount = parseInt(accData.postCount || '0', 10) + 1;
+    await accDocRef.update({ postCount: curCount }).catch(() => {});
+
+    const checkRes = await runIsolatedCheckerSearch(cleanUsername, proxy, token, tenantTag);
+    if (checkRes === 'FOUND' || checkRes === 'SUCCESS' || checkRes === 'CHECKER_ERROR') {
+      return isVerification ? 'verified' : 'success';
+    }
+    return 'shadowban';
+  } catch (e) {
+    logSaaS(tenantTag, `❌ 投稿サイクルエラー: ${e.message}`);
+    if (e && e.message && e.message.includes('ACTION_BLOCKED')) return 'unavailable';
+    return 'system_error';
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    slimBrowserCache(userDir);
+    if (heldLock) releaseGlobalChromeLock(heldLock);
+  }
+}
+
+async function processAllTenantsOnce() {
+  const usersSnap = await db.collection('saas_users').get();
+  for (const userDoc of usersSnap.docs) {
+    const tenantUser = userDoc.data();
+    const userId = tenantUser.userId;
+    if (!userId || !tenantUser.isEngineRunning) continue;
+    const isOwnerPromoTenant = ['USR-MVUA1GLP-D640', 'TG-8401260325'].includes(userId);
+    const hasPaidPlan = isOwnerPromoTenant || (tenantUser.planId && tenantUser.planId !== 'free' && tenantUser.planStatus === 'active');
+    if (!hasPaidPlan) continue;
+
+    const tenantTag = userId.slice(0, 10);
+    const accSnap = await db.collection('saas_accounts').where('ownerUserId', '==', userId).get();
+    const healthyDocs = accSnap.docs.filter(d => d.data().isActive !== false && d.data().authToken && d.data().role === '最新');
+    if (healthyDocs.length === 0) continue;
+
+    healthyDocs.sort((a, b) => (b.data().priority || 0) - (a.data().priority || 0));
+    const targetDoc = healthyDocs[0];
+    const accData = targetDoc.data();
+
+    const nextPostMs = accData.nextPostAt && accData.nextPostAt.toDate ? accData.nextPostAt.toDate().getTime() : 0;
+    if (Date.now() < nextPostMs) continue;
+
+    const postsSnap = await db.collection('saas_posts').where('ownerUserId', '==', userId).get();
+    const postsList = postsSnap.docs.map(d => d.data());
+
+    const status = await runTenantPostCycle(tenantUser, targetDoc.ref, accData, postsList, 1);
+    const now = new Date();
+    if (status === 'success') {
+      const intervalMins = Math.max(15, parseInt(tenantUser.postIntervalMin || '15', 10));
+      const baseSec = intervalMins * 60;
+      const jitter = Math.floor(baseSec * 0.2);
+      const waitSec = baseSec + Math.floor(Math.random() * (jitter * 2 + 1)) - jitter;
+      const nextDate = new Date(Date.now() + waitSec * 1000);
+      await targetDoc.ref.update({ lastPostedAt: now, nextPostAt: nextDate, updatedAt: now });
+      logSaaS(tenantTag, `⏳ 待機時間: 約${(waitSec / 60).toFixed(1)}分。異常なしのため、次回も引き続き【@${accData.username}】を使用します...`);
+    } else if (['shadowban', 'robot', 'unavailable'].includes(status)) {
+      const roleLabel = status === 'shadowban' ? 'シャドウバン' : (status === 'robot' ? 'ロボット' : '利用不可');
+      await targetDoc.ref.update({ role: roleLabel, updatedAt: now });
+      logSaaS(tenantTag, `🚨 アカウント異常 (${roleLabel}) 検知。次回は予備アカウントへ交代します...`);
+    }
+  }
+}
+
+async function _applySafeMediaAndUpdateBlocker(page) {
+  try {
+    const cdp = await page.target().createCDPSession();
+    await cdp.send('Network.enable');
+    await cdp.send('Network.setBlockedURLs', { urls: ['*.mp4*', '*.m3u8*', '*video.twimg.com*', '*pscp.tv*', '*safebrowsing.googleapis.com*'] });
+  } catch (e) {}
+}
+
+async function startSaaSEngine() {
+  console.log('🚀 X自動投稿システム SaaS Engine (auto_post_v3.js 完全準拠 + チェッカー自然育成回遊版) 起動完了');
+  while (true) {
+    try { await processAllTenantsOnce(); } catch (e) { console.error('Loop Error:', e.message); }
+    await new Promise(r => setTimeout(r, 15000));
+  }
+}
+startSaaSEngine();

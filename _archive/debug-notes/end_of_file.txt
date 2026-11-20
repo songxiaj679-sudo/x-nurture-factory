@@ -1,0 +1,37 @@
+ding-left:10px;border-left:2px solid #38bdf8;">';
+              for (let t = 1; t < tweets.length; t++) {
+                tweetHtml += '<div style="margin-top:6px;color:#cbd5e1;white-space:pre-wrap;background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:4px;"><b>(' + (t + 1) + '/' + tweets.length + ')</b> ' + tweets[t] + '</div>';
+              }
+              tweetHtml += '</div></details>';
+            }
+
+            html += '<div class="job-item">' +
+              '<div style="max-width:75%;">' +
+                '<div style="display:flex;align-items:center;margin-bottom:6px;">' +
+                  badge +
+                  '<span style="font-size:12px;color:#94a3b8;font-weight:600;">[' + (job.angle || '自動最適化') + '] ' + dateStr + '</span>' +
+                '</div>' +
+                tweetHtml +
+              '</div>' +
+              '<div>' +
+                (isDone
+                  ? '<a href="' + job.tweetUrl + '" target="_blank" style="background:#059669;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">✅ 投稿済 ↗</a>'
+                  : '<span style="background:rgba(255,255,255,0.08);color:#94a3b8;padding:4px 10px;border-radius:6px;font-size:12px;">⏳ 待機中</span>'
+                ) +
+              '</div>' +
+            '</div>';
+          });
+          cont.innerHTML = html;
+        }
+      } catch (e) {}
+    }
+
+    loadJobs();
+  </script>
+</body>
+</html>`);
+  });
+}
+
+module.exports = { registerHybridSaasRoutes };
+

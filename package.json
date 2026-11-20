@@ -1,0 +1,41 @@
+{
+  "name": "x-nurture-factory",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "NODE_ENV=test node --test",
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-velox-test \"node --test tests/emulator_integration_lifecycle.test.js\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@google/genai": "^3.3.0",
+    "@google/generative-ai": "^0.24.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "axios": "^1.20.0",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "firebase-admin": "^14.5.0",
+    "mammoth": "^1.13.0",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.3.1",
+    "pdf-parse": "^2.4.5",
+    "puppeteer": "^25.12.0",
+    "puppeteer-cluster": "^0.25.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "rss-parser": "^3.13.0",
+    "satori": "^0.63.2",
+    "stripe": "^23.1.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.6.2",
+    "firebase-tools": "^15.36.0",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.5"
+  }
+}

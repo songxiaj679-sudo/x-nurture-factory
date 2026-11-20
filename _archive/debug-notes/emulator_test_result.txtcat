@@ -1,0 +1,6 @@
+
+> x-nurture-factory@1.0.0 test:emulator
+> firebase emulators:exec --only firestore --project demo-velox-test "node --test tests/emulator_integration_lifecycle.test.js" emulator_test_result.txt
+
+
+Error: Too many arguments. Run firebase help emulators:exec for usage instructions

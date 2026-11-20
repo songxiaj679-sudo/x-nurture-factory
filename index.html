@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ja" class="scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VELOX SYSTEMS ｜ Global AI Cloud & Autonomous Web Infrastructure</title>
+  <meta name="description" content="VELOX SYSTEMSは、グローバルエッジネットワークと自律型AIエンジンを統合した次世代クラウド広報配信プラットフォーム「VeloxPost」およびエンタープライズ自動化基盤を提供します。">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#02040a', 900: '#060a17', 800: '#0b1229', 700: '#131e42' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #02040a; color: #f8fafc; overflow-x: hidden; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    /* サイバーグリッド＆オーロラ背景 */
+    .cyber-grid {
+      background-size: 48px 48px;
+      background-image: 
+        linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+    }
+    .glass-nav {
+      background: rgba(2, 4, 10, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    /* マウス追従スポットライト付きBentoカード */
+    .spotlight-card {
+      position: relative;
+      background: rgba(11, 18, 41, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .spotlight-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(500px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(56, 189, 248, 0.16), transparent 40%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .spotlight-card:hover::before { opacity: 1; }
+    .spotlight-card:hover {
+      border-color: rgba(56, 189, 248, 0.45);
+      transform: translateY(-4px);
+      box-shadow: 0 24px 48px -12px rgba(14, 165, 233, 0.28);
+    }
+
+    /* レーザーグラデーション文字 */
+    .text-cyber-gradient {
+      background: linear-gradient(135deg, #ffffff 0%, #38bdf8 45%, #6366f1 85%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* 無限スクロールマーキー */
+    @keyframes marquee {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    .animate-marquee {
+      display: flex;
+      width: max-content;
+      animation: marquee 28s linear infinite;
+    }
+
+    /* スキャンライン演出 */
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(400%); }
+    }
+    .scan-beam {
+      position: absolute;
+      inset: 0;
+      height: 25%;
+      background: linear-gradient(to bottom, transparent, rgba(56, 189, 248, 0.08), transparent);
+      animation: scanline 6s linear infinite;
+      pointer-events: none;
+    }
+
+    .live-msg { font-size: 12px; font-weight: 700; margin-top: 6px; min-height: 18px; }
+    .live-msg.err { color: #fb7185; }
+    .live-msg.ok { color: #34d399; }
+    .input-err { border-color: #fb7185 !important; }
+  </style>
+</head>
+<body class="antialiased selection:bg-sky-500 selection:text-navy-950">
+
+  <!-- Top Telemetry Bar -->
+  <div class="bg-[#050914] border-b border-sky-500/20 text-[11px] py-2 px-4 font-mono">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+          ALL CLUSTERS OPERATIONAL
+        </span>
+        <span class="text-slate-400 hidden sm:inline">CORE ENGINE: <b class="text-sky-400">v4.8.2-ENTERPRISE</b></span>
+      </div>
+      <div class="flex items-center gap-5 text-slate-400">
+        <span>GLOBAL LATENCY: <b id="topLatency" class="text-emerald-400">11.4ms</b></span>
+        <span class="hidden md:inline">THROUGHPUT: <b id="topThroughput" class="text-sky-400">14.8 Gbps</b></span>
+        <a href="#auth-portal" class="text-amber-400 hover:text-amber-300 font-bold underline">CLIENT PORTAL →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Glass Header -->
+  <header class="sticky top-0 z-50 glass-nav border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3.5 group">
+        <div class="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-sky-500/30 border border-sky-300/40 group-hover:scale-105 transition-transform">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-black text-xl tracking-wider text-white leading-none">VELOX</span>
+            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-400/30">SYS</span>
+          </div>
+          <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase block mt-1">Autonomous Cloud Infrastructure</span>
+        </div>
+      </a>
+
+      <nav class="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-300">
+        <a href="#architecture" class="hover:text-sky-400 transition-colors">アーキテクチャ</a>
+        <a href="#solutions" class="hover:text-sky-400 transition-colors">ソリューション</a>
+        <a href="#pricing" class="hover:text-sky-400 transition-colors">クラウド料金</a>
+        <a href="/help" class="hover:text-sky-400 transition-colors">導入ガイド</a>
+        <a href="/legal" class="hover:text-sky-400 transition-colors">企業情報・特商法表記</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <a href="#login-box" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs sm:text-sm font-bold text-white transition-all">
+          ログイン
+        </a>
+        <a href="#register-box" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-sky-500/30 transition-all">
+          新規登録
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section with Interactive 3D WebGL Globe -->
+  <section class="relative pt-14 pb-24 lg:pt-24 lg:pb-32 cyber-grid border-b border-white/10 overflow-hidden">
+    <!-- Three.js 3D Globe Canvas Background -->
+    <canvas id="globeCanvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-85"></canvas>
+    <div class="absolute inset-0 bg-gradient-to-b from-navy-950/30 via-transparent to-navy-950 pointer-events-none"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        
+        <!-- Left Hero Copy -->
+        <div class="lg:col-span-7 space-y-7">
+          <div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-mono font-bold shadow-inner">
+            <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
+            <span>NEXT-GEN MARKETING DX & CLOUD AUTOMATION</span>
+          </div>
+
+          <h1 class="text-4xl sm:text-6xl lg:text-[64px] font-black tracking-tight leading-[1.12] text-white">
+            企業のデジタル発信を<br>
+            <span class="text-cyber-gradient">自律型AIクラウド</span>で<br>
+            完全自動化する。
+          </h1>
+
+          <p class="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl">
+            VELOX SYSTEMSは、超低遅延エッジネットワークと大規模言語モデル（LLM）を融合した次世代クラウドプラットフォーム「VeloxPost」を開発・運営。24時間365日の無人スケジュール配信と高度な業務自動化を実現します。
+          </p>
+
+          <!-- Dynamic Typing Status Pill -->
+          <div class="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-navy-900/90 border border-white/10 font-mono text-xs text-slate-300">
+            <span class="text-emerald-400 font-bold">▶ ENGINE_TASK:</span>
+            <span id="dynamicTypingText" class="text-sky-400 font-semibold">Initializing Autonomous Cloud Scheduler...</span>
+            <span class="w-1.5 h-4 bg-sky-400 animate-pulse"></span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+            <a href="#register-box" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-blue-500 text-white font-black text-base shadow-2xl shadow-sky-500/40 text-center transition-all flex items-center justify-center gap-2 group">
+              <span>無料アカウントを作成して開始</span>
+              <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </a>
+            <a href="#pricing" class="px-8 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-200 font-bold text-base border border-white/15 backdrop-blur-md text-center transition-all">
+              プラン・仕様を見る
+            </a>
+          </div>
+
+          <!-- Live Animated Counters -->
+          <div class="pt-8 border-t border-white/10 grid grid-cols-3 gap-6 max-w-xl">
+            <div>
+              <div class="text-2xl sm:text-4xl font-black text-white font-mono"><span id="countUptime">99.99</span>%</div>
+              <div class="text-xs text-slate-400 mt-1">グローバル稼働保証 (SLA)</div>
+            </div>
+            <div>
+              <div class="text-2xl sm:text-4xl font-black text-sky-400 font-mono"><span id="countTasks">1,420</span>K+</div>
+              <div class="text-xs text-slate-400 mt-1">月間自動処理ジョブ数</div>
+            </div>
+            <div>
+              <div class="text-2xl sm:text-4xl font-black text-emerald-400 font-mono">-82%</div>
+              <div class="text-xs text-slate-400 mt-1">広報・運用コスト削減率</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Futuristic Real-time Telemetry Matrix -->
+        <div class="lg:col-span-5">
+          <div class="spotlight-card rounded-3xl p-6 sm:p-7 shadow-2xl border border-sky-500/30 relative">
+            <div class="scan-beam"></div>
+
+            <!-- Console Top Bar -->
+            <div class="flex items-center justify-between pb-4 mb-5 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                <span class="text-xs font-mono text-sky-400 ml-2 font-bold">VELOX_MATRIX_OS // v4.8</span>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+                ● REALTIME SYNC
+              </span>
+            </div>
+
+            <!-- Live Spectrum Equalizer Bars -->
+            <div class="mb-5 p-4 rounded-2xl bg-navy-950/90 border border-white/10">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-2">
+                <span>EDGE NODE TRAFFIC LOAD</span>
+                <span id="liveLoadPct" class="text-sky-400 font-bold">34.2% OPTIMIZED</span>
+              </div>
+              <div id="spectrumBars" class="grid grid-cols-16 gap-1 h-12 items-end">
+                <div class="bg-sky-500/80 rounded-t h-6 transition-all duration-300"></div>
+                <div class="bg-sky-400 rounded-t h-9 transition-all duration-300"></div>
+                <div class="bg-blue-500 rounded-t h-5 transition-all duration-300"></div>
+                <div class="bg-indigo-500 rounded-t h-10 transition-all duration-300"></div>
+                <div class="bg-sky-400 rounded-t h-8 transition-all duration-300"></div>
+                <div class="bg-emerald-400 rounded-t h-11 transition-all duration-300"></div>
+                <div class="bg-sky-500 rounded-t h-7 transition-all duration-300"></div>
+                <div class="bg-blue-400 rounded-t h-4 transition-all duration-300"></div>
+                <div class="bg-indigo-400 rounded-t h-9 transition-all duration-300"></div>
+                <div class="bg-sky-400 rounded-t h-12 transition-all duration-300"></div>
+                <div class="bg-emerald-400 rounded-t h-8 transition-all duration-300"></div>
+                <div class="bg-blue-500 rounded-t h-6 transition-all duration-300"></div>
+                <div class="bg-sky-400 rounded-t h-10 transition-all duration-300"></div>
+                <div class="bg-indigo-500 rounded-t h-7 transition-all duration-300"></div>
+                <div class="bg-sky-500 rounded-t h-5 transition-all duration-300"></div>
+                <div class="bg-emerald-400 rounded-t h-9 transition-all duration-300"></div>
+              </div>
+            </div>
+
+            <!-- Active Cluster Nodes -->
+            <div class="space-y-2.5 font-mono text-xs mb-5">
+              <div class="p-3 rounded-xl bg-navy-950/80 border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold">TYO-EDGE-01</span>
+                  <span class="text-slate-300">Cloud Dispatch Cluster</span>
+                </div>
+                <span id="nodePing1" class="text-emerald-400 font-bold">11ms</span>
+              </div>
+              <div class="p-3 rounded-xl bg-navy-950/80 border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">OSA-CORE-02</span>
+                  <span class="text-slate-300">Dedicated Routing Gateway</span>
+                </div>
+                <span id="nodePing2" class="text-emerald-400 font-bold">16ms</span>
+              </div>
+              <div class="p-3 rounded-xl bg-navy-950/80 border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">AI-NEURAL</span>
+                  <span class="text-slate-300">Gemini LLM Content Engine</span>
+                </div>
+                <span class="text-sky-400 font-bold">ACTIVE</span>
+              </div>
+            </div>
+
+            <!-- Live Scrolling Stream Log -->
+            <div class="bg-black/80 rounded-xl p-3.5 font-mono text-[11px] border border-sky-500/20 h-32 overflow-hidden flex flex-col justify-end">
+              <div class="text-slate-500 text-[10px] mb-1 border-b border-white/5 pb-1">LIVE TELEMETRY STREAM // AUTO-UPDATING</div>
+              <div id="liveStreamBox" class="space-y-1 text-slate-300 overflow-hidden">
+                <div><span class="text-emerald-400">[OK]</span> Worker #04 scheduled content dispatch (200 OK)</div>
+                <div><span class="text-sky-400">[SYNC]</span> Cloud profile metadata synchronized in 14ms</div>
+                <div><span class="text-indigo-400">[AI]</span> LLM campaign copy optimized for target segment</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Infinite Tech Stack Marquee -->
+  <div class="py-6 bg-navy-900/90 border-b border-white/10 overflow-hidden">
+    <div class="animate-marquee flex items-center gap-12 font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">
+      <span class="flex items-center gap-2"><span class="text-sky-400">◆</span> HIGH-AVAILABILITY CLOUD CLUSTER</span>
+      <span class="flex items-center gap-2"><span class="text-emerald-400">◆</span> 99.99% UPTIME SLA GUARANTEE</span>
+      <span class="flex items-center gap-2"><span class="text-indigo-400">◆</span> AUTONOMOUS SCHEDULE DISPATCHER</span>
+      <span class="flex items-center gap-2"><span class="text-amber-400">◆</span> ENTERPRISE TLS 1.3 ENCRYPTION</span>
+      <span class="flex items-center gap-2"><span class="text-sky-400">◆</span> GENERATIVE AI CONTENT ENGINE</span>
+      <span class="flex items-center gap-2"><span class="text-emerald-400">◆</span> DEDICATED DOMESTIC NETWORK ROUTING</span>
+      <!-- Repeat for seamless loop -->
+      <span class="flex items-center gap-2"><span class="text-sky-400">◆</span> HIGH-AVAILABILITY CLOUD CLUSTER</span>
+      <span class="flex items-center gap-2"><span class="text-emerald-400">◆</span> 99.99% UPTIME SLA GUARANTEE</span>
+      <span class="flex items-center gap-2"><span class="text-indigo-400">◆</span> AUTONOMOUS SCHEDULE DISPATCHER</span>
+      <span class="flex items-center gap-2"><span class="text-amber-400">◆</span> ENTERPRISE TLS 1.3 ENCRYPTION</span>
+      <span class="flex items-center gap-2"><span class="text-sky-400">◆</span> GENERATIVE AI CONTENT ENGINE</span>
+      <span class="flex items-center gap-2"><span class="text-emerald-400">◆</span> DEDICATED DOMESTIC NETWORK ROUTING</span>
+    </div>
+  </div>
+
+  <!-- Architecture & Solutions Bento Grid -->
+  <section id="solutions" class="py-24 bg-navy-950 relative">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <div class="text-sky-400 font-mono text-xs font-bold uppercase tracking-widest mb-3">// CORE ARCHITECTURE & SOLUTIONS</div>
+        <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+          最先端のクラウド技術で<br class="sm:hidden">広報・Web業務を革新する
+        </h2>
+        <p class="text-slate-400 text-sm sm:text-base mt-4">
+          自社開発のクラウド配信SaaS「VeloxPost」の提供から、エンタープライズ向けの業務自動化システム開発まで、ワンストップで提供します。
+        </p>
+      </div>
+
+      <div id="architecture" class="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <!-- Large Bento 1 -->
+        <div class="md:col-span-7 spotlight-card rounded-3xl p-8 sm:p-10 flex flex-col justify-between">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-sky-500/15 border border-sky-400/30 text-sky-300 font-mono text-xs font-bold mb-6">
+              01 // VELOXPOST CLOUD SUITE
+            </div>
+            <h3 class="text-2xl sm:text-3xl font-black text-white mb-4">
+              24時間365日・無人稼働する<br>次世代SNS広報スケジューラー
+            </h3>
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6">
+              PCやスマートフォンを閉じていても、クラウド上の専用ワーカーが指定間隔（最短5分〜）で告知テキストやクリエイティブ画像を自動配信。複数プロジェクトのプロフィール一括更新や自動フェイルオーバー機能を備えています。
+            </p>
+          </div>
+          <div class="grid grid-cols-3 gap-3 pt-6 border-t border-white/10 font-mono text-xs">
+            <div class="p-3 rounded-xl bg-navy-950/80 border border-white/5">
+              <div class="text-sky-400 font-bold">最短5分間隔</div>
+              <div class="text-slate-400 text-[11px] mt-0.5">最大288回/日の高頻度配信</div>
+            </div>
+            <div class="p-3 rounded-xl bg-navy-950/80 border border-white/5">
+              <div class="text-emerald-400 font-bold">メディア同期</div>
+              <div class="text-slate-400 text-[11px] mt-0.5">画像付き投稿＆プロフ一括管理</div>
+            </div>
+            <div class="p-3 rounded-xl bg-navy-950/80 border border-white/5">
+              <div class="text-amber-400 font-bold">自動保護機構</div>
+              <div class="text-slate-400 text-[11px] mt-0.5">異常検知時の即時スペア切替</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bento 2 -->
+        <div class="md:col-span-5 spotlight-card rounded-3xl p-8 sm:p-10 flex flex-col justify-between">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/15 border border-indigo-400/30 text-indigo-300 font-mono text-xs font-bold mb-6">
+              02 // DEDICATED NETWORK
+            </div>
+            <h3 class="text-2xl font-black text-white mb-4">
+              国内クリーン回線＆<br>帯域最適化ゲートウェイ
+            </h3>
+            <p class="text-slate-300 text-sm leading-relaxed mb-6">
+              プロジェクトごとに独立した国内ISPルーティング環境を割り当て。独自のパケットシェーピング技術により、高いセキュリティと高速なレスポンスを両立します。
+            </p>
+          </div>
+          <div class="p-4 rounded-2xl bg-navy-950/90 border border-indigo-500/20 font-mono text-xs space-y-2">
+            <div class="flex justify-between"><span class="text-slate-400">ROUTING POLICY:</span><span class="text-indigo-400 font-bold">ISOLATED MULTI-TENANT</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">GEO-SYNC:</span><span class="text-emerald-400 font-bold">JP DOMESTIC VERIFIED</span></div>
+          </div>
+        </div>
+
+        <!-- Bento 3 -->
+        <div class="md:col-span-12 spotlight-card rounded-3xl p-8 sm:p-10">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div class="lg:col-span-8">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-mono text-xs font-bold mb-4">
+                03 // CUSTOM SOFTWARE ENGINEERING
+              </div>
+              <h3 class="text-2xl font-black text-white mb-3">
+                エンタープライズWeb業務自動化・システム受託開発
+              </h3>
+              <p class="text-slate-300 text-sm leading-relaxed">
+                Node.js・Python・C++ネイティブ制御および生成AI（Google Gemini API等）を活用したカスタム自動化ソフトウェアの設計・開発・保守運用を提供。定型業務の省力化や大規模データ収集基盤の構築を強力に推進します。
+              </p>
+            </div>
+            <div class="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3">
+              <a href="#register-box" class="py-3.5 px-6 rounded-xl bg-sky-500 hover:bg-sky-400 text-navy-950 font-black text-xs text-center transition-all">
+                クラウド環境を無料で試す →
+              </a>
+              <a href="/legal#tokusho" class="py-3.5 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs text-center transition-all">
+                開発・運営体制を見る
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section id="pricing" class="py-24 bg-navy-900 border-y border-white/10">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <div class="text-sky-400 font-mono text-xs font-bold uppercase tracking-widest mb-2">// CLOUD PRICING</div>
+        <h2 class="text-3xl sm:text-5xl font-black text-white">スケーラブルな料金体系</h2>
+        <p class="text-slate-400 text-sm mt-3">すべてのプランで初期費用0円・即時プロビジョニングに対応しています。</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <!-- スターター -->
+        <div class="spotlight-card rounded-3xl p-7 flex flex-col justify-between">
+          <div>
+            <span class="font-mono text-xs font-bold text-slate-400 uppercase">🥉 STARTER PLAN</span>
+            <div class="text-4xl font-black text-white mt-2 mb-1 font-mono">¥4,980 <span class="text-xs font-sans font-normal text-slate-400">/ 月 ($39)</span></div>
+            <p class="text-xs text-slate-400 mb-6">個人・小規模プロジェクトの定常運用に</p>
+            <ul class="space-y-2.5 text-xs text-slate-300 mb-6">
+              <li>✔ 1日1投稿（月30本の自動スケジュール）</li>
+              <li>✔ サテライト応援 5台（いいね / RT 神輿担ぎ）</li>
+              <li>✔ AI自律マーケティング（単発共感・ノウハウ）</li>
+              <li>✔ 公式APIキー接続（BYOK・凍結ゼロ）</li>
+            </ul>
+          </div>
+          <a href="#register-box" class="w-full py-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold text-center transition-all">今すぐ無料で登録して始める →</a>
+        </div>
+
+        <!-- プロ運用 -->
+        <div class="spotlight-card rounded-3xl p-7 flex flex-col justify-between border-sky-400/80 shadow-2xl shadow-sky-500/30 relative">
+          <div class="absolute -top-3 right-6 bg-amber-400 text-navy-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider font-mono shadow-lg">一番人気 ★</div>
+          <div>
+            <span class="font-mono text-xs font-bold text-sky-400 uppercase">🥈 PRO AUTOPILOT</span>
+            <div class="text-4xl font-black text-white mt-2 mb-1 font-mono">¥9,800 <span class="text-xs font-sans font-normal text-slate-400">/ 月 ($79)</span></div>
+            <p class="text-xs text-slate-400 mb-6">認知最大化＆コンバージョン獲得の本格運用</p>
+            <ul class="space-y-2.5 text-xs text-slate-300 mb-6">
+              <li>✔ <b>1日3投稿</b>（朝・昼・夜のゴールデンタイム）</li>
+              <li>✔ <b>サテライト応援 12台</b> ＋ 引用RT神輿担ぎ</li>
+              <li>✔ <b>2段リプ誘導 ＆ 3-4段スレッド連動ツリー</b></li>
+              <li>✔ リアルタイム市場・競合リサーチAI搭載</li>
+            </ul>
+          </div>
+          <a href="#register-box" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-black text-center shadow-lg shadow-sky-500/30 transition-all">今すぐプロプランで開始 →</a>
+        </div>
+
+        <!-- ビジネス -->
+        <div class="spotlight-card rounded-3xl p-7 flex flex-col justify-between border-purple-400/60 shadow-xl shadow-purple-500/10">
+          <div>
+            <span class="font-mono text-xs font-bold text-purple-400 uppercase">🥇 ENTERPRISE BUSINESS</span>
+            <div class="text-4xl font-black text-white mt-2 mb-1 font-mono">¥19,800 <span class="text-xs font-sans font-normal text-slate-400">/ 月 ($179)</span></div>
+            <p class="text-xs text-slate-400 mb-6">圧倒的な露出と拡散力を誇る最上位プラン</p>
+            <ul class="space-y-2.5 text-xs text-slate-300 mb-6">
+              <li>✔ <b>1日5投稿</b>（月150本・フルオートパイロット）</li>
+              <li>✔ <b>強力サテライト 25台</b> ＋ AIリプ営業</li>
+              <li>✔ 優先クラウドキュー ＆ 24時間無人監視</li>
+              <li>✔ 全フォーマット自動最適化 ＆ 専任サポート</li>
+            </ul>
+          </div>
+          <a href="#register-box" class="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold text-center transition-all">今すぐビジネスプランで開始 →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Client Registration & Login Portal (100% Connected to Existing Backend) -->
+  <section id="auth-portal" class="py-24 bg-navy-950 relative">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <div class="text-sky-400 font-mono text-xs font-bold uppercase tracking-widest mb-2">// CLIENT ACCESS PORTAL</div>
+        <h2 class="text-3xl sm:text-4xl font-black text-white">新規登録 ＆ 会員ログイン</h2>
+        <p class="text-slate-400 text-sm mt-2">アカウント登録またはログインすると、即座にクラウド管理ダッシュボードへ移動します。</p>
+      </div>
+
+      <!-- URLエラー・通知バナー表示エリア -->
+      <div id="authNoticeWrap" class="max-w-xl mx-auto mb-8" style="display:none;"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <!-- Register Box -->
+        <div id="register-box" class="spotlight-card rounded-3xl p-8 sm:p-10">
+          <h3 class="text-xl font-black text-white mb-6 flex items-center gap-3">
+            <span class="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-400 font-mono text-xs">CREATE</span>
+            <span>新規アカウント作成（無料）</span>
+          </h3>
+          <form action="/auth/register" method="POST" onsubmit="return checkRegPasswordMatch()" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">お名前（屋号・ニックネーム可）</label>
+              <input type="text" name="companyOrName" id="regNameInput" placeholder="例: ヤマダ" required class="w-full bg-navy-950/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">メールアドレス</label>
+              <input type="email" name="email" id="regEmailInput" placeholder="example@gmail.com" required class="w-full bg-navy-950/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">パスワード（6文字以上）</label>
+              <input type="password" name="password" id="regPw1" minlength="6" oninput="liveCheckRegPw()" required class="w-full bg-navy-950/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">パスワード（確認のため再入力）</label>
+              <input type="password" name="passwordConfirm" id="regPw2" minlength="6" oninput="liveCheckRegPw()" required class="w-full bg-navy-950/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-400">
+              <div id="regPwLiveMsg" class="live-msg"></div>
+            </div>
+
+            <label class="flex items-center gap-2.5 text-xs text-slate-300 pt-1 pb-2 cursor-pointer">
+              <input type="checkbox" required class="w-4 h-4 rounded accent-sky-500">
+              <span><a href="/legal#terms" target="_blank" class="text-sky-400 underline">利用規約</a> と <a href="/legal#tokusho" target="_blank" class="text-sky-400 underline">特定商取引法に基づく表記</a> に同意します</span>
+            </label>
+
+            <button type="submit" id="regSubmitBtn" class="w-full py-4 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-blue-500 text-white font-black text-sm shadow-xl shadow-sky-500/30 transition-all">
+              ✅ 無料アカウントを作成して開始する ❯
+            </button>
+          </form>
+        </div>
+
+        <!-- Login Box -->
+        <div id="login-box" class="spotlight-card rounded-3xl p-8 sm:p-10">
+          <h3 class="text-xl font-black text-white mb-6 flex items-center gap-3">
+            <span class="px-2.5 py-1 rounded-lg bg-white/10 text-slate-300 font-mono text-xs">SIGN IN</span>
+            <span>会員ログイン</span>
+          </h3>
+          <form action="/auth/login" method="POST" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">メールアドレス</label>
+              <input type="email" name="email" id="loginEmailInput" required placeholder="登録メールアドレス" class="w-full bg-navy-950/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">パスワード</label>
+              <input type="password" name="password" id="loginPasswordInput" required placeholder="パスワード" class="w-full bg-navy-950/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <button type="submit" class="w-full py-4 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-sm transition-all mt-2">
+              コンソールにログインする →
+            </button>
+          </form>
+
+          <div class="mt-8 pt-6 border-t border-white/10 text-xs text-slate-400 space-y-2">
+            <div class="font-mono font-bold text-sky-400">ENTERPRISE COMPLIANCE</div>
+            <div>運営事業者：VELOX SYSTEMS（ヴェロックスシステムズ）</div>
+            <div>事業領域：クラウド広報配信SaaS運営・Web業務自動化システム開発</div>
+            <div class="pt-2 flex flex-wrap gap-4">
+              <a href="/help" class="text-slate-300 hover:text-sky-400 underline">導入ガイド・FAQ</a>
+              <a href="/legal#terms" class="text-slate-300 hover:text-sky-400 underline">利用規約</a>
+              <a href="/legal#tokusho" class="text-slate-300 hover:text-sky-400 underline">特定商取引法に基づく表記</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-[#010206] border-t border-white/10 py-12 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white font-black text-xs">V</div>
+        <span class="font-black text-slate-200 tracking-wider">VELOX SYSTEMS</span>
+      </div>
+      <div class="flex flex-wrap gap-6">
+        <a href="#architecture" class="hover:text-slate-300">アーキテクチャ</a>
+        <a href="#solutions" class="hover:text-slate-300">ソリューション</a>
+        <a href="#pricing" class="hover:text-slate-300">料金プラン</a>
+        <a href="/help" class="hover:text-slate-300">導入ガイド</a>
+        <a href="/legal" class="hover:text-slate-300">特定商取引法に基づく表記</a>
+      </div>
+      <div class="font-mono">&copy; 2026 VELOX SYSTEMS. ALL RIGHTS RESERVED.</div>
+    </div>
+  </footer>
+
+  <!-- Interactive Scripts: Three.js 3D Globe + Live Telemetry + Spotlight + Password Validation -->
+  <script>
+    // 1. パスワード一致リアルタイム検証（既存機能完全維持）
+    function liveCheckRegPw() {
+      const p1 = document.getElementById('regPw1').value;
+      const p2 = document.getElementById('regPw2').value;
+      const p2El = document.getElementById('regPw2');
+      const msg = document.getElementById('regPwLiveMsg');
+      const btn = document.getElementById('regSubmitBtn');
+      if (!p2) {
+        p2El.classList.remove('input-err');
+        msg.className = 'live-msg';
+        msg.innerText = '';
+        btn.disabled = false;
+        return true;
+      }
+      if (p1 !== p2) {
+        p2El.classList.add('input-err');
+        msg.className = 'live-msg err';
+        msg.innerText = '⚠️ 確認用パスワードが一致していません。';
+        btn.disabled = true;
+        return false;
+      } else {
+        p2El.classList.remove('input-err');
+        msg.className = 'live-msg ok';
+        msg.innerText = '✓ パスワードが一致しています！';
+        btn.disabled = false;
+        return true;
+      }
+    }
+    function checkRegPasswordMatch() {
+      return liveCheckRegPw();
+    }
+
+    // 2. マウス追従スポットライト効果
+    document.querySelectorAll('.spotlight-card').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const rect = card.getBoundingClientRect();
+        card.style.setProperty('--mouse-x', (e.clientX - rect.left) + 'px');
+        card.style.setProperty('--mouse-y', (e.clientY - rect.top) + 'px');
+      });
+    });
+
+    // 3. 動的タイピング＆リアルタイム通信テレメトリ演出
+    const tasks = [
+      "Synchronizing Edge Cluster [JP-TYO-01]...",
+      "Optimizing AI Campaign Copy via Gemini LLM...",
+      "Dispatching Scheduled Media Payload (12ms)...",
+      "Verifying Multi-Tenant TLS 1.3 Tunnel...",
+      "Executing Autonomous Failover Healthcheck..."
+    ];
+    let taskIdx = 0;
+    setInterval(() => {
+      const el = document.getElementById('dynamicTypingText');
+      if (el) {
+        taskIdx = (taskIdx + 1) % tasks.length;
+        el.innerText = tasks[taskIdx];
+      }
+    }, 2800);
+
+    const logMessages = [
+      '<div><span class="text-emerald-400">[200 OK]</span> Edge Worker #08 dispatched scheduled post (11ms)</div>',
+      '<div><span class="text-sky-400">[ROUTE]</span> Domestic ISP gateway verified clean subnet</div>',
+      '<div><span class="text-indigo-400">[AI-LLM]</span> Generated high-engagement PR copy variations</div>',
+      '<div><span class="text-amber-400">[GUARD]</span> Auto-failover standby pool synchronized (0 loss)</div>',
+      '<div><span class="text-emerald-400">[SYNC]</span> Multi-channel profile bio updated across cluster</div>'
+    ];
+    let logIdx = 0;
+    setInterval(() => {
+      // スペクトラムバーのランダム波形アニメーション
+      const bars = document.querySelectorAll('#spectrumBars > div');
+      bars.forEach(b => {
+        const h = Math.floor(16 + Math.random() * 32);
+        b.style.height = h + 'px';
+      });
+      // レイテンシ微変動
+      const lat = (10.2 + Math.random() * 3.5).toFixed(1);
+      const tp = (13.5 + Math.random() * 2.8).toFixed(1);
+      const load = (28.0 + Math.random() * 14.0).toFixed(1);
+      if (document.getElementById('topLatency')) document.getElementById('topLatency').innerText = lat + 'ms';
+      if (document.getElementById('topThroughput')) document.getElementById('topThroughput').innerText = tp + ' Gbps';
+      if (document.getElementById('liveLoadPct')) document.getElementById('liveLoadPct').innerText = load + '% OPTIMIZED';
+      if (document.getElementById('nodePing1')) document.getElementById('nodePing1').innerText = Math.floor(9 + Math.random() * 5) + 'ms';
+      if (document.getElementById('nodePing2')) document.getElementById('nodePing2').innerText = Math.floor(14 + Math.random() * 6) + 'ms';
+
+      // ストリームログ追加
+      const streamBox = document.getElementById('liveStreamBox');
+      if (streamBox) {
+        logIdx = (logIdx + 1) % logMessages.length;
+        streamBox.insertAdjacentHTML('beforeend', logMessages[logIdx]);
+        while (streamBox.children.length > 3) {
+          streamBox.removeChild(streamBox.firstElementChild);
+        }
+      }
+    }, 1200);
+
+    // 4. Three.js 3D Interactive Cyber Globe
+    (function initCyberGlobe() {
+      const canvas = document.getElementById('globeCanvas');
+      if (!canvas || typeof THREE === 'undefined') return;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 22;
+
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const group = new THREE.Group();
+      // 地球儀を画面右寄り（コンソールの背後）に配置
+      group.position.x = window.innerWidth > 1024 ? 6.5 : 0;
+      scene.add(group);
+
+      // ワイヤーフレーム球体
+      const sphereGeo = new THREE.IcosahedronGeometry(9.5, 3);
+      const wireMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.13
+      });
+      const wireSphere = new THREE.Mesh(sphereGeo, wireMat);
+      group.add(wireSphere);
+
+      // 表面の輝く通信ノード（パーティクル）
+      const pCount = 900;
+      const pGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(pCount * 3);
+      for (let i = 0; i < pCount; i++) {
+        const phi = Math.acos(-1 + (2 * i) / pCount);
+        const theta = Math.sqrt(pCount * Math.PI) * phi;
+        const r = 9.55 + (Math.random() * 0.4);
+        positions[i * 3] = r * Math.cos(theta) * Math.sin(phi);
+        positions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi);
+        positions[i * 3 + 2] = r * Math.cos(phi);
+      }
+      pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const pMat = new THREE.PointsMaterial({ color: 0x60a5fa, size: 0.12, transparent: true, opacity: 0.75 });
+      const points = new THREE.Points(pGeo, pMat);
+      group.add(points);
+
+      // 外周の軌道リング
+      const ringGeo = new THREE.RingGeometry(11.2, 11.28, 64);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x6366f1, side: THREE.DoubleSide, transparent: true, opacity: 0.25 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2.3;
+      ring.rotation.y = Math.PI / 6;
+      group.add(ring);
+
+      let mouseX = 0, mouseY = 0;
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth - 0.5) * 0.6;
+        mouseY = (e.clientY / window.innerHeight - 0.5) * 0.6;
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        group.position.x = window.innerWidth > 1024 ? 6.5 : 0;
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        wireSphere.rotation.y += 0.0022;
+        wireSphere.rotation.x += 0.0007;
+        points.rotation.y += 0.0022;
+        ring.rotation.z -= 0.003;
+        group.rotation.y += (mouseX - group.rotation.y) * 0.05;
+        group.rotation.x += (mouseY - group.rotation.x) * 0.05;
+        renderer.render(scene, camera);
+      }
+      animate();
+    })();
+
+    // 5. URLパラメータエラー・通知処理（自動スクロール＆バナー表示）
+    (function checkUrlNotice() {
+      function esc(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get('err');
+      const ok = params.get('ok');
+      const noticeWrap = document.getElementById('authNoticeWrap');
+      if (err && noticeWrap) {
+        noticeWrap.style.display = 'block';
+        noticeWrap.innerHTML = '<div class="p-4 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold text-sm text-center">⚠️ ' + esc(err) + '</div>';
+        setTimeout(() => { document.getElementById('auth-portal')?.scrollIntoView({ behavior: 'smooth' }); }, 250);
+      } else if (ok && noticeWrap) {
+        noticeWrap.style.display = 'block';
+        noticeWrap.innerHTML = '<div class="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-sm text-center">✅ ' + esc(ok) + '</div>';
+        setTimeout(() => { document.getElementById('auth-portal')?.scrollIntoView({ behavior: 'smooth' }); }, 250);
+      }
+    })();
+  </script>
+</body>
+</html>

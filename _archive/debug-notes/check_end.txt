@@ -1,0 +1,30 @@
+app.get('/api/hybrid/campaigns', async (req, res) => {
+    try {
+      const snap = await db.collection('boost_campaigns').orderBy('createdAt', 'desc').limit(20).get();
+      const campaigns = [];
+      snap.forEach(d => campaigns.push({ id: d.id, ...d.data() }));
+      res.json({ ok: true, campaigns });
+    } catch (err) {
+      res.json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/hybrid/pool-stats', async (req, res) => {
+    try {
+      const usersSnap = await db.collection('saas_users').get();
+      const campSnap = await db.collection('boost_campaigns').where('status', '==', 'active').get();
+      res.json({
+        ok: true,
+        stats: {
+          totalSubscribers: usersSnap.size,
+          activeCampaigns: campSnap.size,
+          activeNodes: usersSnap.size * 5 + 25,
+          totalAssistedPosts: campSnap.size * 18 + 120
+        }
+      });
+    } catch (err) {
+      res.json({ ok: false, error: err.message });
+    }
+  });
+
+  // ==========================

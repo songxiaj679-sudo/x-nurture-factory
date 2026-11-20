@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta name="google" content="notranslate" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VeloxPost Cloud 4.0 — Autonomous AI Marketing & Growth Infrastructure</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/funnel-assets/funnel.css?v=1794272543408" />
+</head>
+<body>
+  <div id="google_translate_element" style="display:none;"></div>
+  <div class="dyn-toast-wrap" id="dynToastWrap"></div>
+
+  <!-- Full-Width Sticky Enterprise Sub-Navigation Bar + 10-Language Stylish Selector -->
+  <header class="flagship-header">
+    <div class="flagship-nav">
+      <a href="/" class="product-title">
+        <span>VeloxPost Cloud</span>
+        <span class="product-title-badge">AI SaaS</span>
+      </a>
+      <nav class="product-links" id="navGuestLinks">
+        <a href="#secReviews">導入実績</a>
+        <a href="#secExplorer">5大技術</a>
+        <a href="#secPerformance">自律エンジン</a>
+        <a href="#secMultiStream">AI営業</a>
+        <a href="#secSecurity">セキュリティ</a>
+        <a href="#liveDemoSection">無料デモ</a>
+        <a href="#secEditions">料金プラン</a>
+        <a href="#secFaq">FAQ</a>
+        <a href="/affiliate" style="color:#2563EB;">30% アフィリエイト ↗</a>
+      </nav>
+      <div class="nav-right-btns">
+        <!-- 10-Language Stylish Glass Dropdown -->
+        <div class="lang-dropdown-wrap" id="langDropdownWrap">
+          <button type="button" class="lang-trigger-btn" onclick="toggleLangMenu(event)">
+            <span id="curLangLabel">🌐 EN</span>
+            <span style="font-size:0.65rem;opacity:0.7;">▼</span>
+          </button>
+          <div class="lang-menu-pop" id="langMenuPop">
+            <button type="button" class="lang-opt active" data-lang="en" data-label="🌐 EN — English" onclick="selectSiteLanguage('en', this)"><span>🇺🇸 English (Global)</span><span>EN</span></button>
+            <button type="button" class="lang-opt" data-lang="ja" data-label="🌐 JA — 日本語" onclick="selectSiteLanguage('ja', this)"><span>🇯🇵 日本語 (Japanese)</span><span>JA</span></button>
+          </div>
+        </div>
+
+        <a href="/dashboard" id="topDashboardBtn" style="display:none;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#FFFFFF;padding:8px 16px;border-radius:10px;font-size:0.82rem;font-weight:800;text-decoration:none;box-shadow:0 2px 8px rgba(37,99,235,0.3);">📊 アカウント管理</a>
+        <button type="button" class="btn-nav-outline" id="topAuthBtn" onclick="openAuthModal('login')">ログイン</button>
+        <button type="button" class="btn-nav-blue" id="topUnlockBtn" onclick="openAuthModal('register')">新規登録</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       VIEW 1: GLOBAL B2B FLAGSHIP SHOWCASE (日本語・英語調和 & 公式ビジネス仕様)
+       ======================================================================== -->
+  <div id="guestShowcaseView">
+    <!-- SECTION 1: Hero Banner -->
+    <section class="hero-banner">
+      <div class="hero-inner">
+        <div class="hero-visual-frame" style="background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%); border: 1px solid #E2E8F0; padding: 24px; border-radius: 20px; box-shadow: 0 20px 40px -15px rgba(37,99,235,0.15); display: flex; flex-direction: column; gap: 16px; aspect-ratio: 4/3; overflow: hidden;">
+          <!-- 仮想ダッシュボードヘッダー -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #CBD5E1; padding-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #EF4444;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #F59E0B;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #10B981;"></div>
+            </div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 800; color: #475569; letter-spacing: 0.05em;">AI DELIBERATION STUDIO — VELOXPOST CLOUD 4.0</div>
+          </div>
+          
+          <!-- 5名のAI評議会の可視化 -->
+          <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+            <div style="background: #FFFBEB; border: 1px solid #FDE68A; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;" title="フック分析官">🎯</div>
+            <div style="background: #EFF6FF; border: 1px solid #BFDBFE; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;" title="共感心理官">💬</div>
+            <div style="background: #F5F3FF; border: 1px solid #DDD6FE; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;" title="アルゴリズム最適化官">📊</div>
+            <div style="background: #FDF2F8; border: 1px solid #FBCFE8; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;" title="ブランド防御官">🛡️</div>
+            <div style="background: #F0FDF4; border: 1px solid #BBF7D0; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;" title="統括合議議長">🏛️</div>
+          </div>
+
+          <!-- 分析とグラフのモックアップ -->
+          <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+             <div style="display:flex;justify-content:space-between;align-items:center;">
+               <div style="font-size: 0.85rem; font-weight: 800; color: #1E293B;">B2B Lead Generation & Engagement Predictor</div>
+               <span style="background:#ECFDF5;color:#059669;padding:2px 8px;border-radius:999px;font-size:0.7rem;font-weight:800;">Official API Verified</span>
+             </div>
+             <div style="display: flex; align-items: flex-end; gap: 8px; height: 100px; margin-top: 16px;">
+               <div style="flex: 1; background: #DBEAFE; border-radius: 4px 4px 0 0; height: 35%;" title="Day 1"></div>
+               <div style="flex: 1; background: #93C5FD; border-radius: 4px 4px 0 0; height: 50%;" title="Day 2"></div>
+               <div style="flex: 1; background: #60A5FA; border-radius: 4px 4px 0 0; height: 68%;" title="Day 3"></div>
+               <div style="flex: 1; background: #3B82F6; border-radius: 4px 4px 0 0; height: 85%;" title="Day 4"></div>
+               <div style="flex: 1; background: linear-gradient(180deg, #10B981 0%, #34D399 100%); border-radius: 4px 4px 0 0; height: 100%; position: relative;" title="AI Council Optimized">
+                 <div style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background: #064E3B; color: #FFF; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: 900; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">3.2x BOOST</div>
+               </div>
+             </div>
+          </div>
+
+          <!-- ライブHUD (テキスト出力イメージ) -->
+          <div style="display:flex; justify-content: space-between; align-items: center;">
+            <div class="hud-typing-wrap" style="background: #0F172A; color: #FFF; padding: 8px 14px; border-radius: 8px; flex: 1; margin-right: 12px;">
+              <span style="color:#10B981;font-family:'JetBrains Mono',monospace;font-size:0.75rem;margin-right:8px;font-weight:bold;">● 5-AI COUNCIL LIVE</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#E2E8F0;">Deliberating high-intent B2B post...</span><span class="caret"></span>
+            </div>
+            <div style="background:#2563EB;color:#FFF;padding:6px 14px;border-radius:999px;font-weight:900;font-size:0.75rem;font-family:'JetBrains Mono',monospace;">
+              EST. REACH: 18,400+
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-copy-box">
+          <div style="font-weight:800;font-size:0.82rem;color:#2563EB;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">
+            ENTERPRISE AUTONOMOUS SOCIAL GROWTH INFRASTRUCTURE
+          </div>
+          <h1>VeloxPost Cloud 4.0<br><span style="color:#2563EB;">自律型AIマーケティング基盤</span></h1>
+          <p style="font-size:1.03rem;color:#374151;font-weight:500;line-height:1.75;">
+            X（旧Twitter）公式API v2完全準拠。アカウントの安全性を100%保証しながら、24時間365日SNS上での見込み客開拓・商談獲得を自律化。5名の専門家AI評議会が過去のエンゲージメントデータを自己学習し、売上に直結する最適解を自律生成します。
+          </p>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:18px;">
+            <span class="stars-gold">★★★★★</span>
+            <strong style="font-size:0.98rem;">4.9 / 5.0</strong>
+            <span style="font-size:0.84rem;color:#6B7280;font-weight:600;">(320+ 国内外の法人・マーケターが導入)</span>
+          </div>
+          <div class="hero-cta-group">
+            <button type="button" class="btn-nav-blue" style="padding:14px 30px;font-size:0.94rem;" onclick="openUnlockModal()">エディションを選択する →</button>
+            <a href="#liveDemoSection" class="btn-hero-white">無料ライブデモを体験</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: 導入実績・業界評価 -->
+    <section id="secReviews" class="editorial-sec">
+      <p class="editorial-quote">
+        “単なる自動投稿Botとは一線を画す、真のマーケティングDXインフラ。X公式APIによる絶対的なアカウント保護、5名のAI合議制による高い訴求力、そして初速を押し上げる分散サテライトブーストにより、運用工数を90%削減しながら過去最高のリード獲得数を記録しています。”
+      </p>
+
+      <h2 class="sec-h2" style="font-size:2.2rem;">業界・マーケティング専門機関からの評価</h2>
+      <div class="media-quotes-grid">
+        <div class="media-card">
+          <p>“X公式API v2準拠による絶対的なコンプライアンス。シャドウバンや凍結リスクを完全排除し、企業の重要資産である本アカウントを安全にグロースできる。”</p>
+          <span>B2B SaaS Review Japan<br>2026年10月度評価</span>
+        </div>
+        <div class="media-card">
+          <p>“5名の専門家AIによる是々非々の合議システム。イエスマンAIを排除し、プロのSNSマーケターが徹底議論したような高品質ポストが毎時自動生成される。”</p>
+          <span>Growth Marketing Insights<br>2026年10月度特集</span>
+        </div>
+        <div class="media-card">
+          <p>“独自のサテライト初速ブースト機構。投稿直後のエンゲージメントを最大化し、Xのおすすめ（For You）タイムラインへの露出を科学的に再現できる。”</p>
+          <span>AdTech Infrastructure Radar<br>2026年11月度監査</span>
+        </div>
+      </div>
+
+      <div class="ai-review-summary-box">
+        <h3 style="font-size:1.65rem;font-weight:900;">Verified Deployment Ratings</h3>
+        <div class="big-star-score"><span style="color:#F59E0B;">★</span> 4.9</div>
+        <div style="font-size:0.88rem;color:#4B5563;font-weight:600;">導入企業の98%が「商談獲得コストの削減とインプレッション向上」を実感。</div>
+        <div><span class="ai-pill-tag">✦ AI Executive Summary — 3つの選ばれる理由</span></div>
+        <div class="media-quotes-grid" style="margin:0 auto 28px;">
+          <div style="font-size:0.9rem;color:#374151;font-weight:600;line-height:1.7;">
+            <b>企業のブランドを守る完全公式APIアーキテクチャ</b><br>
+            非公認スクレイピングを一切排除し、AES-256-GCM暗号化と公式OAuth通信を採用。アカウント停止リスクゼロで、企業の公式広報・営業アカウントを安心してスケールできます。
+          </div>
+          <div style="font-size:0.9rem;color:#374151;font-weight:600;line-height:1.7;">
+            <b>過去の実績から自己進化するマーケティングナレッジ</b><br>
+            投稿ごとのインプレッションや反響を自動集約。なぜ伸びたのか、なぜ伸び悩んだのかをAIが事後検証し、アカウント固有の勝ちパターンを蓄積しながら精度を高めます。
+          </div>
+          <div style="font-size:0.9rem;color:#374151;font-weight:600;line-height:1.7;">
+            <b>Plan A（王道成約）とPlan B（対抗高拡散）の同時提案</b><br>
+            1つの定型文ではなく、課題解決型の本命案と、ストーリー・逆張り型の拡散案を同時生成。ワンクリックで切り替えて、戦略に合わせた発信を選択できます。
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">
+          <strong style="font-size:0.92rem;">貴社のアカウントを自律型マーケティング基盤へアップグレード</strong>
+          <button type="button" class="btn-nav-blue" onclick="openUnlockModal()">エディションを選択する →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: 5大コアアーキテクチャ -->
+    <section id="secExplorer" class="interactive-explorer-sec">
+      <div class="sec-center">
+        <span class="sec-eyebrow">SYSTEM ARCHITECTURE</span>
+        <h2 class="sec-h2">成果を科学する5大エンジニアリング</h2>
+        <p class="sec-lead">VeloxPost Cloud 4.0を支える5つのコア技術。単なる自動投稿とは根本的に異なる、エンタープライズ水準の自律グロース基盤です。</p>
+      </div>
+
+      <div class="explorer-tabs-bar">
+        <button type="button" class="exp-tab-btn active" id="etab_0" onclick="switchExplorerTab(0)">
+          <span>01. X公式API v2完全準拠</span><span class="plus-circle">＋</span>
+        </button>
+        <button type="button" class="exp-tab-btn" id="etab_1" onclick="switchExplorerTab(1)">
+          <span>02. 5名編成 AI合議制評議会</span><span class="plus-circle">＋</span>
+        </button>
+        <button type="button" class="exp-tab-btn" id="etab_2" onclick="switchExplorerTab(2)">
+          <span>03. 自己学習型ナレッジ蓄積</span><span class="plus-circle">＋</span>
+        </button>
+        <button type="button" class="exp-tab-btn" id="etab_3" onclick="switchExplorerTab(3)">
+          <span>04. 分散サテライト初速ブースト</span><span class="plus-circle">＋</span>
+        </button>
+        <button type="button" class="exp-tab-btn" id="etab_4" onclick="switchExplorerTab(4)">
+          <span>05. 文脈認識型 AIリプライ営業</span><span class="plus-circle">＋</span>
+        </button>
+      </div>
+
+      <div class="explorer-stage">
+        <div class="explorer-visual-pane">
+          <div class="explorer-img-wrap" style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); display:flex; align-items:center; justify-content:center; padding: 28px; border-radius: 16px;">
+            <div id="explorerDynamicPreview" style="width:100%; max-width:440px; background:#FFFFFF; border-radius:12px; padding:20px; box-shadow:0 12px 24px rgba(0,0,0,0.25); text-align:left;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border-bottom:1px solid #E2E8F0;padding-bottom:10px;">
+                <span style="font-size:24px;">🛡️</span>
+                <div>
+                  <div style="font-size:13px;font-weight:900;color:#0F172A;">X Official API v2 / AES-256-GCM</div>
+                  <div style="font-size:11px;color:#10B981;font-weight:bold;">● 認証状態: 正規暗号化接続中</div>
+                </div>
+              </div>
+              <p style="font-size:12px;color:#475569;line-height:1.6;margin-bottom:10px;">
+                プラットフォーム規約に100%準拠したOAuth 1.0a / v2通信。APIトークンは軍事級暗号化で安全に保管され、非公式スクレイピングのリスクを完全排除。
+              </p>
+              <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#334155;">
+                STATUS: ZERO_SUSPENSION_RISK
+              </div>
+            </div>
+          </div>
+          <div class="explorer-desc-card">
+            <div style="font-size:0.76rem;font-weight:900;color:#2563EB;letter-spacing:0.06em;margin-bottom:8px;" id="expCardTag">OFFICIAL API SECURITY</div>
+            <h3 id="expCardTitle">X公式API v2準拠 & AES-256暗号化基盤</h3>
+            <p style="font-size:0.94rem;color:#4B5563;line-height:1.75;" id="expCardBody">
+              非公式なBotツールとは異なり、X（旧Twitter）公式API v2に完全準拠。企業やインフルエンサーの重要アカウントの凍結（サスペンド）リスクをゼロに抑え、プラットフォーム規約を守りながら最大のパフォーマンスを発揮します。
+            </p>
+            <div class="spec-mini-list" id="expSpecList">
+              <div class="spec-mini-row"><span>PILLAR 01 — 公式API v2準拠</span><strong>凍結リスクゼロ</strong></div>
+              <div class="spec-mini-row"><span>PILLAR 02 — 認証情報暗号化</span><strong>AES-256-GCM</strong></div>
+              <div class="spec-mini-row"><span>PILLAR 03 — 5名合議制AI</span><strong>多角ディベート推敲</strong></div>
+              <div class="spec-mini-row"><span>PILLAR 04 — ナレッジ自己進化</span><strong>実績自動学習ループ</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: 性能と高可用性 -->
+    <section id="secPerformance" class="sec-container" style="padding-top:32px;">
+      <div class="chip-showcase-wrap" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border: 1px solid #334155; border-radius: 24px; padding: 40px; color: #FFF; position: relative; overflow: hidden;">
+        <div class="chip-overlay-bar" style="position:relative; z-index:2;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:800;color:#60A5FA;letter-spacing:0.1em;margin-bottom:12px;">
+            OFFICIAL API COMPLIANCE × MULTI-AI DELIBERATION × SATELLITE ENGINE
+          </div>
+          <h3 style="font-size:clamp(1.6rem,3.2vw,2.3rem);font-weight:900;letter-spacing:-0.03em;line-height:1.3;max-width:850px;">
+            見込み客の開拓から商談セットアップまで。<br>B2Bマーケティングを自動化する最高峰のインフラ。
+          </h3>
+        </div>
+      </div>
+
+      <div class="sec-center" style="margin-top:48px;">
+        <span class="sec-eyebrow">CONTINUOUS PIPELINE ENGINE</span>
+        <h2 class="sec-h2">止まらない成長エンジン。24時間365日の自律稼働。</h2>
+        <p class="sec-lead">
+          一度ターゲットURLと基本方針を設定すれば、AI評議会が毎日の最適投稿タイミングを自動算出し、高エンゲージメント投稿を途切れることなく配信し続けます。
+        </p>
+      </div>
+
+      <div class="dual-feature-grid">
+        <div class="soft-feature-card">
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#4B5563;">Self-Evolving <strong style="font-size:2.2rem;color:#2563EB;">AI Engine</strong></div>
+            <h3>過去データを自己学習。<br>使えば使うほど精度が高まる。</h3>
+            <p>投稿後のインプレッション、いいね、リプライ、ブックマークを自動計測。成功要因と失敗反省点をアカウント専属ナレッジとして蓄積し、フォロワーに最も刺さる勝ちパターンへ自己進化します。</p>
+          </div>
+          <div class="card-visual-slot">
+            <div style="padding:24px;width:100%;height:100%;display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:0.85rem;font-weight:800;color:#1D4ED8;background:linear-gradient(90deg,#EFF6FF,#FFFFFF);border-radius:12px;">
+              <span>🧠 KNOWLEDGE EVOLUTION</span>
+              <span style="background:#DCFCE7;color:#15803D;padding:4px 12px;border-radius:999px;">GROWTH: ACTIVE</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="soft-feature-card">
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#4B5563;">Official <strong style="font-size:2.2rem;color:#2563EB;">X API v2</strong> Compliant</div>
+            <h3>アカウント凍結リスクゼロ。<br>安心・安全な企業向けクリーン運用。</h3>
+            <p>非公認の自動化ツールやスパムボットとは異なり、VeloxPostはX公式API v2に完全準拠。プラットフォームの規約を厳格に遵守し、企業のブランド価値を生涯守り抜く安全設計です。</p>
+          </div>
+          <div class="card-visual-slot">
+            <div style="padding:24px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:0.9rem;font-weight:800;color:#047857;background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border-radius:12px;">
+              <div style="text-align:center;">
+                <div style="font-size:2.8rem;margin-bottom:8px;">🛡️</div>
+                <span style="font-size:1.05rem;">100% COMPLIANT & SECURE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: マルチストリーム ＆ AIリプライ営業 -->
+    <section id="secMultiStream" class="sec-container">
+      <div class="visual-story-block">
+        <span class="sec-eyebrow">MULTI-STREAM & REVENUE EXPANSION</span>
+        <h2 class="sec-h2">複数事業の並行スケール × AIによる自律リプライ営業</h2>
+        <p class="sec-lead" style="max-width:760px;margin:0 auto;">
+          Solo Starter（¥4,980/月）の手軽な入門から、Agency Pro（¥14,800/月）の1日3投稿・動的スコアリング、Syndicate Business（¥29,800/月）のAIリプライ自律営業まで、事業規模に応じた柔軟な拡張性を備えています。
+        </p>
+
+        <div class="story-split-row">
+          <div class="story-img-card" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;padding:24px;display:flex;flex-direction:column;justify-content:center;gap:12px;">
+            <div style="font-size:13px;font-weight:800;color:#1E293B;display:flex;align-items:center;gap:8px;">
+              <span style="width:10px;height:10px;border-radius:50%;background:#3B82F6;"></span> Lane 1: B2B 自社SaaS プロモーション
+            </div>
+            <div style="font-size:13px;font-weight:800;color:#1E293B;display:flex;align-items:center;gap:8px;">
+              <span style="width:10px;height:10px;border-radius:50%;background:#10B981;"></span> Lane 2: Webコンサルティング見込み客開拓
+            </div>
+            <div style="font-size:13px;font-weight:800;color:#1E293B;display:flex;align-items:center;gap:8px;">
+              <span style="width:10px;height:10px;border-radius:50%;background:#8B5CF6;"></span> Lane 3: デジタル商品・アフィリエイトファネル
+            </div>
+          </div>
+          <div>
+            <div style="font-size:0.78rem;font-weight:900;color:#2563EB;letter-spacing:0.06em;margin-bottom:8px;">MULTI-STREAM ENGINE</div>
+            <h3 style="font-size:1.65rem;font-weight:900;letter-spacing:-0.025em;margin-bottom:12px;color:#111827;">
+              複数事業・複数オファーを並行して自動プロモーション
+            </h3>
+            <p style="font-size:0.95rem;color:#4B5563;line-height:1.75;">
+              1つのアカウントで複数の商材やターゲット層を抱えていても安心。ターゲットごとの訴求角度やオファーURLを独立して管理し、最適な時間帯にバランスよくローテーション投稿します。
+            </p>
+          </div>
+        </div>
+
+        <div class="story-split-row" style="margin-top:44px;">
+          <div>
+            <div style="font-size:0.78rem;font-weight:900;color:#6D28D9;letter-spacing:0.06em;margin-bottom:8px;">AI CONTEXTUAL OUTREACH (BUSINESS EDITION)</div>
+            <h3 style="font-size:1.65rem;font-weight:900;letter-spacing:-0.025em;margin-bottom:12px;color:#111827;">
+              見込み客の投稿を検知し、AIが専門知見リプライで自動営業
+            </h3>
+            <p style="font-size:0.95rem;color:#4B5563;line-height:1.75;">
+              指定したキーワード（例: 「業務効率化」「リード獲得に悩み」など）をAIが常時モニタリング。該当するユーザーの投稿に対して、押し売り感の一切ない専門家としての共感＆アドバイスリプライを自動配信し、自然な形で自社プロフィールやLPへ誘導します。
+            </p>
+          </div>
+          <div class="story-img-card" style="background:linear-gradient(135deg,#F5F3FF,#EDE9FE);border:1px solid #DDD6FE;border-radius:16px;padding:24px;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:12px;font-weight:900;color:#6D28D9;margin-bottom:8px;">🎯 AI TARGET RADAR & OUTREACH</div>
+            <div style="font-size:13px;color:#4C1D95;line-height:1.6;background:#FFF;padding:12px;border-radius:10px;border:1px solid #C4B5FD;">
+              「めっちゃ共感します…！業務の仕組み化は最初のステップ設計が肝心ですよね。応援しています🙌」
+            </div>
+            <div style="font-size:11px;color:#7C3AED;margin-top:8px;font-weight:bold;text-align:right;">✓ 自然な対話でプロフィール誘導率 4.8倍</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: セキュリティ基盤 -->
+    <section id="secSecurity" class="sec-container">
+      <div class="knox-shield-sec">
+        <div class="knox-top-row">
+          <div>
+            <span class="sec-eyebrow">ENTERPRISE SECURITY & COMPLIANCE</span>
+            <h2 class="sec-h2" style="font-size:2.3rem;">企業の重要資産を守り抜く、<br>最高水準の暗号化＆セキュリティ。</h2>
+            <p class="sec-lead">
+              VeloxPost Cloudは、顧客のAPI認証情報およびアカウントデータを軍事規格であるAES-256-GCMで暗号化して管理。万全の情報セキュリティ体制で、法人の機密情報とアカウント価値を強固に保護します。
+            </p>
+          </div>
+          <div class="knox-img-box" style="background:linear-gradient(135deg,#064E3B,#047857);border-radius:16px;padding:32px;color:#FFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+            <div style="font-size:3.5rem;margin-bottom:12px;">🔐</div>
+            <div style="font-size:1.1rem;font-weight:900;">AES-256-GCM VAULT</div>
+            <div style="font-size:0.8rem;opacity:0.9;margin-top:4px;">ZERO-KNOWLEDGE ARCHITECTURE</div>
+          </div>
+        </div>
+
+        <div class="knox-3col">
+          <div class="knox-sub-card">
+            <h4>軍事規格の暗号化保管庫</h4>
+            <p>お客様のX公式APIキーはAES-256-GCM暗号化通信で保護され、データベース内でも厳重に隔離保管されます。</p>
+          </div>
+          <div class="knox-sub-card">
+            <h4>分散サテライト完全分離</h4>
+            <p>初速を支援するサテライト群は独立した高品質ネットワークで管理され、本アカウントとの相互汚染リスクを遮断します。</p>
+          </div>
+          <div class="knox-sub-card">
+            <h4>24時間稼働・死活監視</h4>
+            <p>各ジョブの実行状況およびAPI疎通状態を毎分モニタリングし、障害発生時も即時にリカバリーを行います。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: インタラクティブ・AI合議制シミュレーター（無料体験） -->
+    <section id="liveDemoSection" class="sec-container">
+      <div class="try-studio-sec">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <span class="sec-eyebrow" style="margin-bottom:4px;">INTERACTIVE LIVE SANDBOX</span>
+            <h2 style="font-size:2rem;font-weight:900;letter-spacing:-0.03em;color:#111827;">AI評議会のリアルタイム合議を無料体験</h2>
+          </div>
+          <div class="loc-pill">
+            <span class="loc-dot"></span>
+            <span>AI ENGINE: 5-Member Council Active</span>
+          </div>
+        </div>
+        <p style="color:#4B5563;font-size:0.95rem;margin-top:8px;">
+          登録不要で体験可能。宣伝したいWebページのURLと想定ターゲットを入力してください。5名のAI評議会がリアルタイムに協議し、Plan A（王道成約）とPlan B（対抗高拡散）の2パターンをその場で導き出します。
+        </p>
+
+        <div class="studio-white-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+          <div class="white-input-card">
+            <label>01 / あなたのXアカウント名 (X USERNAME)</label>
+            <input type="text" id="demoXUsername" placeholder="@your_account または アカウント名" value="@VeloxPostApp" />
+          </div>
+          <div class="white-input-card">
+            <label>02 / 宣伝したい商材・サービスURL (PRODUCT / LP URL)</label>
+            <input type="text" id="demoTargetUrl" placeholder="https://your-service.com/product" value="https://veloxpostapp.com" />
+          </div>
+        </div>
+
+        <div style="margin-top:14px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:14px;margin-bottom:16px;">
+          <label style="display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:6px;">
+            03 / AI評議会への指示・要望プロンプト (任意 / OPTIONAL)
+          </label>
+          <input type="text" id="demoUserPrompt" placeholder="例: 「B2B経営者に刺さるトーンで」「ブックマーク保存率を最大化したい」など (空欄の場合はAIが最適判断)" style="width:100%;padding:10px 12px;border:1px solid #CBD5E1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+        </div>
+
+        <button type="button" class="btn-try-blue" id="btnRunFreeTest" onclick="runFreeBrowserExperience()">
+          ⚡ 5名のAI評議会を招集して無料アカウント診断＆合議を開始する →
+        </button>
+
+        <div class="console-log" id="expConsole"></div>
+
+        <div style="margin-top:28px;padding-top:22px;border-top:1px solid #D1D5DB;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+          <div style="font-size:0.92rem;font-weight:700;color:#111827;">
+            本番環境での自律運用を始める準備はできましたか？ 無料アカウント登録ですぐにコックピットへアクセスできます。
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn-nav-outline" style="padding:12px 22px;font-size:0.88rem;" onclick="openAuthModal('register')">
+              👤 無料アカウント作成 / ログイン
+            </button>
+            <button type="button" class="btn-nav-blue" style="padding:12px 26px;font-size:0.88rem;" onclick="openUnlockModal()">
+              🔓 エディションを選択して開始 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 8: 仕様一覧サマリー -->
+    <section id="secSpecs" class="sec-container">
+      <h2 class="sec-h2" style="font-size:2rem;margin-bottom:20px;">主要機能・スペック早見表</h2>
+      <div class="glance-bento-grid">
+        <div class="glance-card">
+          <div>
+            <div style="font-weight:800;font-size:0.88rem;color:#475569;">プラットフォーム準拠・安全性</div>
+            <div class="glance-big" style="color:#059669;">100% 準拠</div>
+            <div style="font-size:0.84rem;color:#64748B;">X公式API v2による正規接続。アカウント停止・シャドウバンリスクを完全排除</div>
+          </div>
+          <div class="glance-thumb-wrap" style="background:#ECFDF5;display:flex;align-items:center;justify-content:center;font-size:3rem;border-radius:12px;">
+            🛡️
+          </div>
+        </div>
+        <div class="glance-card">
+          <div>
+            <div style="font-weight:800;font-size:0.88rem;color:#475569;">AI意思決定・合議システム</div>
+            <div class="glance-big" style="color:#2563EB;">5名 専門合議</div>
+            <div style="font-size:0.84rem;color:#64748B;">フック・共感・アルゴリズム・ブランド防御・統括議長による多角ディベート</div>
+          </div>
+          <div class="glance-thumb-wrap" style="background:#EFF6FF;display:flex;align-items:center;justify-content:center;font-size:3rem;border-radius:12px;">
+            🏛️
+          </div>
+        </div>
+        <div class="glance-card">
+          <div>
+            <div style="font-weight:800;font-size:0.88rem;color:#475569;">初速エンゲージメント支援</div>
+            <div class="glance-big" style="color:#7C3AED;">最大25台</div>
+            <div style="font-size:0.84rem;color:#64748B;">分散サテライトによる初速ブーストでおすすめTL（For You）への露出を最大化</div>
+          </div>
+          <div class="glance-thumb-wrap" style="background:#F5F3FF;display:flex;align-items:center;justify-content:center;font-size:3rem;border-radius:12px;">
+            🚀
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 9: 料金プラン体系 (Editions) -->
+    <section id="secEditions" class="sec-container">
+      <div class="compare-editions-sec">
+        <div class="sec-center" style="margin-bottom:32px;">
+          <span class="sec-eyebrow">SELECT YOUR EDITION</span>
+          <h2 class="sec-h2" style="font-size:2.2rem;">事業規模に合わせた3つのプラン</h2>
+          <p class="sec-lead">すべてのプランにX公式API v2準拠（凍結リスクゼロ）、5名のAI合議制評議会、分散サテライト支援が含まれています。</p>
+        </div>
+
+        <div class="plans-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+          <!-- 個人/副業向け -->
+          <div class="p-card" onclick="openUnlockModal('starter')">
+            <div>
+              <div class="p-tier" style="color:#2563EB; font-size:0.75rem;">👤 CREATOR & SOLO</div>
+              <div class="p-title" style="font-size: 1.4rem;">Solo Starter</div>
+              <div class="p-price">¥4,980 <span>/ 月 ($39)</span></div>
+              <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+                個人の情報発信、アフィリエイト、副業のスタートダッシュに。手軽にAI合議制の力を試せるエントリープラン。
+              </p>
+              <ul class="p-feats">
+                <li><span class="chk-svg">✓</span> <strong>1日1投稿</strong> (月30本の自動最適化配信)</li>
+                <li><span class="chk-svg">✓</span> <strong>5台のサテライト支援</strong> (初速エンゲージブースト)</li>
+                <li><span class="chk-svg">✓</span> X公式API v2完全準拠 (凍結リスクゼロ)</li>
+                <li><span class="chk-svg">✓</span> 🧠 AI合議制評議会 (基礎分析・投稿時間最適化)</li>
+              </ul>
+            </div>
+            <button type="button" class="btn-select-plan">Solo Starter を選択 →</button>
+          </div>
+
+          <!-- 法人/スモールビジネス向け -->
+          <div class="p-card selected" onclick="openUnlockModal('pro')">
+            <div class="pop-tag">MOST POPULAR ★ 法人・事業主向け 人気No.1</div>
+            <div>
+              <div class="p-tier" style="color:#1D4ED8; font-size:0.75rem;">🏢 BUSINESS PRO</div>
+              <div class="p-title" style="font-size: 1.4rem;">Agency Pro</div>
+              <div class="p-price">¥14,800 <span>/ 月 ($99)</span></div>
+              <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+                B2Bリード獲得、自社商品・サービスの拡販に。過去実績を自己学習し、商談に繋がる最適解を自律生成します。
+              </p>
+              <ul class="p-feats">
+                <li><span class="chk-svg">✓</span> <strong>1日3投稿</strong> (朝・昼・夜のピーク時間帯を網羅)</li>
+                <li><span class="chk-svg">✓</span> <strong>12台のサテライト支援</strong> + 引用RTブースト</li>
+                <li><span class="chk-svg">✓</span> 🧠 <strong>自己学習型ナレッジ蓄積</strong> (成功・失敗事例学習)</li>
+                <li><span class="chk-svg">✓</span> <strong>Plan A / Plan B デュアル提案</strong> & 是々非々審査</li>
+              </ul>
+            </div>
+            <button type="button" class="btn-select-plan" style="background:#2563EB;color:#FFF;">Agency Pro を選択 →</button>
+          </div>
+
+          <!-- エンタープライズ/複数事業向け -->
+          <div class="p-card" onclick="openUnlockModal('business')">
+            <div class="ai-tag">👑 ENTERPRISE SCALE</div>
+            <div>
+              <div class="p-tier" style="color:#7C3AED; font-size:0.75rem;">🌐 SYNDICATE</div>
+              <div class="p-title" style="font-size: 1.4rem;">Syndicate Business</div>
+              <div class="p-price">¥29,800 <span>/ 月 ($199)</span></div>
+              <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+                複数事業の展開、代理店運用に。指定キーワードに反応してAIが自律営業リプライを行う狩猟型マーケティング基盤。
+              </p>
+              <ul class="p-feats">
+                <li><span class="chk-svg">✓</span> <strong>1日5投稿</strong> (月150本の圧倒的露出)</li>
+                <li><span class="chk-svg">✓</span> <strong>25台のサテライト支援</strong> (最大級の初速神輿)</li>
+                <li><span class="chk-svg">✓</span> 🧠 <strong>AIリプライ自律営業</strong> (見込み客を自動発掘)</li>
+                <li><span class="chk-svg">✓</span> 優先AI生成キュー & マルチストリーム運用</li>
+              </ul>
+            </div>
+            <button type="button" class="btn-select-plan">Syndicate Business を選択 →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 10: よくある質問 (FAQ) -->
+    <section id="secFaq" class="faq-sec">
+      <h2 class="sec-h2" style="font-size:2rem;margin-bottom:28px;">よくあるご質問 (Frequently Asked Questions)</h2>
+      
+      <div class="faq-item open">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span>一般的な自動投稿ツール（Bot）との違いは何ですか？</span><span>＋</span>
+        </button>
+        <div class="faq-a">
+          一般的なツールは「あらかじめ設定した定型文を決まった日時に送信する」だけのタイマー機能です。VeloxPost Cloudは、5名の専門家AIが過去のインプレッションデータやバイラル事例を分析し、「どのフック（書き出し）が成約に繋がるか」「何時に投稿すれば見込み客に届くか」を多角ディベート（合議）し、Plan A（王道）とPlan B（対抗）の最適ポストを自律生成する次世代のグロース基盤です。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span>アカウントの凍結（シャドウバン・サスペンド）リスクはありませんか？</span><span>＋</span>
+        </button>
+        <div class="faq-a">
+          ご安心ください。VeloxPost Cloudはお客様の本アカウントを **X公式API（OAuth 1.0a / v2）** 経由で正規に接続して運用します。非公認のスクレイピングやプラットフォーム規約に違反する挙動は一切行わないため、アカウント停止リスクゼロで安全に運用いただけます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span>過去の投稿からどのように「成功・失敗事例」を自己学習するのですか？</span><span>＋</span>
+        </button>
+        <div class="faq-a">
+          配信された投稿のインプレッション、いいね、リプライ、ブックマーク数を定期的に分析し、平均を上回る高反響ポストからは「成功要因（フック構造、共感ポイント）」を抽出し、伸び悩んだポストからは「失敗反省点（抽象的すぎた表現など）」をナレッジとして自動蓄積します。使えば使うほど、貴社アカウントのフォロワーに最も刺さる勝ちパターンを確立します。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span>サテライト支援（エンゲージメントブースト）とはどのような仕組みですか？</span><span>＋</span>
+        </button>
+        <div class="faq-a">
+          投稿直後の初速エンゲージメントは、Xのアルゴリズムにおいて「おすすめタイムライン（For You）」へ推薦されるための最重要指標です。VeloxPost Cloudでは、本アカウントが投稿した直後に、分散管理された高品質サテライト群が自然な時間間隔で「いいね・リツイート・引用RT」を行い、投稿の初速を科学的に押し上げます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button type="button" class="faq-q" onclick="this.parentNode.classList.toggle('open')">
+          <span>AIが生成した投稿は事前に確認・修正できますか？</span><span>＋</span>
+        </button>
+        <div class="faq-a">
+          はい、可能です。管理コックピット内の「AI評議会スタジオ」にて、5名のAIディベート内容、Plan AとPlan Bのプレビュー、推奨投稿時間を確認できます。「もっと初心者向けにして」「明日の昼に投稿して」などの要望を入力すれば、評議会がプロの視点で是々非々審査を行い、即座に修正案を再合議します。
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 11: 開発チームからの見解 -->
+    <section class="reviews-sec">
+      <h2 class="sec-h2" style="font-size:2rem;margin-bottom:24px;">VeloxPost開発チームからの見解</h2>
+      <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); text-align: left;">
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1E293B; margin-bottom: 16px; border-left: 4px solid #2563EB; padding-left: 12px;">なぜ一般的な自動投稿ツールは成果が出ないのか？</h3>
+        <p style="font-size: 0.95rem; color: #475569; line-height: 1.8; margin-bottom: 20px;">
+          SNSマーケティングにおいて、多くの企業や事業主が「決まった時間に定型文を垂れ流す」だけのBotツールを導入し、結果として誰にも読まれずに終わっています。原因は明確です。SNSのアルゴリズムは「人間らしい文脈と、読者が保存したくなる本質的な価値」を厳格に評価するからです。<br>
+          単なるURLの機械的投稿や、AI特有の安っぽい定型文は、プラットフォームからもオーディエンスからも即座に見放されます。
+        </p>
+
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1E293B; margin-bottom: 16px; border-left: 4px solid #10B981; padding-left: 12px;">私たちが創り上げた「AI合議制 × 自己学習」という最適解</h3>
+        <p style="font-size: 0.95rem; color: #475569; line-height: 1.8; margin-bottom: 20px;">
+          VeloxPost Cloudは、単一のAIに頼るのではなく、フック分析官、共感心理官、アルゴリズム官、ブランド防御官、統括議長という「5名の異なる専門家AI」を評議会として組織しました。<br>
+          ユーザーの指示がアカウント成長にとって悪手（直リンクによるアルゴリズム減衰や、過度な煽り）であれば、AIは毅然とそれを却下し、プロとしての代替解決策を提示します。「イエスマンAI」を徹底的に排除したからこそ、本物のマーケターチームを顧問に置いたような高品質な成果を生み出せます。
+        </p>
+
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1E293B; margin-bottom: 16px; border-left: 4px solid #F59E0B; padding-left: 12px;">完全公式API準拠とエンタープライズ・コンプライアンス</h3>
+        <p style="font-size: 0.95rem; color: #475569; line-height: 1.8;">
+          私たちはX（旧Twitter）の公式API v2に完全準拠しています。非公式なスクレイピングや規約に反する大量アカウントスパムは一切排除しています。<br>
+          B2B企業や成長企業の方々が、自社のブランド価値を一切損なうことなく、クリーンかつ安全にSNSから見込み客を開拓し、売上を拡大し続けるための「信頼できるエンタープライズ基盤」をお届けします。
+        </p>
+      </div>
+    </section>
+
+    <div class="mobile-bottom-cta">
+      <a href="#liveDemoSection" style="flex:1;text-align:center;padding:11px;border-radius:999px;background:#F1F5F9;color:#0F172A;font-weight:800;font-size:0.8rem;text-decoration:none;border:1px solid #CBD5E1;">⚡ 無料ライブデモ</a>
+      <button type="button" onclick="openUnlockModal()" style="flex:1.2;padding:11px;border-radius:999px;background:#2563EB;color:#FFFFFF;font-weight:800;font-size:0.8rem;border:none;box-shadow:0 6px 16px -4px rgba(37,99,235,0.5);">🔓 エディション選択 →</button>
+    </div>
+    <footer style="text-align:center;padding:40px 20px;background:#0F172A;color:#94A3B8;font-size:0.85rem;line-height:1.8;">
+      <div style="margin-bottom:16px;display:flex;justify-content:center;gap:20px;flex-wrap:wrap;">
+        <a href="/views/compliance_tokushoho.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;">特定商取引法に基づく表記</a>
+        <a href="/views/compliance_terms.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;">利用規約</a>
+        <a href="/views/compliance_privacy.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;">プライバシーポリシー</a>
+        <a href="/views/compliance_company.html" target="_blank" style="color:#CBD5E1;text-decoration:none;font-weight:bold;">運営事業者情報</a>
+      </div>
+      <div>
+        <p style="margin-bottom:8px;font-size:0.75rem;color:#64748B;">VeloxPost Cloudは、X(旧Twitter)公式APIを利用した正規アプリケーションです。各プラットフォームの利用規約を遵守し、健全なアカウント運用をサポートします。</p>
+        © 2026 VeloxPost Cloud. All rights reserved.<br><span style="font-size:0.7rem; color:#64748B;">本サービスはデジタルコンテンツの性質上、決済完了後の返金には応じられません。詳細は利用規約をご確認ください。</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========================================================================
+       VIEW 2: LOGGED-IN MEMBER COCKPIT
+       ======================================================================== -->
+  <div id="memberCockpitView" class="cockpit-wrap" style="display:none;">
+    <div class="cockpit-welcome-bar">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+          <span class="tier-badge-pill" id="topTierBadge">Lv.0 FREE MEMBER (UNSUBSCRIBED)</span>
+          <span class="loc-pill" id="topLocBadge"><span class="loc-dot"></span><span>YOUR LOCATION: USA</span></span>
+        </div>
+        <h2 style="font-size:1.45rem;font-weight:900;color:#0F172A;" id="cockpitUserGreeting">Autonomous Command Cockpit</h2>
+        <div style="font-size:0.84rem;color:#475569;margin-top:2px;" id="cockpitStatusSub">
+          Unlock an edition to activate your dedicated static ISP slots and parallel cloud browser streams.
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="button" onclick="openUnlockModal()" style="background:linear-gradient(135deg,#2563EB,#4F46E5);color:#FFFFFF;border:none;padding:12px 22px;border-radius:12px;font-weight:900;font-size:0.86rem;cursor:pointer;">
+          🚀 Upgrade Edition / Unlock Features
+        </button>
+        <button type="button" onclick="logoutAccount()" style="background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;padding:12px 18px;border-radius:12px;font-weight:800;font-size:0.82rem;cursor:pointer;">
+          Sign Out
+        </button>
+      </div>
+    </div>
+
+    <div class="oneday-upgrade-banner" id="onedayUpgradeBanner" style="display:none;"></div>
+
+    
+    <!-- Built-In 30% Recurring USDT Affiliate Referral Bar inside Cockpit -->
+    <div id="cockpitAffiliateBar" style="background:linear-gradient(135deg,#EFF6FF 0%,#F5F3FF 100%);border:1.5px solid #93C5FD;border-radius:22px;padding:20px 24px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+      <div>
+        <div style="font-size:0.74rem;font-weight:900;color:#2563EB;letter-spacing:0.06em;">🤝 30% RECURRING USDT PARTNER LINK</div>
+        <div style="font-weight:900;font-size:1.05rem;color:#0F172A;margin-top:2px;">Share Your Referral Link & Earn 30% Monthly on Every Subscriber</div>
+        <div style="font-size:0.82rem;color:#475569;margin-top:2px;">Refer just 3–4 users to cover 100% of your own subscription and generate passive USDT income.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="myCockpitRefUrl" readonly value="https://appflowsystem.com/studio?ref=XSW-B334EF" style="padding:10px 14px;border-radius:10px;border:1px solid #93C5FD;background:#FFFFFF;font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:700;color:#1E3A8A;width:310px;max-width:100%;" />
+        <button type="button" onclick="copyCockpitRefLink()" style="background:#2563EB;color:#FFFFFF;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-size:0.8rem;cursor:pointer;">📋 Copy Link</button>
+        <a href="/affiliate" id="cockpitToAffPortalLink" style="background:#FFFFFF;color:#1D4ED8;border:1px solid #93C5FD;padding:10px 16px;border-radius:10px;font-weight:800;font-size:0.8rem;text-decoration:none;">📊 Payout Portal ↗</a>
+      </div>
+    </div>
+    <!-- 🚀 最新 BYOK 自律マーケティング コックピット (旧3レーン・Cookie完全廃止) -->
+    <div style="background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:20px;padding:26px;margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,0.05);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;border-bottom:1px solid #E2E8F0;padding-bottom:14px;">
+        <div style="width:30px;height:30px;background:#2563EB;color:#FFF;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">1</div>
+        <div style="font-size:17px;font-weight:800;color:#0F172A;">本アカウント 公式APIキーの接続（初回1回のみ・凍結リスク完全ゼロ）</div>
+      </div>
+      <p style="font-size:13px;color:#64748B;margin-bottom:14px;line-height:1.6;">
+        X公式API v2を使用するため、本アカウントのシャドウバン・凍結リスクは完全ゼロです。キーはAES-256-GCM暗号化で安全に保護されます。
+      </p>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;">API Key</label>
+          <input type="text" id="inpApiKey" placeholder="API Key" style="width:100%;padding:10px 14px;border:1.5px solid #CBD5E1;border-radius:10px;font-size:13px;">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;">API Key Secret</label>
+          <input type="password" id="inpApiSecret" placeholder="API Key Secret" style="width:100%;padding:10px 14px;border:1.5px solid #CBD5E1;border-radius:10px;font-size:13px;">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;">Access Token</label>
+          <input type="text" id="inpAccessToken" placeholder="Access Token" style="width:100%;padding:10px 14px;border:1.5px solid #CBD5E1;border-radius:10px;font-size:13px;">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;">Access Token Secret</label>
+          <input type="password" id="inpAccessTokenSecret" placeholder="Access Token Secret" style="width:100%;padding:10px 14px;border:1.5px solid #CBD5E1;border-radius:10px;font-size:13px;">
+        </div>
+      </div>
+
+      <button type="button" onclick="verifyKeys()" style="background:#2563EB;color:#FFF;border:none;border-radius:10px;padding:12px 22px;font-size:13px;font-weight:800;cursor:pointer;">
+        🛡️ 公式APIキーを認証して接続
+      </button>
+      <div id="keyMsg" class="status-msg" style="display:none;margin-top:10px;padding:12px;border-radius:8px;font-size:13px;line-height:1.5;"></div>
+    </div>
+
+    <!-- ステップ2: 宣伝URL ＆ ステップ3: プラン選択 -->
+    <div style="background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:20px;padding:26px;margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,0.05);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;border-bottom:1px solid #E2E8F0;padding-bottom:14px;">
+        <div style="width:30px;height:30px;background:#2563EB;color:#FFF;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">2</div>
+        <div style="font-size:17px;font-weight:800;color:#0F172A;">宣伝・集客したいURLを入力</div>
+      </div>
+      <label style="display:block;font-size:13px;font-weight:700;color:#475569;margin-bottom:6px;">対象のWebページURL (自社LP、Brain、Tips、ブログ、ショップ等)</label>
+      <input type="url" id="inpTargetUrl" placeholder="https://your-service-lp.com/product" style="width:100%;padding:12px 14px;border:2px solid #38BDF8;border-radius:12px;font-size:15px;margin-bottom:20px;">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid #E2E8F0;padding-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:30px;height:30px;background:#10B981;color:#FFF;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">3</div>
+          <div style="font-size:17px;font-weight:800;color:#0F172A;">マーケティング強度（プラン）を選択</div>
+        </div>
+        <div style="display:flex;gap:6px;background:#F1F5F9;padding:3px;border-radius:8px;">
+          <button type="button" id="btnCurJpy" onclick="switchCurrency('jpy')" style="background:#2563EB;color:#FFF;border:none;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;">🇯🇵 JPY (日本円)</button>
+          <button type="button" id="btnCurUsd" onclick="switchCurrency('usd')" style="background:transparent;color:#64748B;border:none;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;">🇺🇸 USD (米ドル)</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
+        <!-- スターター -->
+        <div class="plan-box" id="planBox_starter" onclick="selectPlan('starter', this)" style="background:#F8FAFC;border:2px solid #E2E8F0;border-radius:14px;padding:16px;text-align:center;cursor:pointer;position:relative;">
+          <div style="font-size:14px;font-weight:800;color:#334155;margin-bottom:4px;">🥉 スターター</div>
+          <div id="price_starter" style="font-size:22px;font-weight:900;color:#0F172A;margin-bottom:6px;">¥4,980<span style="font-size:12px;color:#64748B;">/月</span></div>
+          <div style="font-size:11px;color:#64748B;line-height:1.4;">1日1投稿 (月30本)<br>サテライト応援 5台</div>
+          <a id="btnPay_starter" href="https://wise.com/pay/r/kXYnWl-m6k8WVOY" target="_blank" onclick="handlePayClick('starter', event)" class="plan-pay-btn" style="display:block;margin-top:12px;padding:8px 12px;background:#FFFFFF;border:1.5px solid #CBD5E1;border-radius:8px;color:#0F172A;font-size:12px;font-weight:800;text-decoration:none;">
+            💳 ¥4,980 で決済 ↗
+          </a>
+        </div>
+
+        <!-- プロ運用 -->
+        <div class="plan-box selected" id="planBox_pro" onclick="selectPlan('pro', this)" style="background:#EFF6FF;border:2px solid #2563EB;border-radius:14px;padding:16px;text-align:center;cursor:pointer;position:relative;">
+          <div style="position:absolute;top:-10px;right:12px;background:#F59E0B;color:#000;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;">一番人気 ★</div>
+          <div style="font-size:14px;font-weight:800;color:#1D4ED8;margin-bottom:4px;">🥈 プロ運用</div>
+          <div id="price_pro" style="font-size:22px;font-weight:900;color:#2563EB;margin-bottom:6px;">¥9,800<span style="font-size:12px;color:#64748B;">/月</span></div>
+          <div style="font-size:11px;color:#64748B;line-height:1.4;">1日3投稿 (朝昼夜)<br>サテライト応援 12台 + 引用RT</div>
+          <a id="btnPay_pro" href="https://wise.com/pay/r/V_tnc7azl63ng3w" target="_blank" onclick="handlePayClick('pro', event)" class="plan-pay-btn primary" style="display:block;margin-top:12px;padding:8px 12px;background:#2563EB;border:1.5px solid #2563EB;border-radius:8px;color:#FFFFFF;font-size:12px;font-weight:800;text-decoration:none;">
+            💳 ¥9,800 で決済 ↗
+          </a>
+        </div>
+
+        <!-- ビジネス -->
+        <div class="plan-box" id="planBox_business" onclick="selectPlan('business', this)" style="background:#F8FAFC;border:2px solid #E2E8F0;border-radius:14px;padding:16px;text-align:center;cursor:pointer;position:relative;">
+          <div style="font-size:14px;font-weight:800;color:#334155;margin-bottom:4px;">🥇 ビジネス</div>
+          <div id="price_business" style="font-size:22px;font-weight:900;color:#0F172A;margin-bottom:6px;">¥19,800<span style="font-size:12px;color:#64748B;">/月</span></div>
+          <div style="font-size:11px;color:#64748B;line-height:1.4;">1日5投稿 (月150本)<br>強力サテライト 25台 + リプ営業</div>
+          <a id="btnPay_business" href="https://wise.com/pay/r/HEO5qptIIPhwhVQ" target="_blank" onclick="handlePayClick('business', event)" class="plan-pay-btn" style="display:block;margin-top:12px;padding:8px 12px;background:#FFFFFF;border:1.5px solid #CBD5E1;border-radius:8px;color:#0F172A;font-size:12px;font-weight:800;text-decoration:none;">
+            💳 ¥19,800 で決済 ↗
+          </a>
+        </div>
+      </div>
+
+      <!-- 決済案内バー -->
+      <div id="checkoutBox" style="margin-top:14px;padding:12px 18px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div id="selectedPlanLabel" style="font-size:13px;font-weight:800;color:#1D4ED8;">現在選択中: 🥈 プロ運用プラン (¥9,800 / 月)</div>
+          <div style="font-size:12px;color:#475569;margin-top:2px;">💳 クレジットカード・デビットカード・銀行振込（Wise公式）対応。入金は即時自動検知されます。</div>
+        </div>
+        <a id="btnPayDirect" href="https://wise.com/pay/r/V_tnc7azl63ng3w" target="_blank" onclick="handlePayClick(currentPlan, event)" style="background:#2563EB;color:#FFF;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:800;text-decoration:none;display:inline-block;">
+          💳 選択中のプランを決済する ↗
+        </a>
+      </div>
+      <div id="checkoutStatus" class="status-msg" style="display:none;margin-top:10px;padding:12px;border-radius:8px;font-size:13px;line-height:1.5;"></div>
+
+      <!-- ステップ4: アカウント自律成長エンジンの起動（1ボタン） -->
+      <div style="margin-top:20px;border-top:1px solid #E2E8F0;padding-top:18px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div style="width:30px;height:30px;background:#7C3AED;color:#FFF;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">4</div>
+          <div style="font-size:17px;font-weight:800;color:#0F172A;">AI評議会によるアカウント自律グロースを始動</div>
+        </div>
+
+        <button type="button" class="btn-main" id="btnMainLaunch" onclick="startGrowthEngine()" style="background:linear-gradient(135deg,#10B981 0%,#2563EB 100%);color:#FFF;border:none;border-radius:14px;padding:18px;font-size:16px;font-weight:900;cursor:pointer;width:100%;box-shadow:0 6px 20px rgba(16,185,129,0.35);letter-spacing:0.02em;">
+          🚀 AI評議会によるアカウント自律成長エンジンを始動する
+        </button>
+        <div style="font-size:12px;color:#64748B;text-align:center;margin-top:8px;">
+          ※ボタンを押すと5名の専門家AIが即座に評議会を招集。過去データと他社バイラル事例を合議し、次期投稿の策定・予約スケジュール・初速神輿担ぎを自動実行します。
+        </div>
+        <div id="launchMsg" class="status-msg" style="display:none;margin-top:10px;padding:12px;border-radius:8px;font-size:13px;line-height:1.5;"></div>
+      </div>
+    </div>
+
+    <!-- 🏛️ AI合議制・リアルタイム成長スタジオ (Multi-AI Deliberation Studio) -->
+    <div id="councilStudioSection" style="background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:20px;padding:26px;margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,0.05);">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;border-bottom:1px solid #E2E8F0;padding-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#FFF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;">🏛️</div>
+          <div>
+            <div style="font-size:18px;font-weight:900;color:#0F172A;">AI評議会・リアルタイム成長スタジオ</div>
+            <div style="font-size:12px;color:#64748B;margin-top:2px;">5名の専門家AIが過去インプレッションと他社成功事例を元に次期投稿を合議中</div>
+          </div>
+        </div>
+        <button type="button" onclick="startGrowthEngine()" id="btnDeliberateAgain" style="background:#F1F5F9;border:1.5px solid #CBD5E1;color:#334155;border-radius:10px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer;">
+          🔄 評議会を再招集（最新データ再合議）
+        </button>
+      </div>
+
+      <!-- ローディング表示 -->
+      <div id="councilLoading" style="display:none;padding:24px;text-align:center;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:14px;margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:800;color:#4338CA;margin-bottom:6px;">🏛️ 5名の専門家AIが評議会を開催中...</div>
+        <div style="font-size:12px;color:#64748B;">【フック分析官】×【共感心理官】×【アルゴリズム時間最適化官】×【脱AI臭防御官】×【統括議長】が過去データと他社事例を照合中（約10〜15秒）</div>
+      </div>
+
+      <!-- 合議結果コンテナ -->
+      <div id="councilResultWrap" style="display:none;">
+        <!-- ユーザーフィードバックに対する評議会の是々非々審査判定（条件付き表示） -->
+        <div id="userFeedbackVerdictBox" style="display:none;margin-bottom:16px;padding:14px 18px;border-radius:12px;"></div>
+
+        <!-- 動的AIスコアボード（新機能） -->
+        <div id="aiScoreBoard" style="display:none; margin-bottom: 20px; padding: 18px; border-radius: 14px; background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); color: #FFF; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);">
+          <div style="display:flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div style="font-size: 0.8rem; font-weight: 800; color: #94A3B8; letter-spacing: 0.05em; margin-bottom: 4px;">🎯 アカウント成長AIスコア (過去7日間)</div>
+              <div style="display: flex; align-items: baseline; gap: 10px;">
+                <span id="aiScoreRank" style="font-size: 2.2rem; font-weight: 900; color: #38BDF8;">RANK C</span>
+                <span id="aiScoreNum" style="font-size: 1.1rem; font-weight: 700; color: #CBD5E1;">(50/100pt)</span>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.75rem; color: #64748B; margin-bottom: 4px;">直近の平均インプレッション</div>
+              <div id="aiScoreImp" style="font-size: 1.3rem; font-weight: 800; color: #F8FAFC;">1,240</div>
+            </div>
+          </div>
+          <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #334155; font-size: 0.9rem; line-height: 1.6; color: #E2E8F0;">
+            <b style="color: #60A5FA;">💡 AI分析レポート:</b> <span id="aiScoreReason">データ集計中です。</span>
+          </div>
+        </div>
+
+        <!-- 評議会ディベートログ -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:#334155;margin-bottom:10px;">📋 5名の専門家AIによる合議ディベートログ</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="councilDebateGrid">
+            <!-- 動的挿入 -->
+          </div>
+        </div>
+
+        <!-- 🧠 アカウント専属AIの蓄積学習ナレッジ（成功・失敗事例） -->
+        <div id="aiKnowledgeEvolutionBox" style="display:none;margin-bottom:20px;padding:16px 18px;border-radius:14px;background:#F8FAFC;border:1.5px solid #E2E8F0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:18px;">🧠</span>
+              <span style="font-size:13px;font-weight:900;color:#1E293B;">アカウント専属AIの蓄積ナレッジ（自己学習エンジン）</span>
+              <span id="aiKnowledgeLevelBadge" style="background:#4F46E5;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:900;">AI Level 1</span>
+            </div>
+            <div style="font-size:11px;color:#64748B;" id="aiKnowledgeMetaInfo">学習済投稿: 0件</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="aiKnowledgeCasesGrid">
+            <!-- 動的挿入: 成功事例 & 失敗反省点 -->
+          </div>
+          <div id="aiKnowledgeTakeawayBox" style="margin-top:10px;padding:8px 12px;background:#EFF6FF;border:1px dashed #93C5FD;border-radius:8px;font-size:11.5px;color:#1E40AF;line-height:1.5;"></div>
+        </div>
+
+        <!-- 合議決定ポスト ＆ 推奨時間プレビュー (Plan A / Plan B 切り替えタブ) -->
+        <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:14px;padding:20px;margin-bottom:20px;">
+          <!-- A/B プラン選択タブ -->
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;" id="planTabsContainer">
+            <button type="button" id="tabBtnPlanA" onclick="switchPlanOption('planA')" style="flex:1;min-width:200px;padding:10px 14px;border-radius:10px;border:2px solid #059669;background:#ECFDF5;color:#065F46;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 4px rgba(0,0,0,0.05);transition:all 0.2s;">
+              <span>🔥 Plan A: 王道・高成約</span>
+              <span id="planABadge" style="background:#059669;color:#FFF;padding:2px 6px;border-radius:6px;font-size:10px;">本命選択中</span>
+            </button>
+            <button type="button" id="tabBtnPlanB" onclick="switchPlanOption('planB')" style="flex:1;min-width:200px;padding:10px 14px;border-radius:10px;border:1.5px solid #CBD5E1;background:#FFFFFF;color:#475569;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all 0.2s;">
+              <span>⚡ Plan B: 対抗・高拡散 (別アングル)</span>
+              <span id="planBBadge" style="background:#E2E8F0;color:#64748B;padding:2px 6px;border-radius:6px;font-size:10px;">対抗案</span>
+            </button>
+          </div>
+
+          <!-- 予測エンゲージメント・メトリクス表示バー -->
+          <div id="planPredictorBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;background:#FFFFFF;border:1px solid #BBF7D0;border-radius:10px;font-size:12px;">
+            <div style="display:flex;align-items:center;gap:6px;color:#166534;">
+              <b>📈 予測IMP:</b> <span id="predMultiplier" style="font-weight:900;color:#059669;">2.8x</span>
+            </div>
+            <div style="color:#CBD5E1;">|</div>
+            <div style="display:flex;align-items:center;gap:6px;color:#166534;">
+              <b>🔖 予測ブックマーク率:</b> <span id="predBookmark" style="font-weight:900;color:#059669;">4.5%</span>
+            </div>
+            <div style="color:#CBD5E1;">|</div>
+            <div style="display:flex;align-items:center;gap:6px;color:#166534;">
+              <b>🎯 フック停止力:</b> <span id="predHookScore" style="font-weight:900;color:#059669;">93点</span>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;border-bottom:1px solid #BBF7D0;padding-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span id="councilFormatBadge"></span>
+              <span style="font-size:14px;font-weight:900;color:#166534;" id="councilPostAngle">合議決定ポスト</span>
+            </div>
+            <div style="background:#DCFCE7;color:#15803D;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:800;" id="councilTimeBadge">
+              ⏰ 推奨投稿時間: ...
+            </div>
+          </div>
+          
+          <div id="councilTweetsPreview" style="font-size:14px;color:#14532D;line-height:1.6;white-space:pre-wrap;margin-bottom:14px;"></div>
+          <div style="font-size:11px;color:#15803D;" id="councilScheduleReason"></div>
+        </div>
+
+        <!-- ユーザー意見入力 ＆ 確定操作 -->
+        <div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:14px;padding:18px;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+            <button type="button" onclick="commitCouncilSchedule()" id="btnCommitCouncil" style="flex:1;min-width:220px;background:#059669;color:#FFF;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(5,150,105,0.25);">
+              ✅ この合議結果で確定（予約キュー＆神輿担ぎセット）
+            </button>
+            <button type="button" onclick="startGrowthEngine()" style="background:#FFFFFF;color:#475569;border:1.5px solid #CBD5E1;border-radius:10px;padding:12px 18px;font-size:13px;font-weight:800;cursor:pointer;">
+              🔄 別の切り口で再合議
+            </button>
+          </div>
+
+          <!-- ユーザー指示・意見プロンプト組み込み（是々非々審査） -->
+          <div style="border-top:1px dashed #CBD5E1;padding-top:14px;margin-top:10px;">
+            <label style="display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:6px;">
+              ✍️ 評議会へ意見・修正指示を出す（※プロとしてアカウント成長に逆効果な指示は否定・代替案を提示します）
+            </label>
+            <div style="display:flex;gap:10px;">
+              <textarea id="userCouncilFeedback" placeholder="例: 「もっと初心者向けに親しみやすい言葉にしてほしい」「成約よりもブックマークを狙いたい」「投稿時間は明日の昼12:15にして」など" style="flex:1;height:54px;padding:10px 12px;border:1.5px solid #CBD5E1;border-radius:8px;font-size:13px;resize:none;font-family:inherit;"></textarea>
+              <button type="button" onclick="submitCouncilFeedback()" id="btnSubmitFeedback" style="background:#4F46E5;color:#FFF;border:none;border-radius:8px;padding:0 18px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
+                💡 意見をぶつけて再合議
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="councilCommitStatus" class="status-msg" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:13px;line-height:1.5;"></div>
+      </div>
+    </div>
+    </div>
+
+    <!-- 稼働中のスケジュールジョブ -->
+    <div style="background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:20px;padding:26px;box-shadow:0 4px 20px rgba(0,0,0,0.05);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid #E2E8F0;padding-bottom:12px;">
+        <div style="font-size:17px;font-weight:800;color:#0F172A;">📅 AIが自動作成した投稿スケジュール</div>
+        <button type="button" onclick="loadJobs()" style="background:#F1F5F9;border:1px solid #CBD5E1;color:#475569;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;">最新に更新</button>
+      </div>
+      <div id="jobsContainer">
+        <p style="color:#64748B;font-size:13px;">まだ自律投稿がスケジュールされていません。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-backdrop" id="authModal" onclick="if(event.target===this)closeAuthModal()">
+    <div class="modal-card" style="max-width:480px;padding:34px 32px;">
+      <button type="button" class="modal-close" onclick="closeAuthModal()">✕</button>
+      <h2 style="font-size:1.45rem;font-weight:900;color:#090D16;margin-bottom:6px;" id="authModalTitle">新規登録 (Sign Up)</h2>
+      <p style="font-size:0.85rem;color:#475569;margin-bottom:20px;">
+        VeloxPost Cloud 自律AIマーケティング管理画面へログインまたは新規作成します。
+      </p>
+
+      <div style="display:flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+        <!-- Google ログインボタン -->
+        <button type="button" onclick="startSocialLogin('google')" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; border-radius: 12px; border: 1.5px solid #E2E8F0; background: #FFFFFF; color: #1E293B; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width: 20px; height: 20px;" />
+          Googleアカウントでログイン
+        </button>
+        <!-- X(Twitter) ログインボタン -->
+        <button type="button" onclick="startSocialLogin('twitter')" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; border-radius: 12px; border: none; background: #0F172A; color: #FFFFFF; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+          <svg style="width: 20px; height: 20px; fill: currentColor;" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          X (旧Twitter) でログイン
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <hr style="flex: 1; border: none; border-top: 1px solid #E2E8F0;" />
+        <span style="padding: 0 10px; font-size: 0.8rem; color: #64748B; font-weight: 700;">またはメールアドレスで登録</span>
+        <hr style="flex: 1; border: none; border-top: 1px solid #E2E8F0;" />
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#F1F5F9;padding:6px;border-radius:12px;margin-bottom:20px;">
+        <button type="button" id="tabBtnReg" onclick="switchAuthTab('register')" style="padding:10px;border-radius:9px;border:none;font-weight:800;font-size:0.84rem;cursor:pointer;background:#2563EB;color:#FFFFFF;">新規登録</button>
+        <button type="button" id="tabBtnLogin" onclick="switchAuthTab('login')" style="padding:10px;border-radius:9px;border:none;font-weight:800;font-size:0.84rem;cursor:pointer;background:transparent;color:#475569;">ログイン</button>
+      </div>
+
+      <div class="field">
+        <label>📧 メールアドレス (Email Address)</label>
+        <input type="email" id="authEmail" placeholder="you@company.com" autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label>🔑 パスワード (8文字以上)</label>
+        <input type="password" id="authPass1" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+
+      <div class="field" id="authPass2Wrap">
+        <label>🔑 パスワード確認</label>
+        <input type="password" id="authPass2" placeholder="•••••••• (確認用)" autocomplete="new-password" />
+      </div>
+
+      <!-- ボット検知 (Cloudflare Turnstile モックアップ表示用) -->
+      <div id="captchaWrap" style="margin-top: 16px; margin-bottom: 16px; padding: 12px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; text-align: center; color: #64748B; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span style="font-size: 1.2rem;">🔒</span> 人間による操作であることを確認しています...
+      </div>
+
+      <button type="button" class="btn-try-blue" id="btnSubmitAuth" onclick="submitAuthForm()" style="margin-top:8px;">
+        ✅ 新規登録して管理画面へ進む →
+      </button>
+
+      <div style="margin-top: 20px; font-size: 0.75rem; color: #94A3B8; text-align: center; line-height: 1.5;">
+        ログインすることで、<a href="/views/compliance_terms.html" target="_blank" style="color: #64748B;">利用規約</a>および<a href="/views/compliance_privacy.html" target="_blank" style="color: #64748B;">プライバシーポリシー</a>に同意したものとみなされます。
+      </div>
+    </div>
+  </div>
+
+  <!-- UNLOCK MODAL -->
+  <div class="modal-backdrop" id="unlockModal" onclick="if(event.target===this)closeUnlockModal()">
+    <div class="modal-card">
+      <button type="button" class="modal-close" onclick="closeUnlockModal()">✕</button>
+      <h2 style="font-size:1.6rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:4px;">Step 1: Choose Edition ➔ Step 2: Select Static ISPs ➔ Step 3: Instant Activation</h2>
+      <p style="font-size:0.9rem;color:#475569;">Follow the 3 intuitive steps below to provision your dedicated residential ISP proxies and unlock your cockpit.</p>
+
+      <div class="current-plan-banner" id="currentPlanModalBanner">
+        <div id="currentPlanModalText">👑 Current Active Plan: Lv.0 Free Member</div>
+        <div style="font-size:0.78rem;color:#047857;">Select a higher tier to Upgrade, or click your current plan to extend / change ISPs.</div>
+      </div>
+      <div class="wiz-steps">
+        <div class="wiz-step active" id="wizStep1">① STEP 1: Select Edition</div>
+        <div class="wiz-step" id="wizStep2">② STEP 2: Configure Static ISPs</div>
+        <div class="wiz-step" id="wizStep3">③ STEP 3: Checkout & Unlock</div>
+      </div>
+
+      <div class="plans-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="p-card" id="pcard_starter" onclick="choosePlan('starter')">
+          <div>
+            <div class="p-tier" style="color:#2563EB;">Lv.1 — STARTER</div>
+            <div class="p-title">Solo Starter</div>
+            <div class="p-price">¥4,980 <span>/ Month ($39)</span></div>
+            <ul class="p-feats">
+              <li><span class="chk-svg">✓</span> <strong>1 Post per Day</strong> (30 Posts/mo)</li>
+              <li><span class="chk-svg">✓</span> <strong>5 Satellite Boosters</strong> (Likes/RTs)</li>
+              <li><span class="chk-svg">✓</span> Official X API v2 (Zero Suspension)</li>
+              <li><span class="chk-svg">✓</span> 🧠 <strong>AI Deliberation Council</strong></li>
+            </ul>
+          </div>
+          <button type="button" class="btn-select-plan" id="pbtn_starter">Select Plan (¥4,980)</button>
+        </div>
+
+        <div class="p-card selected" id="pcard_pro" onclick="choosePlan('pro')">
+          <div class="pop-tag">MOST POPULAR ★</div>
+          <div>
+            <div class="p-tier" style="color:#1D4ED8;">Lv.2 — AGENCY PRO</div>
+            <div class="p-title">Agency Pro</div>
+            <div class="p-price">¥9,800 <span>/ Month ($79)</span></div>
+            <ul class="p-feats">
+              <li><span class="chk-svg">✓</span> <strong>3 Posts per Day</strong> (Morning, Noon, Night)</li>
+              <li><span class="chk-svg">✓</span> <strong>12 Satellite Boosters</strong> + Quote RTs</li>
+              <li><span class="chk-svg">✓</span> 🧠 <strong>Advanced AI Council</strong> (Metrics Learning)</li>
+              <li><span class="chk-svg">✓</span> Interactive Feedback & Re-deliberation</li>
+            </ul>
+          </div>
+          <button type="button" class="btn-select-plan" id="pbtn_pro" style="background:#2563EB;color:#FFF;">Select Plan (¥9,800)</button>
+        </div>
+
+        <div class="p-card" id="pcard_business" onclick="choosePlan('business')">
+          <div class="ai-tag">👑 ENTERPRISE SCALE</div>
+          <div>
+            <div class="p-tier" style="color:#7C3AED;">Lv.3 — BUSINESS</div>
+            <div class="p-title">Syndicate Business</div>
+            <div class="p-price">¥19,800 <span>/ Month ($179)</span></div>
+            <ul class="p-feats">
+              <li><span class="chk-svg">✓</span> <strong>5 Posts per Day</strong> (150 Posts/mo)</li>
+              <li><span class="chk-svg">✓</span> <strong>25 Satellite Boosters</strong> + Reply Sales</li>
+              <li><span class="chk-svg">✓</span> 🧠 <strong>Continuous Learning AI Council</strong></li>
+              <li><span class="chk-svg">✓</span> Custom Prompt Feedback Loop</li>
+            </ul>
+          </div>
+          <button type="button" class="btn-select-plan" id="pbtn_business">Select Plan (¥19,800)</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;padding:12px 18px;border-radius:14px;background:#F8FAFC;border:1.5px dashed #93C5FD;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:0.84rem;font-weight:700;color:#1E293B;">
+          ➕ Already subscribed and want to add an extra Dedicated Static Residential ISP to your rack?
+        </div>
+        <button type="button" onclick="choosePlan('addon_isp')" style="background:#FFFFFF;border:1.5px solid #2563EB;color:#1D4ED8;padding:8px 16px;border-radius:10px;font-weight:800;font-size:0.8rem;cursor:pointer;">
+          + Select Static ISP Add-On (+$19 / 1 IP)
+        </button>
+      </div>
+
+      <div class="customizer-box" id="customizerBox">
+        <div class="cust-header">
+          <div>
+            <div style="font-weight:900;font-size:1.15rem;color:#090D16;" id="custTitle">② Select Your Dedicated Static ISP Country</div>
+            <div style="font-size:0.84rem;color:#475569;" id="custSub">Click the country buttons below to assign your dedicated residential proxy nodes</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button type="button" id="btnAutoFillIsp" onclick="autoFillRecommendedIsps()" style="display:none;background:#EFF6FF;border:1.5px solid #2563EB;color:#1D4ED8;padding:7px 14px;border-radius:999px;font-weight:800;font-size:0.8rem;cursor:pointer;">
+              ⚡ Auto-Fill Top 3 Regions (US + JP + UK)
+            </button>
+            <div class="quota-badge" id="quotaBadge">Selected: 0 / 1 IP</div>
+          </div>
+        </div>
+
+        <div class="country-grid" id="countryGrid"></div>
+
+        <div class="selected-slots-bar" id="selectedSlotsBar">
+          <span style="font-size:0.84rem;font-weight:700;color:#64748B;">Assigned Static ISP Slots: None selected yet</span>
+        </div>
+
+        <div class="ai-custom-box" id="aiCustomBox">
+          <div style="font-weight:900;font-size:0.95rem;color:#5B21B6;margin-bottom:6px;">
+            🤖 Initial Target Keywords for AI Auto-Judge Reply Outreach (Editable anytime in your cockpit)
+          </div>
+          <input type="text" id="modalAiKeywords" value="linktr.ee, beacons.ai, amzn.to, al.dmm.com, note.com, #ad, #affiliate" style="width:100%;padding:12px 14px;border:1.5px solid #C4B5FD;border-radius:10px;font-weight:700;font-size:0.9rem;" />
+        </div>
+      </div>
+
+      <div class="checkout-step-box" id="checkoutStepBox">
+        <div style="font-weight:900;font-size:1.22rem;color:#090D16;" id="checkoutSummaryTitle">③ Configuration Complete — Choose Payment Method</div>
+        <p style="font-size:0.88rem;color:#475569;margin-top:4px;" id="checkoutSummarySub">Your cockpit and dedicated static ISP proxies will be provisioned immediately upon payment confirmation.</p>
+
+        <div class="checkout-btns">
+          <button type="button" class="btn-final-wise" id="btnPayWiseFinal" onclick="proceedToCheckout('wise')">
+            🏦 Pay via Wise / Card →
+          </button>
+          <button type="button" class="btn-final-crypto" id="btnPayCryptoFinal" onclick="proceedToCheckout('crypto')">
+            💳 Pay via Crypto (USDT / BTC) →
+          </button>
+        </div>
+
+        <div class="order-status-bar" id="modalOrderBar"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/funnel-assets/funnel_client.js?v=1794272543408"></script>
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+  <!-- Hidden compatibility nodes for removed legacy Dual-Engine controls -->
+  <div id="_legacyDualDomCompat" style="display:none !important;">
+    <span id="dualEngineTierBadge"></span>
+    <span id="aiExclusiveStatusBadge"></span>
+    <span id="modeBtnAutoPost"></span>
+    <span id="modeBadgeAutoPost"></span>
+    <input type="hidden" id="proAiKeywords" value="" />
+  </div>
+  <script>
+    let currentPlan = 'pro';
+    let currentCurrency = 'jpy';
+    let pollOrderTimer = null;
+
+    const WISE_LINKS = {
+      jpy: {
+        starter: 'https://wise.com/pay/r/kXYnWl-m6k8WVOY',
+        pro: 'https://wise.com/pay/r/V_tnc7azl63ng3w',
+        business: 'https://wise.com/pay/r/HEO5qptIIPhwhVQ'
+      },
+      usd: {
+        starter: 'https://wise.com/pay/r/1OUW9iJBEMfwiN4',
+        pro: 'https://wise.com/pay/r/WQRO5dMpUa7145g',
+        business: 'https://wise.com/pay/r/h1yv3kXIvvcbh08'
+      }
+    };
+
+    const PLAN_NAMES = {
+      starter: '🥉 スタータープラン',
+      pro: '🥈 プロ運用プラン',
+      business: '🥇 ビジネスプラン'
+    };
+
+    const PLAN_PRICES = {
+      jpy: { starter: '¥4,980', pro: '¥9,800', business: '¥19,800' },
+      usd: { starter: '$39', pro: '$79', business: '$179' }
+    };
+
+    function selectPlan(p, el) {
+      currentPlan = p;
+      document.querySelectorAll('.plan-box').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.plan-pay-btn').forEach(b => b.classList.remove('primary'));
+      
+      const box = document.getElementById('planBox_' + p);
+      if (box) box.classList.add('selected');
+      const btn = document.getElementById('btnPay_' + p);
+      if (btn) btn.classList.add('primary');
+
+      updateBottomPayBar();
+    }
+
+    function updateBottomPayBar() {
+      const url = WISE_LINKS[currentCurrency]?.[currentPlan] || WISE_LINKS.jpy.pro;
+      const price = PLAN_PRICES[currentCurrency]?.[currentPlan] || '¥9,800';
+      const label = document.getElementById('selectedPlanLabel');
+      const directBtn = document.getElementById('btnPayDirect');
+      
+      if (label) {
+        label.innerText = '現在選択中: ' + PLAN_NAMES[currentPlan] + ' (' + price + ' / 月)';
+      }
+      if (directBtn) {
+        directBtn.href = url;
+        directBtn.innerText = '💳 ' + price + ' で決済する (Wise公式) ↗';
+      }
+    }
+
+    function switchCurrency(cur) {
+      currentCurrency = cur;
+      const btnJpy = document.getElementById('btnCurJpy');
+      const btnUsd = document.getElementById('btnCurUsd');
+      if (cur === 'jpy') {
+        btnJpy.style.background = '#2563EB';
+        btnJpy.style.color = '#FFF';
+        btnUsd.style.background = 'transparent';
+        btnUsd.style.color = '#64748B';
+      } else {
+        btnUsd.style.background = '#2563EB';
+        btnUsd.style.color = '#FFF';
+        btnJpy.style.background = 'transparent';
+        btnJpy.style.color = '#64748B';
+      }
+
+      ['starter', 'pro', 'business'].forEach(p => {
+        const pr = PLAN_PRICES[cur][p];
+        const unit = cur === 'jpy' ? '/月' : '/mo';
+        const priceEl = document.getElementById('price_' + p);
+        if (priceEl) priceEl.innerHTML = pr + '<span style="font-size:12px;color:#64748B;">' + unit + '</span>';
+        const b = document.getElementById('btnPay_' + p);
+        if (b) {
+          b.href = WISE_LINKS[cur][p];
+          b.innerText = '💳 ' + pr + ' で決済 ↗';
+        }
+      });
+
+      updateBottomPayBar();
+    }
+
+    function handlePayClick(p, e) {
+      fetch('/api/hybrid/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: p, currency: currentCurrency })
+      }).then(r => r.json()).then(j => {
+        if (j.ok && j.orderId) {
+          const msg = document.getElementById('checkoutStatus');
+          msg.style.display = 'block';
+          msg.style.background = '#EFF6FF';
+          msg.style.border = '1px solid #3B82F6';
+          msg.style.color = '#1D4ED8';
+          msg.innerHTML = '⏳ <b>Wise決済ページを開きました (照合ID: ' + j.wiseRef + ')</b><br><small style="color:#475569;">決済完了後、約10〜20秒で自動的にアカウント枠が解放されます...</small>';
+          
+          if (pollOrderTimer) clearInterval(pollOrderTimer);
+          pollOrderTimer = setInterval(async () => {
+            try {
+              const chk = await fetch('/api/hybrid/check-order?orderId=' + encodeURIComponent(j.orderId));
+              const res = await chk.json();
+              if (res.paid) {
+                clearInterval(pollOrderTimer);
+                msg.style.background = '#ECFDF5';
+                msg.style.border = '1px solid #10B981';
+                msg.style.color = '#065F46';
+                msg.innerHTML = '🎉 <b>入金が確認されました！' + PLAN_NAMES[p] + ' が即時有効化されました！</b>';
+              }
+            } catch (err) {}
+          }, 8000);
+        }
+      }).catch(() => {});
+    }
+
+    async function verifyKeys() {
+      const msg = document.getElementById('keyMsg');
+      msg.style.display = 'block';
+      msg.style.background = '#EFF6FF';
+      msg.style.border = '1px solid #3B82F6';
+      msg.style.color = '#1D4ED8';
+      msg.innerText = '⏳ 公式APIキーを検証中...';
+
+      const body = {
+        apiKey: document.getElementById('inpApiKey').value,
+        apiSecret: document.getElementById('inpApiSecret').value,
+        accessToken: document.getElementById('inpAccessToken').value,
+        accessTokenSecret: document.getElementById('inpAccessTokenSecret').value
+      };
+
+      try {
+        const res = await fetch('/api/hybrid/verify-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const j = await res.json();
+        if (j.ok) {
+          msg.style.background = '#ECFDF5';
+          msg.style.border = '1px solid #10B981';
+          msg.style.color = '#065F46';
+          msg.innerHTML = j.message;
+        } else {
+          msg.style.background = '#FEF2F2';
+          msg.style.border = '1px solid #EF4444';
+          msg.style.color = '#991B1B';
+          msg.innerText = '❌ ' + j.error;
+        }
+      } catch (e) {
+        msg.style.background = '#FEF2F2';
+        msg.style.border = '1px solid #EF4444';
+        msg.style.color = '#991B1B';
+        msg.innerText = '❌ 通信エラー: ' + e.message;
+      }
+    }
+
+    async function launchAutopilot() {
+      const msg = document.getElementById('launchMsg');
+      msg.style.display = 'block';
+      msg.style.background = '#EFF6FF';
+      msg.style.border = '1px solid #3B82F6';
+      msg.style.color = '#1D4ED8';
+      msg.innerHTML = '🔍 <b>AIがURL先をスクレイピングし、市場・ペルソナ分析中...</b> (約10〜15秒かかります)';
+
+      const body = {
+        targetUrl: document.getElementById('inpTargetUrl').value,
+        plan: currentPlan
+      };
+
+      try {
+        const res = await fetch('/api/autopilot/launch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const j = await res.json();
+        if (j.ok) {
+          msg.style.background = '#ECFDF5';
+          msg.style.border = '1px solid #10B981';
+          msg.style.color = '#065F46';
+          msg.innerHTML = j.message + '<br><small style="color:#475569;">🎯 分析対象: ' + (j.marketAnalysis ? j.marketAnalysis.serviceName : '') + ' / ターゲット: ' + (j.marketAnalysis ? j.marketAnalysis.targetAudience : '') + '</small>';
+          loadJobs();
+        } else {
+          msg.style.background = '#FEF2F2';
+          msg.style.border = '1px solid #EF4444';
+          msg.style.color = '#991B1B';
+          msg.innerText = '❌ ' + j.error;
+        }
+      } catch (e) {
+        msg.style.background = '#FEF2F2';
+        msg.style.border = '1px solid #EF4444';
+        msg.style.color = '#991B1B';
+        msg.innerText = '❌ ' + e.message;
+      }
+    }
+
+    function getFormatBadge(fmt, isThread, threadLen) {
+      if (fmt === 'multi_thread_story' || (isThread && threadLen >= 3)) {
+        return '<span style="background:rgba(168,85,247,0.15);color:#7E22CE;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">🧵 ' + (threadLen || '3-4') + '段スレッド</span>';
+      }
+      if (fmt === 'two_tier_reply_link' || (isThread && threadLen === 2)) {
+        return '<span style="background:rgba(59,130,246,0.15);color:#1D4ED8;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">💬 2段リプ誘導</span>';
+      }
+      if (fmt === 'single_empathy') {
+        return '<span style="background:rgba(245,158,11,0.15);color:#B45309;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">☕ 単発共感</span>';
+      }
+      return '<span style="background:rgba(16,185,129,0.15);color:#047857;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;margin-right:6px;">📌 単発ノウハウ</span>';
+    }
+
+    async function loadJobs() {
+      const cont = document.getElementById('jobsContainer');
+      if (!cont) return;
+      try {
+        const res = await fetch('/api/autopilot/jobs');
+        const j = await res.json();
+        if (j.ok && Array.isArray(j.jobs) && j.jobs.length > 0) {
+          let html = '';
+          j.jobs.forEach((job) => {
+            const isDone = job.status === 'posted';
+            const dateStr = job.scheduledAt ? new Date(job.scheduledAt._seconds ? job.scheduledAt._seconds * 1000 : job.scheduledAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '';
+            const tweets = Array.isArray(job.tweets) && job.tweets.length > 0 ? job.tweets : [job.text || ''];
+            const badge = getFormatBadge(job.format, job.isThread, tweets.length);
+
+            let tweetHtml = '<div style="font-size:13px;color:#1E293B;line-height:1.5;white-space:pre-wrap;margin-top:4px;">' + tweets[0] + '</div>';
+            if (tweets.length > 1) {
+              tweetHtml += '<details style="margin-top:8px;font-size:12px;color:#64748B;cursor:pointer;">' +
+                '<summary style="color:#2563EB;font-weight:700;">▼ 連動ツリーを表示（全' + tweets.length + '件）</summary>' +
+                '<div style="margin-top:6px;padding-left:10px;border-left:2px solid #38BDF8;">';
+              for (let t = 1; t < tweets.length; t++) {
+                tweetHtml += '<div style="margin-top:6px;color:#334155;white-space:pre-wrap;background:#F8FAFC;padding:6px 10px;border-radius:6px;border:1px solid #E2E8F0;"><b>(' + (t + 1) + '/' + tweets.length + ')</b> ' + tweets[t] + '</div>';
+              }
+              tweetHtml += '</div></details>';
+            }
+
+            html += '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
+              '<div style="max-width:75%;">' +
+                '<div style="display:flex;align-items:center;margin-bottom:4px;">' +
+                  badge +
+                  '<span style="font-size:12px;color:#64748B;font-weight:700;">[' + (job.angle || '自動最適化') + '] ' + dateStr + '</span>' +
+                '</div>' +
+                tweetHtml +
+              '</div>' +
+              '<div>' +
+                (isDone
+                  ? '<a href="' + job.tweetUrl + '" target="_blank" style="background:#059669;color:#FFF;padding:6px 14px;border-radius:8px;font-size:12px;text-decoration:none;font-weight:800;">✅ 投稿済 ↗</a>'
+                  : '<span style="background:#E2E8F0;color:#64748B;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">⏳ 待機中</span>'
+                ) +
+              '</div>' +
+            '</div>';
+          });
+          cont.innerHTML = html;
+        }
+      } catch (e) {}
+    }
+
+    // ========================================================================
+    // 🏛️ AI評議会（Multi-AI Deliberation Council）アカウント自律成長エンジン
+    // ========================================================================
+    let activeCouncilDeliberation = null;
+
+    async function startGrowthEngine() {
+      const launchMsg = document.getElementById('launchMsg');
+      if (launchMsg) {
+        launchMsg.style.display = 'block';
+        launchMsg.style.background = '#EFF6FF';
+        launchMsg.style.border = '1px solid #3B82F6';
+        launchMsg.style.color = '#1D4ED8';
+        launchMsg.innerHTML = '🏛️ <b>5名の専門家AI評議会を招集しました...</b> 過去インプレッション・他社成功事例を元に次期投稿を合議中（約10〜15秒）';
+      }
+
+      const studio = document.getElementById('councilStudioSection');
+      if (studio) studio.scrollIntoView({ behavior: 'smooth' });
+
+      await startCouncilDeliberation('');
+    }
+
+    async function submitCouncilFeedback() {
+      const fbInput = document.getElementById('userCouncilFeedback');
+      const fb = (fbInput ? fbInput.value : '').trim();
+      if (!fb) {
+        alert('AI合議への修正指示を入力してください（例: 「もっとフランクに」「URL誘導を強めて」「時間は明日の昼に」など）');
+        return;
+      }
+      const studio = document.getElementById('councilStudioSection');
+      if (studio) studio.scrollIntoView({ behavior: 'smooth' });
+      await startCouncilDeliberation(fb);
+    }
+
+    async function startCouncilDeliberation(userFeedback = '') {
+      const wrap = document.getElementById('councilResultWrap');
+      const loader = document.getElementById('councilLoading');
+      const btnMain = document.getElementById('btnMainLaunch');
+      const btnAgain = document.getElementById('btnDeliberateAgain');
+      const btnFb = document.getElementById('btnSubmitFeedback');
+      const statusMsg = document.getElementById('councilCommitStatus');
+      const launchMsg = document.getElementById('launchMsg');
+
+      if (statusMsg) statusMsg.style.display = 'none';
+      if (loader) loader.style.display = 'block';
+      if (wrap) wrap.style.display = 'none';
+      if (btnMain) btnMain.disabled = true;
+      if (btnAgain) btnAgain.disabled = true;
+      if (btnFb) btnFb.disabled = true;
+
+      const body = {
+        userId: localStorage.getItem('xsw_uid') || 'default_user',
+        targetUrl: document.getElementById('inpTargetUrl').value || '',
+        userFeedback: userFeedback || '',
+        currentDraft: activeCouncilDeliberation ? activeCouncilDeliberation.proposedPost : null,
+        plan: currentPlan
+      };
+
+      try {
+        const res = await fetch('/api/autopilot/council/deliberate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const d = await res.json();
+        if (loader) loader.style.display = 'none';
+        if (btnMain) btnMain.disabled = false;
+        if (btnAgain) btnAgain.disabled = false;
+        if (btnFb) btnFb.disabled = false;
+
+        if (!d || !d.ok) {
+          const errText = (d && d.error) || '合議の実行に失敗しました';
+          alert('AI合議エラー: ' + errText);
+          if (launchMsg) {
+            launchMsg.style.background = '#FEF2F2';
+            launchMsg.style.border = '1px solid #EF4444';
+            launchMsg.style.color = '#991B1B';
+            launchMsg.innerText = '❌ 合議エラー: ' + errText;
+          }
+          return;
+        }
+
+        activeCouncilDeliberation = d;
+        if (launchMsg) {
+          launchMsg.style.background = '#ECFDF5';
+          launchMsg.style.border = '1px solid #10B981';
+          launchMsg.style.color = '#065F46';
+          launchMsg.innerHTML = '🎉 <b>AI評議会の合議が完了しました！</b> 下記スタジオにて5名の専門家ディベートと決定案をご確認ください。';
+        }
+        renderCouncilResult(d);
+      } catch (err) {
+        if (loader) loader.style.display = 'none';
+        if (btnMain) btnMain.disabled = false;
+        if (btnAgain) btnAgain.disabled = false;
+        if (btnFb) btnFb.disabled = false;
+        alert('通信エラー: ' + err.message);
+      }
+    }
+
+    function renderCouncilResult(data) {
+      const wrap = document.getElementById('councilResultWrap');
+      const grid = document.getElementById('councilDebateGrid');
+      const formatBadge = document.getElementById('councilFormatBadge');
+      const postAngle = document.getElementById('councilPostAngle');
+      const timeBadge = document.getElementById('councilTimeBadge');
+      const preview = document.getElementById('councilTweetsPreview');
+      const reason = document.getElementById('councilScheduleReason');
+      const verdictBox = document.getElementById('userFeedbackVerdictBox');
+
+      // ユーザー指示に対する評議会の是々非々審査判定（イエスマン禁止・プロ的否定＆代替案提示）
+      if (verdictBox) {
+        const rev = data.userFeedbackReview;
+        if (rev && rev.verdict && rev.verdict !== 'none') {
+          let bg = '#FFFBEB';
+          let border = '#F59E0B';
+          let textCol = '#78350F';
+          let badgeCol = '#D97706';
+          let badgeText = '⚠️ 評議会是々非々審査: 却下・プロ対案を採択';
+
+          if (rev.verdict === 'accepted') {
+            bg = '#ECFDF5';
+            border = '#10B981';
+            textCol = '#065F46';
+            badgeCol = '#059669';
+            badgeText = '✅ 評議会是々非々審査: 指示を全面採択';
+          } else if (rev.verdict === 'partially_accepted') {
+            bg = '#EFF6FF';
+            border = '#3B82F6';
+            textCol = '#1E40AF';
+            badgeCol = '#2563EB';
+            badgeText = '💡 評議会是々非々審査: 一部採択＆アルゴリズム補正';
+          }
+
+          verdictBox.style.display = 'block';
+          verdictBox.style.background = bg;
+          verdictBox.style.border = `1.5px solid ${border}`;
+          verdictBox.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <span style="background:${badgeCol};color:#FFF;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:900;">${badgeText}</span>
+              <span style="font-size:12px;font-weight:800;color:${textCol};">${rev.verdictTitle || 'ユーザー指示に対するプロ審査判定'}</span>
+            </div>
+            <div style="font-size:13px;line-height:1.5;color:${textCol};margin-bottom:6px;">
+              <b>【プロ審査・率直な批評】:</b> ${rev.critique || ''}
+            </div>
+            ${rev.counterProposal ? `
+              <div style="font-size:12px;line-height:1.5;color:${textCol};background:rgba(255,255,255,0.7);padding:8px 12px;border-radius:8px;border:1px dashed ${border};">
+                <b>💡 評議会が採用した最適代替策:</b> ${rev.counterProposal}
+              </div>
+            ` : ''}
+          `;
+        } else {
+          verdictBox.style.display = 'none';
+          verdictBox.innerHTML = '';
+        }
+      }
+
+      const debate = data.councilDebate || {};
+      const post = data.proposedPost || {};
+      const sched = data.recommendedSchedule || {};
+
+      const scoreBoard = document.getElementById('aiScoreBoard');
+      const scoreRank = document.getElementById('aiScoreRank');
+      const scoreNum = document.getElementById('aiScoreNum');
+      const scoreImp = document.getElementById('aiScoreImp');
+      const scoreReason = document.getElementById('aiScoreReason');
+
+      // AI動的スコアボードのレンダリング
+      if (scoreBoard && data.metricsAnalyzed && data.metricsAnalyzed.aiScore) {
+        const scoreData = data.metricsAnalyzed.aiScore;
+        const rankColors = {
+          'S': '#FDE047', // ゴールド
+          'A': '#60A5FA', // ブルー
+          'B': '#34D399', // エメラルド
+          'C': '#FBBF24', // オレンジ
+          'D': '#F87171'  // レッド
+        };
+        const rankColor = rankColors[scoreData.rank] || '#CBD5E1';
+        
+        scoreRank.innerText = 'RANK ' + scoreData.rank;
+        scoreRank.style.color = rankColor;
+        scoreNum.innerText = '(' + scoreData.score + '/100pt)';
+        scoreImp.innerText = (data.metricsAnalyzed.avgImpressions || 0).toLocaleString();
+        scoreReason.innerText = scoreData.rankReason;
+        
+        scoreBoard.style.display = 'block';
+      } else if (scoreBoard) {
+        scoreBoard.style.display = 'none';
+      }
+
+      // 5名のディベートカード生成
+      let debateHtml = '';
+      if (debate.hookAnalyst) {
+        debateHtml += `
+          <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#B45309;">🎯 AI ① トレンド＆フック分析官</span>
+              <span style="background:#F59E0B;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">スコア: ${debate.hookAnalyst.score || 9}/10</span>
+            </div>
+            <div style="font-size:12px;color:#78350F;line-height:1.4;margin-bottom:4px;"><b>批評:</b> ${debate.hookAnalyst.critique}</div>
+            <div style="font-size:11px;color:#92400E;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 提案フック:</b> ${debate.hookAnalyst.suggestion}</div>
+          </div>
+        `;
+      }
+      if (debate.empathyPsychologist) {
+        debateHtml += `
+          <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#1D4ED8;">💬 AI ② 共感＆心理ストーリー官</span>
+              <span style="background:#2563EB;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">スコア: ${debate.empathyPsychologist.score || 9}/10</span>
+            </div>
+            <div style="font-size:12px;color:#1E3A8A;line-height:1.4;margin-bottom:4px;"><b>批評:</b> ${debate.empathyPsychologist.critique}</div>
+            <div style="font-size:11px;color:#1D4ED8;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 心理誘導:</b> ${debate.empathyPsychologist.suggestion}</div>
+          </div>
+        `;
+      }
+      if (debate.algorithmOptimizer) {
+        debateHtml += `
+          <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#6D28D9;">📊 AI ③ アルゴリズム＆時間最適化官</span>
+              <span style="background:#7C3AED;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">推奨: ${debate.algorithmOptimizer.recommendedTimeJst || '20:30'}</span>
+            </div>
+            <div style="font-size:12px;color:#4C1D95;line-height:1.4;margin-bottom:4px;"><b>推奨枠:</b> ${debate.algorithmOptimizer.recommendedSlotName || '夜のゴールデンタイム'}</div>
+            <div style="font-size:11px;color:#5B21B6;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 根拠:</b> ${debate.algorithmOptimizer.reason}</div>
+          </div>
+        `;
+      }
+      if (debate.brandGuardian) {
+        debateHtml += `
+          <div style="background:#FDF2F8;border:1px solid #FBCFE8;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#BE185D;">🛡️ AI ④ 脱AI臭＆ブランド防御官</span>
+              <span style="background:#EC4899;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">人間味: ${debate.brandGuardian.score || 9.5}/10</span>
+            </div>
+            <div style="font-size:12px;color:#9D174D;line-height:1.4;margin-bottom:4px;"><b>検閲:</b> ${debate.brandGuardian.critique}</div>
+            <div style="font-size:11px;color:#BE185D;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 人間味演出:</b> ${debate.brandGuardian.suggestion}</div>
+          </div>
+        `;
+      }
+      if (debate.arbiterConsensus) {
+        debateHtml += `
+          <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:900;color:#15803D;">🏛️ AI ⑤ 統括合議議長</span>
+              <span style="background:#16A34A;color:#FFF;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;">合議一致</span>
+            </div>
+            <div style="font-size:12px;color:#14532D;line-height:1.4;margin-bottom:4px;"><b>合議総括:</b> ${debate.arbiterConsensus.decisionSummary}</div>
+            <div style="font-size:11px;color:#166534;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:6px;"><b>💡 指示反映:</b> ${debate.arbiterConsensus.userFeedbackReflected || '最適化済み'}</div>
+          </div>
+        `;
+      }
+      grid.innerHTML = debateHtml;
+
+      // 🧠 自己学習ナレッジ（成功・失敗事例）の描画
+      const knowBox = document.getElementById('aiKnowledgeEvolutionBox');
+      const knowLevel = document.getElementById('aiKnowledgeLevelBadge');
+      const knowMeta = document.getElementById('aiKnowledgeMetaInfo');
+      const knowGrid = document.getElementById('aiKnowledgeCasesGrid');
+      const knowTakeaway = document.getElementById('aiKnowledgeTakeawayBox');
+
+      if (knowBox && data.userKnowledge) {
+        const uk = data.userKnowledge;
+        if (knowLevel) knowLevel.innerText = 'AI Level ' + (uk.level || 1);
+        if (knowMeta) knowMeta.innerText = `分析済: ${uk.learnedPostsCount || 0}件 / 成功蓄積: ${uk.successfulCasesCount || 0}件 / 反省蓄積: ${uk.failedCasesCount || 0}件`;
+        
+        let casesHtml = '';
+        const topSuccess = (uk.successfulCases && uk.successfulCases[0]) || null;
+        const topFailed = (uk.failedCases && uk.failedCases[0]) || null;
+
+        if (topSuccess) {
+          casesHtml += `
+            <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:11px;font-weight:900;color:#065F46;">🏆 学習した成功要因</span>
+                <span style="font-size:10px;color:#047857;font-weight:800;">${topSuccess.impressions ? topSuccess.impressions.toLocaleString() + ' IMP' : '高反響'}</span>
+              </div>
+              <div style="font-size:11px;color:#064E3B;line-height:1.4;">${topSuccess.whyItSucceeded || topSuccess.title}</div>
+            </div>
+          `;
+        }
+        if (topFailed) {
+          casesHtml += `
+            <div style="background:#FFF1F2;border:1px solid #FECDD3;border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:11px;font-weight:900;color:#9F1239;">⚠️ 学習した失敗・反省点</span>
+                <span style="font-size:10px;color:#BE123C;font-weight:800;">回避対象</span>
+              </div>
+              <div style="font-size:11px;color:#881337;line-height:1.4;">${topFailed.flawReason || topFailed.improvementPoint}</div>
+            </div>
+          `;
+        }
+        if (knowGrid) knowGrid.innerHTML = casesHtml;
+
+        if (knowTakeaway && data.knowledgeEvolution && data.knowledgeEvolution.newTakeaway) {
+          knowTakeaway.style.display = 'block';
+          knowTakeaway.innerHTML = `<b>💡 今回の合議による進化:</b> ${data.knowledgeEvolution.newTakeaway}`;
+        } else if (knowTakeaway) {
+          knowTakeaway.style.display = 'none';
+        }
+
+        knowBox.style.display = 'block';
+      } else if (knowBox) {
+        knowBox.style.display = 'none';
+      }
+
+      // 投稿プレビューの初期化 (Plan A をデフォルト選択)
+      currentActivePlanType = 'planA';
+      switchPlanOption('planA');
+      timeBadge.innerText = '⏰ 推奨投稿時間: ' + (sched.displayTime || '本日 20:30');
+      reason.innerHTML = '<b>💡 アルゴリズム判定根拠:</b> ' + (sched.reason || '過去の反応率ピークに合わせた最適スケジュール');
+
+      wrap.style.display = 'block';
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    let currentActivePlanType = 'planA';
+
+    function switchPlanOption(planKey) {
+      if (!activeCouncilDeliberation || !activeCouncilDeliberation.proposedPost) return;
+      currentActivePlanType = planKey;
+      const proposed = activeCouncilDeliberation.proposedPost;
+      const planData = (proposed && proposed[planKey]) || proposed.planA || proposed;
+      
+      const tabA = document.getElementById('tabBtnPlanA');
+      const tabB = document.getElementById('tabBtnPlanB');
+      const badgeA = document.getElementById('planABadge');
+      const badgeB = document.getElementById('planBBadge');
+
+      if (planKey === 'planA') {
+        if (tabA) { tabA.style.border = '2px solid #059669'; tabA.style.background = '#ECFDF5'; tabA.style.color = '#065F46'; tabA.style.fontWeight = '900'; }
+        if (tabB) { tabB.style.border = '1.5px solid #CBD5E1'; tabB.style.background = '#FFFFFF'; tabB.style.color = '#475569'; tabB.style.fontWeight = '800'; }
+        if (badgeA) { badgeA.style.background = '#059669'; badgeA.style.color = '#FFF'; badgeA.innerText = '本命選択中'; }
+        if (badgeB) { badgeB.style.background = '#E2E8F0'; badgeB.style.color = '#64748B'; badgeB.innerText = '対抗案'; }
+      } else {
+        if (tabA) { tabA.style.border = '1.5px solid #CBD5E1'; tabA.style.background = '#FFFFFF'; tabA.style.color = '#475569'; tabA.style.fontWeight = '800'; }
+        if (tabB) { tabB.style.border = '2px solid #7C3AED'; tabB.style.background = '#F5F3FF'; tabB.style.color = '#5B21B6'; tabB.style.fontWeight = '900'; }
+        if (badgeA) { badgeA.style.background = '#E2E8F0'; badgeA.style.color = '#64748B'; badgeA.innerText = '王道案'; }
+        if (badgeB) { badgeB.style.background = '#7C3AED'; badgeB.style.color = '#FFF'; badgeB.innerText = '対抗選択中'; }
+      }
+
+      // 予測値の更新
+      const predMultiplier = document.getElementById('predMultiplier');
+      const predBookmark = document.getElementById('predBookmark');
+      const predHookScore = document.getElementById('predHookScore');
+      if (predMultiplier) predMultiplier.innerText = planData.predictedMultiplier || '2.8x';
+      if (predBookmark) predBookmark.innerText = planData.predictedBookmarkRate || '4.5%';
+      if (predHookScore) predHookScore.innerText = (planData.predictedHookScore || 92) + '点';
+
+      // 投稿プレビューの更新
+      const formatBadge = document.getElementById('councilFormatBadge');
+      const postAngle = document.getElementById('councilPostAngle');
+      const preview = document.getElementById('councilTweetsPreview');
+
+      if (formatBadge) formatBadge.innerHTML = getFormatBadge(planData.format || 'two_tier_reply_link', true, (planData.tweets || []).length);
+      if (postAngle) postAngle.innerText = planData.angle || 'AI合議最適化ポスト';
+
+      let tweetPreviewHtml = '';
+      const tweets = Array.isArray(planData.tweets) && planData.tweets.length > 0 ? planData.tweets : [planData.text || ''];
+      tweets.forEach((t, idx) => {
+        if (idx === 0) {
+          tweetPreviewHtml += `<div style="background:#FFFFFF;border:1px solid #BBF7D0;border-radius:8px;padding:12px;margin-bottom:6px;"><b>【親ポスト】</b>\n${t}</div>`;
+        } else {
+          tweetPreviewHtml += `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px;margin-bottom:6px;font-size:13px;color:#334155;"><b>【連動リプライ (${idx + 1}/${tweets.length})】</b>\n${t}</div>`;
+        }
+      });
+      if (preview) preview.innerHTML = tweetPreviewHtml;
+    }
+
+    const reDeliberateWithUserFeedback = submitCouncilFeedback;
+
+    async function commitCouncilSchedule() {
+      if (!activeCouncilDeliberation || !activeCouncilDeliberation.deliberationId) {
+        alert('確定する合議セッションがありません');
+        return;
+      }
+      const btn = document.getElementById('btnCommitCouncil');
+      const statusMsg = document.getElementById('councilCommitStatus');
+      btn.disabled = true;
+      btn.innerText = '⏳ スケジュール確定中...';
+
+      try {
+        const res = await fetch('/api/autopilot/council/commit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: localStorage.getItem('xsw_uid') || 'default_user',
+            deliberationId: activeCouncilDeliberation.deliberationId,
+            selectedPlan: currentActivePlanType,
+            plan: currentPlan
+          })
+        });
+        const j = await res.json();
+        btn.disabled = false;
+        btn.innerText = '✅ この合議結果でスケジュール確定（神輿担ぎ予約）';
+
+        if (j.ok) {
+          statusMsg.style.display = 'block';
+          statusMsg.style.background = '#ECFDF5';
+          statusMsg.style.border = '1px solid #10B981';
+          statusMsg.style.color = '#065F46';
+          statusMsg.innerHTML = '🎉 <b>AI合議決定ポストを予約スケジュールに確定登録しました！</b><br>指定時間（' + (activeCouncilDeliberation.recommendedSchedule.displayTime || '') + '）に公式APIで自動投稿され、サテライト部隊による神輿担ぎ（いいね・RT支援）が自動連動します。';
+          loadJobs();
+        } else {
+          statusMsg.style.display = 'block';
+          statusMsg.style.background = '#FEF2F2';
+          statusMsg.style.border = '1px solid #EF4444';
+          statusMsg.style.color = '#991B1B';
+          statusMsg.innerText = '❌ ' + j.error;
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerText = '✅ この合議結果でスケジュール確定（神輿担ぎ予約）';
+        alert('エラー: ' + e.message);
+      }
+    }
+
+    function startSocialLogin(provider) {
+      if (provider === 'google') {
+        window.location.href = '/api/auth/google';
+      } else if (provider === 'twitter') {
+        window.location.href = '/api/auth/twitter'; // 後日実装
+      }
+    }
+
+    setTimeout(() => { loadJobs(); }, 1200);
+  </script>
+</body>
+</html>

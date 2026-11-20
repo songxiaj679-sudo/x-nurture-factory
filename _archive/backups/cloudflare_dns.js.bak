@@ -1,0 +1,195 @@
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+
+const ENV_PATH = path.join(__dirname, '..', '.env');
+const HEALTH_PATH = path.join(__dirname, '..', '.domain_health.json');
+
+function getCloudflareAuthHeaders() {
+  try {
+    require('dotenv').config({ path: ENV_PATH, override: true });
+  } catch (e) {}
+  const token = (process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN || '').trim();
+  const email = (process.env.CLOUDFLARE_EMAIL || process.env.CF_EMAIL || '').trim();
+  const globalKey = (process.env.CLOUDFLARE_GLOBAL_KEY || process.env.CF_GLOBAL_KEY || '').trim();
+
+  if (token) {
+    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+  if (email && globalKey) {
+    return { 'X-Auth-Email': email, 'X-Auth-Key': globalKey, 'Content-Type': 'application/json' };
+  }
+  return null;
+}
+
+function cfRequest(method, apiPath, bodyObj = null) {
+  return new Promise((resolve) => {
+    const headers = getCloudflareAuthHeaders();
+    if (!headers) {
+      return resolve({ success: false, noAuth: true, errors: [{ message: 'CLOUDFLARE_API_TOKEN が .env に未設定です' }] });
+    }
+    const payload = bodyObj ? JSON.stringify(bodyObj) : null;
+    if (payload) headers['Content-Length'] = Buffer.byteLength(payload);
+
+    const req = https.request({
+      hostname: 'api.cloudflare.com',
+      port: 443,
+      path: `/client/v4${apiPath}`,
+      method,
+      headers,
+      timeout: 12000
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          resolve({ success: false, errors: [{ message: 'Invalid JSON response' }] });
+        }
+      });
+    });
+
+    req.on('error', (err) => resolve({ success: false, errors: [{ message: err.message }] }));
+    req.on('timeout', () => { try { req.destroy(); } catch (e) {} resolve({ success: false, errors: [{ message: 'Timeout' }] }); });
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+async function ensureCloudflareDnsForDomain(domain) {
+  const cleanDom = String(domain || '').trim().toLowerCase();
+  if (!cleanDom || !cleanDom.includes('.')) return { ok: false, domain: cleanDom, reason: 'invalid_domain' };
+
+  const headers = getCloudflareAuthHeaders();
+  if (!headers) {
+    console.log(`  ℹ️ [Cloudflare自動設定] .env に CLOUDFLARE_API_TOKEN が未設定のため ${cleanDom} をスキップしました`);
+    return { ok: false, domain: cleanDom, reason: 'no_token' };
+  }
+
+  const zoneRes = await cfRequest('GET', `/zones?name=${encodeURIComponent(cleanDom)}`);
+  if (!zoneRes.success || !Array.isArray(zoneRes.result) || zoneRes.result.length === 0) {
+    const msg = (zoneRes.errors && zoneRes.errors[0] && zoneRes.errors[0].message) || 'Zone not found';
+    console.log(`  ⚠️ [Cloudflare自動設定] ${cleanDom} のゾーンが見つかりません (${msg})`);
+    return { ok: false, domain: cleanDom, reason: msg };
+  }
+
+  const zoneId = zoneRes.result[0].id;
+  const actions = [];
+
+  const recRes = await cfRequest('GET', `/zones/${zoneId}/dns_records?per_page=100`);
+  const records = (recRes.success && Array.isArray(recRes.result)) ? recRes.result : [];
+
+  const hasCfMx = records.some(r => r.type === 'MX' && String(r.content || '').includes('mx.cloudflare.net'));
+  if (!hasCfMx) {
+    const enDns = await cfRequest('POST', `/zones/${zoneId}/email/routing/dns`, {});
+    const enRouting = await cfRequest('POST', `/zones/${zoneId}/email/routing/enable`, {});
+    if ((enDns && enDns.success) || (enRouting && enRouting.success)) {
+      actions.push('Email Routing(MX・SPFレコード)を自動有効化');
+    }
+  }
+
+  const catchallTarget = (process.env.CATCHALL_IMAP_USER || 'hank3jones@zohomail.jp').trim();
+  if (catchallTarget && catchallTarget.includes('@')) {
+    const caRes = await cfRequest('GET', `/zones/${zoneId}/email/routing/rules/catch_all`);
+    const curActions = (caRes && caRes.result && caRes.result.actions) ? caRes.result.actions : [];
+    const alreadyForwarding = Boolean(
+      caRes && caRes.success && caRes.result && caRes.result.enabled &&
+      curActions.some(a => a.type === 'forward' && Array.isArray(a.value) && a.value.includes(catchallTarget))
+    );
+    if (!alreadyForwarding) {
+      const putCa = await cfRequest('PUT', `/zones/${zoneId}/email/routing/rules/catch_all`, {
+        actions: [{ type: 'forward', value: [catchallTarget] }],
+        enabled: true,
+        matchers: [{ type: 'all' }],
+        name: 'Catch-All forward to Zoho'
+      });
+      if (putCa && putCa.success) {
+        actions.push(`Catch-All転送(${catchallTarget})を自動ON`);
+      }
+    }
+  }
+
+  const rootARecords = records.filter(r => r.type === 'A' && r.name.toLowerCase() === cleanDom);
+  if (rootARecords.length === 0) {
+    const addA = await cfRequest('POST', `/zones/${zoneId}/dns_records`, {
+      type: 'A',
+      name: '@',
+      content: '192.0.2.1',
+      proxied: true,
+      ttl: 1
+    });
+    if (addA.success) {
+      actions.push('Aレコード(192.0.2.1 / Proxied)を新規作成');
+    }
+  } else {
+    const dummyA = rootARecords.filter(r => r.content === '192.0.2.1');
+    const otherA = rootARecords.filter(r => r.content !== '192.0.2.1');
+    if (dummyA.length > 0 && otherA.length > 0) {
+      for (const da of dummyA) {
+        await cfRequest('DELETE', `/zones/${zoneId}/dns_records/${da.id}`);
+      }
+      actions.push('重複ダミーAレコード(192.0.2.1)を整理削除');
+    } else if (rootARecords.length === 1 && !rootARecords[0].proxied) {
+      await cfRequest('PATCH', `/zones/${zoneId}/dns_records/${rootARecords[0].id}`, { proxied: true });
+      actions.push('既存AレコードをProxied(オレンジ雲ON)に更新');
+    }
+  }
+
+  const dmarcName = `_dmarc.${cleanDom}`;
+  const dmarcRecords = records.filter(r => r.type === 'TXT' && r.name.toLowerCase() === dmarcName);
+  if (dmarcRecords.length === 0) {
+    const addDmarc = await cfRequest('POST', `/zones/${zoneId}/dns_records`, {
+      type: 'TXT',
+      name: '_dmarc',
+      content: '"v=DMARC1; p=quarantine;"',
+      ttl: 1
+    });
+    if (addDmarc.success) {
+      actions.push('_dmarc TXTレコードを新規作成');
+    }
+  } else if (dmarcRecords.length > 1) {
+    for (let i = 1; i < dmarcRecords.length; i++) {
+      await cfRequest('DELETE', `/zones/${zoneId}/dns_records/${dmarcRecords[i].id}`);
+    }
+    actions.push(`重複 _dmarc レコード(${dmarcRecords.length - 1}件)を整理削除`);
+  }
+
+  try {
+    const health = fs.existsSync(HEALTH_PATH) ? JSON.parse(fs.readFileSync(HEALTH_PATH, 'utf8')) : {};
+    const st = health[cleanDom] || { successCount: 0, failStreak: 0, rejectedStreak: 0, cooldownUntil: 0, disabled: false, recentTimestamps: [] };
+    st.cfDnsSynced = true;
+    st.cfLastSyncAt = new Date().toISOString();
+    health[cleanDom] = st;
+    fs.writeFileSync(HEALTH_PATH, JSON.stringify(health, null, 2), 'utf8');
+  } catch (e) {}
+
+  if (actions.length > 0) {
+    console.log(`  ☁️ [Cloudflare完全自動設定] ${cleanDom}: ${actions.join(' / ')}`);
+  } else {
+    console.log(`  ✅ [Cloudflare監査OK] ${cleanDom}: A・_dmarc・MX・Catch-Allすべて正常設定済みです`);
+  }
+  return { ok: true, domain: cleanDom, actions };
+}
+
+async function syncAllCustomDomainsDns(domainList = null) {
+  try {
+    require('dotenv').config({ path: ENV_PATH, override: true });
+    const list = Array.isArray(domainList)
+      ? domainList
+      : (process.env.CUSTOM_EMAIL_DOMAINS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    const results = [];
+    for (const dom of list) {
+      const r = await ensureCloudflareDnsForDomain(dom);
+      results.push(r);
+    }
+    return results;
+  } catch (e) {
+    return [];
+  }
+}
+
+module.exports = {
+  ensureCloudflareDnsForDomain,
+  syncAllCustomDomainsDns
+};

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プライバシーポリシー — VeloxPost Cloud</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background: #F8FAFC; color: #1E293B; line-height: 1.8; margin: 0; padding: 40px 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    h1 { font-size: 1.8rem; font-weight: 900; color: #0F172A; border-bottom: 2px solid #2563EB; padding-bottom: 12px; margin-top: 0; }
+    h2 { font-size: 1.25rem; font-weight: 800; color: #1E293B; margin-top: 28px; margin-bottom: 12px; }
+    p, li { font-size: 0.95rem; color: #475569; }
+    ul { padding-left: 20px; }
+    .back-btn { display: inline-block; margin-top: 32px; background: #2563EB; color: #FFFFFF; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; }
+    .lang-toggle { position: fixed; top: 16px; right: 16px; border: 1px solid #CBD5E1; background: #FFFFFF; border-radius: 999px; padding: 8px 12px; font-weight: 800; cursor: pointer; }
+    .legal-note { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 10px 12px; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <button type="button" id="legalLangToggle" class="lang-toggle" onclick="toggleLegalLang()">🌐 日本語 / English</button>
+  <div class="container">
+    <p id="legalAuthorityBanner" class="legal-note" hidden>For legal compliance under Japanese law, the Japanese version is authoritative; English is provided for reference.</p>
+    <div class="legal-ja">
+      <h1>プライバシーポリシー</h1>
+      <p>個人事業主 松下 駿介（VeloxPost Cloud 運営者）は、個人情報保護に関する法令を守り、次のとおりプライバシーポリシーを定めます。</p>
+      <h2>1. 取得する情報</h2>
+      <ul>
+        <li>アカウント情報（メールアドレス、ユーザーID、表示名）</li>
+        <li>Google または X のログインで提供される基本プロフィール</li>
+        <li>X公式APIの認証情報（AES-256-GCM 暗号化方式で保存）</li>
+        <li>投稿ログと、公式APIから取得できる反応指標</li>
+      </ul>
+      <h2>2. 利用目的</h2>
+      <p>サービスの提供、投稿案の作成と予約、不正利用の防止、問い合わせ対応に利用します。</p>
+      <h2>3. 安全管理</h2>
+      <p>認証情報は AES-256-GCM 暗号化方式で保存し、アクセスを制限します。</p>
+      <h2>4. 第三者提供</h2>
+      <p>サービス提供に必要な外部委託と API 連携（X Corp. の公式 API、Stripe 決済、Firebase / Google Cloud、xAI API、Anthropic API（設定時）、OpenAI API（設定時）、Firecrawl API（設定時）、Langfuse（設定時・運用品質計測））および法令に基づく要請を除き、個人情報を第三者へ提供しません。</p>
+      <h2>5. お問い合わせ</h2>
+      <p>support@veloxpostapp.com</p>
+    </div>
+    <div class="legal-en" hidden>
+      <h1>Privacy Policy</h1>
+      <p>Shunsuke Matsushita, a sole proprietor and the operator of VeloxPost Cloud, handles personal information under Japanese privacy law.</p>
+      <h2>1. Information we receive</h2>
+      <ul>
+        <li>Account details such as email, user ID, and display name</li>
+        <li>Basic profile data from Google or X sign-in</li>
+        <li>Official X API credentials, stored with AES-256-GCM encryption</li>
+        <li>Post logs and metrics returned by the official API</li>
+      </ul>
+      <h2>2. Purpose</h2>
+      <p>We use this information to run the service, draft and schedule posts, prevent abuse, and answer support requests.</p>
+      <h2>3. Safeguards</h2>
+      <p>Credentials are stored with AES-256-GCM encryption and restricted access.</p>
+      <h2>4. Sharing</h2>
+      <p>We do not share personal information with other parties except for processors required to provide the service (X Corp. official API, Stripe, Firebase / Google Cloud, xAI API, Anthropic API when configured, OpenAI API when configured, Firecrawl API when configured, and Langfuse (when configured, operational quality telemetry)) and disclosures required by law.</p>
+      <h2>5. Contact</h2>
+      <p>support@veloxpostapp.com</p>
+    </div>
+    <a href="/" id="backHomeBtn" class="back-btn">← トップページに戻る</a>
+  </div>
+  <script>
+    function preferredLegalLang() {
+      const query = new URLSearchParams(location.search).get('lang');
+      if (query === 'en' || query === 'ja') return query;
+      const cookie = document.cookie.split('; ').find(row => row.startsWith('velox_lang='));
+      const fromCookie = cookie ? decodeURIComponent(cookie.split('=')[1] || '') : '';
+      if (fromCookie === 'en' || fromCookie === 'ja') return fromCookie;
+      let stored = '';
+      try { stored = localStorage.getItem('velox_lang') || ''; } catch (e) {}
+      if (stored === 'en' || stored === 'ja') return stored;
+      return String(navigator.language || '').toLowerCase().startsWith('ja') ? 'ja' : 'en';
+    }
+    function applyLegalLang(lang) {
+      const isEn = lang === 'en';
+      document.documentElement.lang = isEn ? 'en' : 'ja';
+      document.title = isEn ? 'Privacy Policy — VeloxPost Cloud' : 'プライバシーポリシー — VeloxPost Cloud';
+      document.querySelectorAll('.legal-ja').forEach(el => { el.hidden = isEn; });
+      document.querySelectorAll('.legal-en').forEach(el => { el.hidden = !isEn; });
+      const banner = document.getElementById('legalAuthorityBanner');
+      if (banner) banner.hidden = !isEn;
+      const backBtn = document.getElementById('backHomeBtn');
+      if (backBtn) {
+        backBtn.textContent = isEn ? '← Back to Top Page' : '← トップページに戻る';
+        backBtn.setAttribute('href', isEn ? '/?lang=en' : '/?lang=ja');
+      }
+      try { localStorage.setItem('velox_lang', isEn ? 'en' : 'ja'); } catch (e) {}
+      document.cookie = 'velox_lang=' + (isEn ? 'en' : 'ja') + '; path=/; max-age=31536000; samesite=lax';
+    }
+    function toggleLegalLang() { applyLegalLang(document.documentElement.lang === 'en' ? 'ja' : 'en'); }
+    applyLegalLang(preferredLegalLang());
+  </script>
+</body>
+</html>

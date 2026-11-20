@@ -1,0 +1,5 @@
+# VeloxPost Syndicate Account Bulk Import Template
+# 日本語10アカウント (lang=ja) + 英語10アカウント (lang=en)
+handle,apiKey,apiSecret,accessToken,accessTokenSecret,lang
+@sample_ja_01,CONSUMER_KEY_HERE,CONSUMER_SECRET_HERE,ACCESS_TOKEN_HERE,ACCESS_TOKEN_SECRET_HERE,ja
+@sample_en_01,CONSUMER_KEY_HERE,CONSUMER_SECRET_HERE,ACCESS_TOKEN_HERE,ACCESS_TOKEN_SECRET_HERE,en

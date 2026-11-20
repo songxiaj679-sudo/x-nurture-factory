@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>運営事業者情報 — VeloxPost Cloud</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background: #F8FAFC; color: #1E293B; line-height: 1.8; margin: 0; padding: 40px 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    h1 { font-size: 1.8rem; font-weight: 900; color: #0F172A; border-bottom: 2px solid #2563EB; padding-bottom: 12px; margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    th, td { padding: 14px 16px; border-bottom: 1px solid #E2E8F0; text-align: left; font-size: 0.95rem; }
+    th { width: 30%; background: #F8FAFC; color: #334155; font-weight: 700; }
+    td { color: #475569; }
+    .back-btn { display: inline-block; margin-top: 32px; background: #2563EB; color: #FFFFFF; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; }
+    .lang-toggle { position: fixed; top: 16px; right: 16px; border: 1px solid #CBD5E1; background: #FFFFFF; border-radius: 999px; padding: 8px 12px; font-weight: 800; cursor: pointer; }
+    .legal-note { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 10px 12px; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <button type="button" id="legalLangToggle" class="lang-toggle" onclick="toggleLegalLang()">🌐 日本語 / English</button>
+  <div class="container">
+    <p id="legalAuthorityBanner" class="legal-note" hidden>For legal compliance under Japanese law, the Japanese version is authoritative; English is provided for reference.</p>
+    <div class="legal-ja">
+      <h1>運営事業者情報</h1>
+      <table>
+        <tr><th>事業者形態・代表者</th><td>個人事業主 / 松下 駿介</td></tr>
+        <tr><th>サービス・屋号</th><td>VeloxPost Cloud</td></tr>
+        <tr><th>所在地・拠点</th><td>日本（兵庫県神戸市）。特定商取引法に基づく詳細は <a href="/views/compliance_tokushoho.html">特定商取引法に基づく表記</a> を確認してください。</td></tr>
+        <tr><th>公式サポート窓口</th><td>support@veloxpostapp.com</td></tr>
+        <tr><th>主な技術基盤</th><td>X API v2 (OAuth 2.0)、xAI API、Anthropic API（設定時）、OpenAI API（設定時）、Firecrawl API（設定時）、Langfuse（設定時・運用品質計測）、Firebase / Google Cloud、Stripe Checkout、Cloudflare</td></tr>
+      </table>
+    </div>
+    <div class="legal-en" hidden>
+      <h1>Operator information</h1>
+      <table>
+        <tr><th>Operator</th><td>Sole Proprietor / Shunsuke Matsushita</td></tr>
+        <tr><th>Service name</th><td>VeloxPost Cloud</td></tr>
+        <tr><th>Location</th><td>Hyogo, Japan. The statutory details are on the <a href="/views/compliance_tokushoho.html?lang=en">specified commercial transactions page</a>.</td></tr>
+        <tr><th>Support</th><td>support@veloxpostapp.com</td></tr>
+        <tr><th>Main systems</th><td>X API v2 (OAuth 2.0), xAI API, Anthropic API (when configured), OpenAI API (when configured), Firecrawl API (when configured), Langfuse (when configured, operational quality telemetry), Firebase / Google Cloud, Stripe Checkout, Cloudflare</td></tr>
+      </table>
+    </div>
+    <a href="/" id="backHomeBtn" class="back-btn">← トップページに戻る</a>
+  </div>
+  <script>
+    function preferredLegalLang() {
+      const query = new URLSearchParams(location.search).get('lang');
+      if (query === 'en' || query === 'ja') return query;
+      const cookie = document.cookie.split('; ').find(row => row.startsWith('velox_lang='));
+      const fromCookie = cookie ? decodeURIComponent(cookie.split('=')[1] || '') : '';
+      if (fromCookie === 'en' || fromCookie === 'ja') return fromCookie;
+      let stored = '';
+      try { stored = localStorage.getItem('velox_lang') || ''; } catch (e) {}
+      if (stored === 'en' || stored === 'ja') return stored;
+      return String(navigator.language || '').toLowerCase().startsWith('ja') ? 'ja' : 'en';
+    }
+    function applyLegalLang(lang) {
+      const isEn = lang === 'en';
+      document.documentElement.lang = isEn ? 'en' : 'ja';
+      document.title = isEn ? 'Operator Information — VeloxPost Cloud' : '運営事業者情報 — VeloxPost Cloud';
+      document.querySelectorAll('.legal-ja').forEach(el => { el.hidden = isEn; });
+      document.querySelectorAll('.legal-en').forEach(el => { el.hidden = !isEn; });
+      const banner = document.getElementById('legalAuthorityBanner');
+      if (banner) banner.hidden = !isEn;
+      const backBtn = document.getElementById('backHomeBtn');
+      if (backBtn) {
+        backBtn.textContent = isEn ? '← Back to Top Page' : '← トップページに戻る';
+        backBtn.setAttribute('href', isEn ? '/?lang=en' : '/?lang=ja');
+      }
+      try { localStorage.setItem('velox_lang', isEn ? 'en' : 'ja'); } catch (e) {}
+      document.cookie = 'velox_lang=' + (isEn ? 'en' : 'ja') + '; path=/; max-age=31536000; samesite=lax';
+    }
+    function toggleLegalLang() { applyLegalLang(document.documentElement.lang === 'en' ? 'ja' : 'en'); }
+    applyLegalLang(preferredLegalLang());
+  </script>
+</body>
+</html>
