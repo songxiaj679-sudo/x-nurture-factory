@@ -1153,6 +1153,7 @@ async function processOutboundReplyDiscovery() {
       query: searchQueryFor(card, String(user.aiTargetLang || '').toLowerCase().startsWith('en') ? 'en' : 'ja')
     });
     let rows = [];
+    const gate = { skipped: 0, noCard: 0, safety: 0, critic: 0, attempted: 0 };
     if (found.tweets.length) {
       const [blockedSnap, existing] = await Promise.all([
         db.collection('saas_users').doc(doc.id).collection('blocked_reply_authors').limit(20).get(),
@@ -1169,7 +1170,8 @@ async function processOutboundReplyDiscovery() {
         completeCritic,
         existingIds: existing.docs.map(item => item.id),
         blockedAuthorIds: blockedSnap.docs.map(item => item.id),
-        recentAuthorIds
+        recentAuthorIds,
+        stats: gate
       });
       for (const row of rows) {
         await db.collection('saas_users').doc(doc.id).collection('outbound_reply_candidates').doc(row.tweetId).set(row);
@@ -1178,7 +1180,7 @@ async function processOutboundReplyDiscovery() {
     }
     const discovery = discoveryStatusFromSearch(found, rows.length);
     await saveOutboundDiscovery(db.collection('saas_users').doc(doc.id), { ...discovery, lastRunAt: new Date().toISOString(), nextCardCursor: picked.nextCursor });
-    console.log(`[Outbound Reply Discovery] user=${doc.id} status=${discovery.lastStatus} http=${discovery.lastHttpStatus} matches=${discovery.lastMatchCount}`);
+    console.log(`[Outbound Reply Discovery] user=${doc.id} status=${discovery.lastStatus} http=${discovery.lastHttpStatus} matches=${discovery.lastMatchCount} skipped=${gate.skipped} noCard=${gate.noCard} safety=${gate.safety} critic=${gate.critic}`);
     if (saved) break;
   }
   if (snap.size < 20) outboundCursor = null;

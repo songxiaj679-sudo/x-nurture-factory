@@ -98,7 +98,7 @@ test('outbound approval stays off the browser sender and the dashboard is biling
   assert.match(view, /直近の候補検索は検索条件が受け付けられませんでした。/);
   assert.match(view, /The latest candidate search query was rejected by X API\./);
   assert.match(routes, /selectDiscoveryCard\(topics/);
-  assert.match(routes, /matches=\$\{discovery\.lastMatchCount\}/);
+  assert.match(routes, /matches=\$\{discovery\.lastMatchCount\} skipped=\$\{gate\.skipped\} noCard=\$\{gate\.noCard\} safety=\$\{gate\.safety\} critic=\$\{gate\.critic\}/);
   const getHandler = routes.slice(routes.indexOf("app.get('/api/autopilot/outbound-replies'"), routes.indexOf('async function loadOutboundCandidate'));
   assert.match(getHandler, /discoveryStatus/);
   assert.equal(getHandler.includes('searchRecentPublicTweets'), false);
@@ -142,4 +142,53 @@ test('discovery status keeps the user document and stores only the status code',
   assert.equal(doc.autoReplySettings.mode, 'approval_queue');
   assert.equal(doc.outboundReplyDiscovery.lastHttpStatus, 403);
   assert.equal(JSON.stringify(doc.outboundReplyDiscovery).includes('token'), false);
+});
+
+test('short replies reach the critic and function words do not match a card', async () => {
+  const { passesOutboundSafety, matchAudienceCard, buildOutboundCandidate, discoverOutboundCandidates } = require('../src/outbound_reply_queue');
+  const user = { twitterId: 'self', brandKnowledge: { productName: 'VELOX AI' }, audienceKnowledge: { schemaVersion: 2, audienceTopics: [card()] }, ngTopics: '' };
+  const brief = '書き出しは前置きを削り、次の確認だけ残す。';
+  assert.equal(brief.length >= 20 && brief.length <= 60, true);
+  const safe = passesOutboundSafety(brief, user, 'ja');
+  assert.equal(safe.ok, true);
+  assert.equal(safe.reasons.includes('too_short'), false);
+  assert.equal(passesOutboundSafety('短すぎ', user, 'ja').ok, false);
+  assert.equal(passesOutboundSafety('あ'.repeat(281), user, 'ja').ok, false);
+  assert.equal(passesOutboundSafety('登録ページを見てから書いてください。', user, 'ja').reasons.includes('lp_meta_leak'), true);
+  let criticCalls = 0;
+  const candidate = await buildOutboundCandidate({
+    user,
+    tweet: { id: 'short', text: '今日の書き出しで迷いました', authorId: 'reader' },
+    completeWriter: async () => ({ parsed: { text: brief } }),
+    completeCritic: async () => {
+      criticCalls += 1;
+      return { parsed: { scores: [{ id: 'a', score: 80, scrollStopHook: 16, saveUtility: 20, strangerClarity: 18, craftAndTruth: 20, weakness: '' }] } };
+    }
+  });
+  assert.equal(criticCalls, 1);
+  assert.equal(candidate.status, 'pending_approval');
+  const english = { schemaVersion: 2, audienceTopics: [{ id: 'en', topicRing: 'ring1_craft', topicDomain: 'Opening lines and hooks for short posts', topic: 'Opening lines' }] };
+  assert.equal(matchAudienceCard('and for the audience', english), null);
+  assert.equal(matchAudienceCard('The hooks were vague', english).id, 'en');
+  const stats = { skipped: 0, noCard: 0, safety: 0, critic: 0, attempted: 0 };
+  let writes = 0;
+  const tweets = [
+    { id: 'me', text: '今日の書き出しで迷いました', authorId: 'self' },
+    { id: 'none', text: 'and for the audience', authorId: 'r0' },
+    ...[1, 2, 3, 4, 5].map(n => ({ id: `w${n}`, text: '今日の書き出しで迷いました', authorId: `r${n}` }))
+  ];
+  const saved = await discoverOutboundCandidates({
+    user,
+    tweets,
+    stats,
+    completeWriter: async () => { writes += 1; return { parsed: { text: 'https://example.com/reply' } }; },
+    completeCritic: async () => ({ parsed: { scores: [] } })
+  });
+  assert.equal(saved.length, 0);
+  assert.equal(writes, 3);
+  assert.equal(stats.attempted, 3);
+  assert.equal(stats.skipped, 1);
+  assert.equal(stats.noCard, 1);
+  assert.equal(stats.safety, 3);
+  assert.equal(stats.critic, 0);
 });

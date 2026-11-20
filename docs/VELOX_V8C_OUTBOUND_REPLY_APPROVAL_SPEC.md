@@ -183,3 +183,29 @@ grep -L "FIRESTORE_EMULATOR_HOST" tests/*.test.js | xargs node --test --test-con
 - カードローテーションが `nextCardCursor` を進めて Ring 1 / Ring 2 を巡回すること。
 - HTTP `400` が `invalid_query` に分類され、`lastMatchCount` が記録され、`views/dashboard_view.html` で日英出し分けされること。
 - 既存の検証手順一式（`node --check`、インライン script の `vm.Script`、全スイート + 隔離テスト単体、`x-shop` のみ再起動、`127.0.0.1:3001` の `curl`、`job_next_1f84f876-6a5a-400d-b382-42f57ea3508b` の `pending` 維持、`prepareNextPost` 非実行）を通すこと。
+
+## 10. 追補（V8-C.3）：返信文字数下限の分離・実質語マッチ・不合格件数ログ
+
+### 10.1 目的とガードレール
+- 通常投稿向けの 70 字下限（`too_short`）で良質な短め返信が Critic 前に落ちる問題を解消し、かつ機能語（`and` / `for` 等）による無関係ツイートへの誤一致と LLM 無駄打ちを防ぐ。
+- 80分巡回（20件ページング）、1件承認送信、手動検索トリガーなし、ブラウザ経路非接続、`inbound_mentions`・Phase 1/2 自動返信・`composeInboundReply()`・`usableScores()`・`searchRecentPublicTweets()`・通常投稿向け `runDeterministicAudit()` の挙動は無変更。
+- `prepareNextPost` は呼ばない。
+
+### 10.2 返信文字数下限の分離（`passesOutboundSafety`）
+- `passesOutboundSafety()` では、返信の長さ判定を `replyPassesSafety()` の 8〜280 字に合わせる。
+- `runDeterministicAudit()` 由来の通常投稿向け 70 字未満（`too_short`）だけを外部返信の不合格理由から外し、他の監査項目（禁止表現・安全性・URL・製品名・`lp_meta_leak` 等）は維持する。
+
+### 10.3 `matchAudienceCard()` の実質語一致
+- 英語の演算子語・機能語（`and`, `or`, `not`, `for`, `the`, `a`, `an`, `of`, `in`, `on`, `to`, `with`, `by`, `from`, `about`, `into`、大文字小文字無視）および記号・日本語の助詞区切りを一致候補語から除外する。
+- Ring 1 / Ring 2 カードの実質語（英語は 3 文字以上の実質語、日本語は区切り後の実質語）が相手投稿本文に含まれるときだけ一致とする。
+
+### 10.4 試行上限と不合格件数ログ
+- 1アカウント1周期あたり `composeOutboundReply()` を試行するツイートは最大 3 件までとし、1件保存した時点で即終了する。
+- `[Outbound Reply Discovery]` ログに、投稿本文や機密を含めない件数内訳のみを追記する（例: `matches=... skipped=... noCard=... safety=... critic=...`）。
+
+### 10.5 検証
+- V8-C テストに以下を追加する。
+  - 20〜60字の良質な返信案が `too_short` で落ちず Critic へ進むこと（8字未満・280字超・`lp_meta_leak` は従来どおり拒否）。
+  - 英語投稿が `and` / `for` だけでは `matchAudienceCard()` に一致せず、実質語があるときだけ一致すること。
+  - 1周期の試行上限（最大3件）と件数内訳の集計。
+- `node --check`、インライン script の `vm.Script`、全スイートと隔離テスト、`x-shop` のみ再起動、`127.0.0.1:3001` の curl を通す。V8-C.3 の差分は commit / push しない。

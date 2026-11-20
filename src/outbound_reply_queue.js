@@ -1,6 +1,8 @@
 'use strict';
 
 const SALES = /相互フォロー|フォローお願い|フォローします|フォローバック|DMください|プロフ見て|続きはプロフ|follow me|follow back|check my profile|link in bio|dm me/i;
+const EN_STOP = new Set('and or not for the a an of in on to with by from about into'.split(' '));
+const COMPOSE_LIMIT = 3;
 const AXIS_KEYS = ['scrollStopHook', 'saveUtility', 'strangerClarity', 'craftAndTruth'];
 
 function axesComplete(row) {
@@ -18,6 +20,20 @@ function classifyOutboundCritic(row, { repaired = false } = {}) {
   return { action: 'discard', criticDegraded: false };
 }
 
+function contentTokens(domain) {
+  return String(domain || '')
+    .toLowerCase()
+    .replace(/["'()[\]{}:;!?/\\|@#&=+<>~*,.\-]/g, ' ')
+    .replace(/[（）「」『』【】]/g, ' ')
+    .split(/[\sのと・、,./]+/)
+    .map(token => token.trim())
+    .filter(token => {
+      if (!token) return false;
+      if (/[a-z]/i.test(token)) return token.length >= 3 && !EN_STOP.has(token);
+      return true;
+    });
+}
+
 function matchAudienceCard(sourceText, knowledge) {
   const source = String(sourceText || '');
   if (!knowledge || knowledge.schemaVersion !== 2 || SALES.test(source)) return null;
@@ -27,8 +43,7 @@ function matchAudienceCard(sourceText, knowledge) {
   let best = null;
   let bestScore = 0;
   cards.forEach(card => {
-    const domain = String(card.topicDomain || card.topic || '').toLowerCase();
-    const tokens = domain.split(/[\s、,./・]+/).filter(token => token.length >= 2);
+    const tokens = contentTokens(card.topicDomain || card.topic || '');
     const hits = tokens.filter(token => hay.includes(token)).length;
     if (hits > bestScore) {
       best = card;
@@ -37,8 +52,6 @@ function matchAudienceCard(sourceText, knowledge) {
   });
   return bestScore > 0 ? best : null;
 }
-
-const EN_STOP = new Set('and or not for the a an of in on to with by from about into'.split(' '));
 
 function searchPhrase(card, lang) {
   const raw = String(card && (card.topicDomain || card.topic) || '').replace(/https?:\/\/\S+/g, ' ');
@@ -128,18 +141,25 @@ function passesOutboundSafety(text, user, lang) {
     ngTopics: user && user.ngTopics,
     accountState: { postShape: 'single', subscription: 'premium', maxChars: 280 }
   });
-  const reasons = [...(compliance.canAutoPost ? [] : ['compliance']), ...(audit.reasons || [])];
+  const reasons = [...(compliance.canAutoPost ? [] : ['compliance']), ...(audit.reasons || []).filter(reason => reason !== 'too_short')];
   return { ok: reasons.length === 0, text: clean, reasons };
 }
 
-async function buildOutboundCandidate({ user, tweet, completeWriter, completeCritic }) {
+async function buildOutboundCandidate({ user, tweet, completeWriter, completeCritic, stats = null }) {
   const { replyLanguage } = require('./auto_reply_policy');
   const card = matchAudienceCard(tweet && tweet.text, user && user.audienceKnowledge);
-  if (!card) return null;
+  if (!card) {
+    if (stats) stats.noCard += 1;
+    return null;
+  }
   const lang = replyLanguage(tweet.text, user);
+  if (stats) stats.attempted += 1;
   let draft = await composeOutboundReply({ sourceText: tweet.text, card, lang, completeWriter });
   let safety = passesOutboundSafety(draft, user, lang);
-  if (!safety.ok) return null;
+  if (!safety.ok) {
+    if (stats) stats.safety += 1;
+    return null;
+  }
   let row = await scoreOutboundReply({ text: safety.text, lang, completeCritic });
   let decision = classifyOutboundCritic(row, { repaired: false });
   if (decision.action === 'rescore') {
@@ -156,12 +176,21 @@ async function buildOutboundCandidate({ user, tweet, completeWriter, completeCri
       completeWriter
     });
     safety = passesOutboundSafety(draft, user, lang);
-    if (!safety.ok) return null;
+    if (!safety.ok) {
+      if (stats) stats.safety += 1;
+      return null;
+    }
     row = await scoreOutboundReply({ text: safety.text, lang, completeCritic, forceAxes: true });
     decision = classifyOutboundCritic(row, { repaired: true });
-    if (decision.action === 'rescore') return null;
+    if (decision.action === 'rescore') {
+      if (stats) stats.critic += 1;
+      return null;
+    }
   }
-  if (decision.action !== 'pending_approval' && decision.action !== 'held') return null;
+  if (decision.action !== 'pending_approval' && decision.action !== 'held') {
+    if (stats) stats.critic += 1;
+    return null;
+  }
   const now = new Date().toISOString();
   return {
     tweetId: String(tweet.id),
@@ -185,18 +214,22 @@ async function buildOutboundCandidate({ user, tweet, completeWriter, completeCri
   };
 }
 
-async function discoverOutboundCandidates({ user, tweets, completeWriter, completeCritic, existingIds = [], blockedAuthorIds = [], recentAuthorIds = [] }) {
+async function discoverOutboundCandidates({ user, tweets, completeWriter, completeCritic, existingIds = [], blockedAuthorIds = [], recentAuthorIds = [], stats = null }) {
   const selfId = String(user && (user.twitterId || '') || '');
+  const gate = stats || { skipped: 0, noCard: 0, safety: 0, critic: 0, attempted: 0 };
   const saved = [];
   for (const tweet of Array.isArray(tweets) ? tweets : []) {
-    if (!tweet || !tweet.id) continue;
-    if (existingIds.includes(String(tweet.id))) continue;
-    if (selfId && String(tweet.authorId || '') === selfId) continue;
-    if (blockedAuthorIds.includes(String(tweet.authorId || ''))) continue;
-    if (recentAuthorIds.includes(String(tweet.authorId || ''))) continue;
+    if (gate.attempted >= COMPOSE_LIMIT) break;
+    if (!tweet || !tweet.id || existingIds.includes(String(tweet.id)) || (selfId && String(tweet.authorId || '') === selfId) || blockedAuthorIds.includes(String(tweet.authorId || '')) || recentAuthorIds.includes(String(tweet.authorId || ''))) {
+      gate.skipped += 1;
+      continue;
+    }
     const { detectOptOut } = require('./auto_reply_policy');
-    if (detectOptOut(tweet.text)) continue;
-    const candidate = await buildOutboundCandidate({ user, tweet, completeWriter, completeCritic });
+    if (detectOptOut(tweet.text)) {
+      gate.skipped += 1;
+      continue;
+    }
+    const candidate = await buildOutboundCandidate({ user, tweet, completeWriter, completeCritic, stats: gate });
     if (candidate) saved.push(candidate);
     if (saved.length >= 1) break;
   }
