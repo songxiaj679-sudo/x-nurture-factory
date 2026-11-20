@@ -124,6 +124,54 @@ async function scoreOutboundReply({ text, lang, completeCritic, forceAxes = fals
   return row || null;
 }
 
+function emptySafety(text, reasons) {
+  return { ok: false, text, reasons, complianceCodes: [] };
+}
+
+function complianceCodesOf(compliance) {
+  const seen = new Set();
+  return (compliance && Array.isArray(compliance.issues) ? compliance.issues : []).map(issue => issue && issue.code).filter(code => {
+    if (typeof code !== 'string' || !/^[a-z0-9_]+$/i.test(code) || seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+}
+
+function safeDropCode(reason) {
+  const text = String(reason || '');
+  const payload = text.match(/^(ungrounded_number|internal_jargon|ng_topic):/);
+  if (payload) return payload[1];
+  if (/^[a-z0-9_:-]+$/i.test(text) && text.length <= 80) return text;
+  return '';
+}
+
+function dropReasonList(safety) {
+  const seen = new Set();
+  const codes = [];
+  [...(safety && safety.reasons || []), ...(safety && safety.complianceCodes || [])].forEach(reason => {
+    const token = safeDropCode(reason);
+    if (!token || seen.has(token)) return;
+    seen.add(token);
+    codes.push(token);
+  });
+  return codes.join(',') || 'unspecified';
+}
+
+function axisToken(row, key) {
+  const value = row && row[key];
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : 'na';
+}
+
+function logSafetyDrop(safety, repaired) {
+  console.log(`[Outbound Drop] stage=safety reasons=${dropReasonList(safety)} repaired=${repaired ? 1 : 0}`);
+}
+
+function logCriticDrop(decision, row, repaired) {
+  const action = ['rescore', 'discard', 'repair', 'pending_approval', 'held'].includes(decision && decision.action) ? decision.action : 'discard';
+  const scored = action === 'rescore' ? null : row;
+  console.log(`[Outbound Drop] stage=critic action=${action} score=${axisToken(scored, 'score')} hook=${axisToken(scored, 'scrollStopHook')} save=${axisToken(scored, 'saveUtility')} clear=${axisToken(scored, 'strangerClarity')} craft=${axisToken(scored, 'craftAndTruth')} degraded=${decision && decision.criticDegraded ? 1 : 0} repaired=${repaired ? 1 : 0}`);
+}
+
 function passesOutboundSafety(text, user, lang) {
   const { replyPassesSafety } = require('./auto_reply_policy');
   const { inspectPostCompliance } = require('./post_policy_guard');
@@ -131,9 +179,9 @@ function passesOutboundSafety(text, user, lang) {
   const { sanitizePostOrReplyText } = require('./official_api_client');
   const clean = sanitizePostOrReplyText(String(text || ''));
   const product = String(user && user.brandKnowledge && user.brandKnowledge.productName || '').trim();
-  if (!clean || !replyPassesSafety(clean, user && user.ngTopics)) return { ok: false, text: clean, reasons: ['unsafe'] };
-  if (product.length >= 2 && clean.toLowerCase().includes(product.toLowerCase())) return { ok: false, text: clean, reasons: ['product_name'] };
-  if (/登録ページ|saved page|registered page|https?:\/\//i.test(clean)) return { ok: false, text: clean, reasons: ['lp_meta_leak'] };
+  if (!clean || !replyPassesSafety(clean, user && user.ngTopics)) return emptySafety(clean, ['unsafe']);
+  if (product.length >= 2 && clean.toLowerCase().includes(product.toLowerCase())) return emptySafety(clean, ['product_name']);
+  if (/登録ページ|saved page|registered page|https?:\/\//i.test(clean)) return emptySafety(clean, ['lp_meta_leak']);
   const compliance = inspectPostCompliance([clean], { lang, isPromotion: false });
   const audit = runDeterministicAudit({ tweets: [clean] }, {
     lang,
@@ -142,7 +190,7 @@ function passesOutboundSafety(text, user, lang) {
     accountState: { postShape: 'single', subscription: 'premium', maxChars: 280 }
   });
   const reasons = [...(compliance.canAutoPost ? [] : ['compliance']), ...(audit.reasons || []).filter(reason => reason !== 'too_short')];
-  return { ok: reasons.length === 0, text: clean, reasons };
+  return { ok: reasons.length === 0, text: clean, reasons, complianceCodes: complianceCodesOf(compliance) };
 }
 
 async function buildOutboundCandidate({ user, tweet, completeWriter, completeCritic, stats = null }) {
@@ -158,6 +206,7 @@ async function buildOutboundCandidate({ user, tweet, completeWriter, completeCri
   let safety = passesOutboundSafety(draft, user, lang);
   if (!safety.ok) {
     if (stats) stats.safety += 1;
+    logSafetyDrop(safety, false);
     return null;
   }
   let row = await scoreOutboundReply({ text: safety.text, lang, completeCritic });
@@ -178,17 +227,20 @@ async function buildOutboundCandidate({ user, tweet, completeWriter, completeCri
     safety = passesOutboundSafety(draft, user, lang);
     if (!safety.ok) {
       if (stats) stats.safety += 1;
+      logSafetyDrop(safety, true);
       return null;
     }
     row = await scoreOutboundReply({ text: safety.text, lang, completeCritic, forceAxes: true });
     decision = classifyOutboundCritic(row, { repaired: true });
     if (decision.action === 'rescore') {
       if (stats) stats.critic += 1;
+      logCriticDrop(decision, row, true);
       return null;
     }
   }
   if (decision.action !== 'pending_approval' && decision.action !== 'held') {
     if (stats) stats.critic += 1;
+    logCriticDrop(decision, row, repaired);
     return null;
   }
   const now = new Date().toISOString();
