@@ -64,7 +64,7 @@ function selectEditorialArchetype({ recentJobs = [], topics = [], radarAvailable
   return { archetype, topic, focusTopicId: topic && topic.id || '' };
 }
 
-function archetypePromptLines({ archetype, topic, signals, isEn, thread = false, recentTexts = [] }) {
+function archetypePromptLines({ archetype, topic, signals, isEn, thread = false, recentTexts = [], delivery = '' }) {
   const card = topic ? JSON.stringify(topic).slice(0, 900) : '';
   const live = Array.isArray(signals) && signals.length
     ? (isEn
@@ -86,6 +86,11 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
   const recentLine = recent.length
     ? (isEn ? `Recent openings to avoid copying: ${recent.join(' | ')}` : `直近の書き出し。同じ形を繰り返さない: ${recent.join(' | ')}`)
     : '';
+  const splitLine = delivery === 'parent_self_reply'
+    ? (isEn
+      ? 'Parent plus self-reply. This split wins over any archetype line that puts the cause in the body. The first post stops at the scene or the odd feeling. The cause, the way to tell, and the check go in the self-replies.'
+      : '親投稿と自己リプライ。この分担は、型が本文で原因まで書く指示より優先する。1本目は違和感や場面で止める。原因、見分け方、やり方、確認は自己リプライに置く。')
+    : '';
   const lines = {
     before_after_rewrite: isEn
       ? 'Archetype before_after_rewrite. Line 1 names the approach or view that misses for this topic. After a blank line, show that approach and the one that fits, in the layout you chose. Close by explaining the practical difference in ordinary language. The pair follows the topic card, such as care, choice, a daily habit, service, or the work itself. It is not a wording lesson, not a customer result, and not a product tutorial.'
@@ -103,7 +108,7 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
       ? 'Archetype contrarian_sharp. One lazy belief, one sharp correction, one concrete check. Stay under 240 characters. Put the correction in its own breath after a blank line, using the layout you chose.'
       : '型は contrarian_sharp。怠い通念、鋭い訂正、具体的な確認を短く書く。180文字未満。訂正は空行のあとに、選んだレイアウトで置く。'
   };
-  return [lines[archetype] || '', choice, threadLine, recentLine, card ? (isEn ? `Illustrative reader card, not a case study: ${card}` : `読者向けの見本カード。導入事例ではない: ${card}`) : '', live].filter(Boolean).join('\n');
+  return [lines[archetype] || '', choice, threadLine, splitLine, recentLine, card ? (isEn ? `Illustrative reader card, not a case study: ${card}` : `読者向けの見本カード。導入事例ではない: ${card}`) : '', live].filter(Boolean).join('\n');
 }
 
 module.exports = {
