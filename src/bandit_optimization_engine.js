@@ -436,7 +436,7 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
   for (const reward of rewards) {
     decay(account);
     decay(slot);
-    for (const key of ['angle', 'hookType', 'format', 'ctaMode', 'claimSemanticKey']) {
+    for (const key of ['angle', 'hookType', 'format', 'ctaMode', 'claimSemanticKey', 'delivery']) {
       add(account, geneValue(reward.post, key), reward.weight, reward.residual);
       if (reward.post.timeSlot === timeSlot) add(slot, geneValue(reward.post, key), reward.weight, reward.residual);
     }
@@ -452,7 +452,10 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
     hookType: GENE_SPACES.hookType,
     format: single ? GENE_SPACES.formatSingle : GENE_SPACES.formatThread,
     ctaMode: portfolioPlan && portfolioPlan.allowPromoUrl ? ['explicit_pr_reply'] : GENE_SPACES.ctaMode.filter(mode => mode !== 'explicit_pr_reply'),
-    claimSemanticKey: claims.length ? claims : ['page_fact']
+    claimSemanticKey: claims.length ? claims : ['page_fact'],
+    delivery: accountState.singleOnly
+      ? ['single']
+      : (accountState.subscription === 'premium' ? ['single', 'parent_self_reply'] : ['parent_self_reply'])
   };
   if (constraints.lockClaim) spaces.claimSemanticKey = [constraints.lockClaim];
   for (const key of ['angle', 'hookType', 'claimSemanticKey']) {
@@ -480,12 +483,27 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
     }
     return best;
   };
+  const pickDelivery = () => {
+    const options = spaces.delivery;
+    if (options.length === 1) return options[0];
+    const mean = option => {
+      const seen = account[option] || { alpha: 0, beta: 0 };
+      const slotSeen = slot[option] || { alpha: 0, beta: 0 };
+      const alpha = 1.5 + seen.alpha + slotSeen.alpha;
+      const beta = 1.5 + seen.beta + slotSeen.beta;
+      return alpha / (alpha + beta);
+    };
+    const ranked = options.slice().sort((a, b) => mean(b) - mean(a) || options.indexOf(a) - options.indexOf(b));
+    if (random() < 0.2) return ranked[1] || ranked[0];
+    return ranked[0];
+  };
   return {
     angle: pick('angle'),
     hookType: pick('hookType'),
     format: pick('format'),
     ctaMode: pick('ctaMode'),
-    claimSemanticKey: pick('claimSemanticKey')
+    claimSemanticKey: pick('claimSemanticKey'),
+    delivery: pickDelivery()
   };
 }
 

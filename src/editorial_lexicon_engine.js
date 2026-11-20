@@ -286,8 +286,11 @@ function editorialDirective(decision, editorialContext, isEn) {
     wins.length ? (isEn ? `Expressions that earned a response: ${JSON.stringify(wins)}` : `反応が残った表現メモ: ${JSON.stringify(wins)}`) : '',
     pairs.length ? (isEn ? `Measured preference pairs: ${JSON.stringify(pairs).slice(0, 500)}` : `実測の勝ち負け: ${JSON.stringify(pairs).slice(0, 500)}`) : '',
     hintText ? (isEn ? `Archive note: ${hintText}` : `記録メモ: ${hintText}`) : '',
-    Number(editorialContext && editorialContext.matureCount) < 5 && editorialContext && editorialContext.nicheHint && keepForPrompt(editorialContext.nicheHint)
+    editorialContext && editorialContext.nicheHint && keepForPrompt(editorialContext.nicheHint)
       ? (isEn ? `Niche structure hint: ${String(editorialContext.nicheHint).slice(0, 180)}` : `業種の構造メモ: ${String(editorialContext.nicheHint).slice(0, 180)}`)
+      : '',
+    editorialContext && editorialContext.weeklyStrategyHint && keepForPrompt(editorialContext.weeklyStrategyHint)
+      ? (isEn ? `Weekly direction, numbers removed: ${String(editorialContext.weeklyStrategyHint).slice(0, 180)}` : `今週の方針。数値は除いてある: ${String(editorialContext.weeklyStrategyHint).slice(0, 180)}`)
       : ''
   ];
   return lines.filter(Boolean).join('\n');

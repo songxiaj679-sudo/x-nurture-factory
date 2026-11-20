@@ -37,6 +37,17 @@ function weeklyStrategyMemo(report) {
   return `🤖 今週 VELOX AI が自動判断して更新した戦略メモ: ${experiments[0]}`;
 }
 
+function weeklyStrategyHint(log) {
+  const rows = Array.isArray(log) ? log : [];
+  const memo = rows.map(row => row && row.memo).filter(text => String(text || '').trim()).pop();
+  if (!memo) return '';
+  const cleaned = String(memo)
+    .replace(/[0-9０-９]+(?:[.,，][0-9０-９]+)?\s*[%％件]?/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.length >= 4 ? cleaned.slice(0, 180) : '';
+}
+
 const PROTECTED_SETTINGS = ['targetUrl', 'userPrompt', 'aiTargetLang', 'scheduleTimeZone', 'targetCountry', 'strategyLockByUser', 'isHumanOverride', 'xOfficialCredentials', 'twitterId', 'voiceProfile'];
 
 function mergeAuthoritativeUser(existing, incoming) {
@@ -115,6 +126,7 @@ module.exports = {
   proposeAutonomousStrategy,
   applyAutonomousStrategy,
   weeklyStrategyMemo,
+  weeklyStrategyHint,
   maybeAutofillStrategy,
   mergeAuthoritativeUser
 };

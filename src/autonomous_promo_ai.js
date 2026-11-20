@@ -3133,7 +3133,8 @@ async function prepareNextPost(userId, options = {}) {
       avoidKeywords: knowledge.avoidKeywords || [],
       mapElitesHint,
       matureCount,
-      nicheHint: matureCount < 5 ? niche.hint : '',
+      nicheHint: niche.hint || '',
+      weeklyStrategyHint: require('./autonomous_strategy_architect').weeklyStrategyHint(user.strategyDecisionLog),
       strategyLocked: user.strategyLockByUser === true
     };
   } catch (mapErr) {}

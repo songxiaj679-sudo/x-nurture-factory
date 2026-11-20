@@ -73,8 +73,8 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
     : '';
   const threadLine = thread
     ? (isEn
-      ? 'This is an honest two-tweet thread. Tweet 1 opens a genuine curiosity gap. Tweet 2, the self-reply, gives the practical difference. No "see profile" bait and no shock headline.'
-      : '2本の連続ツリーにする。1本目は続きが気になる誠実な引き。2本目の返信で、その話題の具体的な違いを渡す。衝撃、続きはプロフへ、は禁止。')
+      ? 'This is an honest two-tweet thread. A third self-reply is allowed when one more check is needed. Tweet 1 opens a genuine curiosity gap. Later replies give the practical difference. No "see profile" bait and no shock headline.'
+      : '親投稿と自己リプライで2本か3本にする。1本目は続きが気になる誠実な引き。続く返信で、その話題の具体的な違いを渡す。衝撃、続きはプロフへ、は禁止。')
     : '';
   const choice = isEn
     ? 'Choose the layout that makes this point easiest to scan: short paragraphs, a contrast, a short list, an arrow, a question, or a conversational rewrite. Do not force the same marks or the same line pattern every time. If recent posts used that pattern, choose a different one. Explain the practical difference in ordinary language.'

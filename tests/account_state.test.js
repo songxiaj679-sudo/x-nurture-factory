@@ -25,12 +25,12 @@ test('premium can be longer and a hidden search result stays one short post', ()
   assert.equal(hidden.singleOnly, true);
   assert.equal(fitsAccountState(['短い投稿', '続き'], hidden), false);
   assert.equal(fitsAccountState(['短い投稿'], hidden), true);
-  assert.deepEqual(writingShape(paid), { thread: false, count: 1 });
-  assert.deepEqual(writingShape(hidden), { thread: false, count: 1 });
+  assert.deepEqual(writingShape(paid), { thread: false, count: 1, minCount: 1, maxCount: 1 });
+  assert.deepEqual(writingShape(hidden), { thread: false, count: 1, minCount: 1, maxCount: 1 });
   const free = describeAccountState({
     ok: true, username: 'velox', followers: 10, following: 4, subscriptionType: 'None'
   }, { aiTargetLang: 'ja' });
-  assert.deepEqual(writingShape(free), { thread: true, count: 2 });
+  assert.deepEqual(writingShape(free), { thread: true, count: 2, minCount: 2, maxCount: 2 });
   assert.equal(fitsAccountState(['場面の話', '続きで提供を一度出す'], free), true);
   assert.equal(fitsAccountState(['長い1本'.repeat(40), '二本目'], paid), false);
 });

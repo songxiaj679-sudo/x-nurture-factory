@@ -38,11 +38,16 @@ function describeAccountState(live, user = {}) {
   };
 }
 
-function writingShape(state = {}) {
-  if (state.singleOnly || state.postShape === 'single' || state.subscription === 'premium') {
-    return { thread: false, count: 1 };
+function writingShape(state = {}, options = {}) {
+  const delivery = options.delivery || state.delivery || '';
+  if (state.singleOnly) return { thread: false, count: 1, minCount: 1, maxCount: 1 };
+  if (state.subscription === 'premium' && delivery === 'parent_self_reply') {
+    return { thread: true, count: 2, minCount: 2, maxCount: 3 };
   }
-  return { thread: true, count: 2 };
+  if (state.postShape === 'single' || state.subscription === 'premium') {
+    return { thread: false, count: 1, minCount: 1, maxCount: 1 };
+  }
+  return { thread: true, count: 2, minCount: 2, maxCount: 2 };
 }
 
 function formatAccountState(state, lang = 'ja') {
@@ -54,24 +59,28 @@ function formatAccountState(state, lang = 'ja') {
   const search = state.searchVisible === true
     ? (isEn ? 'visible in search' : '検索に出ている')
     : (state.searchVisible === false ? (isEn ? 'not visible in search' : '検索に出ていない') : (isEn ? 'unknown' : '不明'));
-  const shape = writingShape(state).thread
-    ? (state.subscription === 'unknown'
-      ? (isEn ? 'The X plan is unknown, so write a short two-post thread. Do not call the account unpaid.' : '課金種別は不明なので、短い投稿を2本の連続ツリーにする。未課金とは断定しない。各本は上限以内。')
-      : (isEn ? 'Not a paid plan, so write a two-post thread. Each post stays within the limit.' : '未課金なので、短い投稿を2本の連続ツリーにする。各本は上限以内。'))
-    : (state.subscription === 'premium'
-      ? (isEn ? 'Paid plan, so write one longer post. Do not split it into a thread.' : '課金中なので、長い投稿を1本だけ書く。ツリーには分けない。')
-      : (isEn ? 'Write one short post only.' : '短い投稿を1本だけ書く。続きは付けない。'));
+  const shape = writingShape(state);
+  const shapeText = shape.maxCount === 3
+    ? (isEn ? 'Paid plan, so write a parent post plus one or two self-replies. Two or three posts. Each stays within the limit.' : '課金中なので、親投稿に自己リプライを1本か2本足す。2〜3本。各本は上限以内。')
+    : (shape.thread
+      ? (state.subscription === 'unknown'
+        ? (isEn ? 'The X plan is unknown, so write a short two-post thread. Do not call the account unpaid.' : '課金種別は不明なので、短い投稿を2本の連続ツリーにする。未課金とは断定しない。各本は上限以内。')
+        : (isEn ? 'Not a paid plan, so write a two-post thread. Each post stays within the limit.' : '未課金なので、短い投稿を2本の連続ツリーにする。各本は上限以内。'))
+      : (state.subscription === 'premium'
+        ? (isEn ? 'Paid plan, so write one longer post. Do not split it into a thread.' : '課金中なので、長い投稿を1本だけ書く。ツリーには分けない。')
+        : (isEn ? 'Write one short post only.' : '短い投稿を1本だけ書く。続きは付けない。')));
   return isEn
-    ? `Account state. Followers: ${count(state.followers)}. Following: ${count(state.following)}. Payment: ${pay}. Search: ${search}. ${shape} Limit: ${state.maxChars} characters each.`
-    : `アカウントの状態。フォロワー: ${count(state.followers)}。フォロー: ${count(state.following)}。課金: ${pay}。検索: ${search}。${shape} 1本の上限は${state.maxChars}文字。`;
+    ? `Account state. Followers: ${count(state.followers)}. Following: ${count(state.following)}. Payment: ${pay}. Search: ${search}. ${shapeText} Limit: ${state.maxChars} characters each.`
+    : `アカウントの状態。フォロワー: ${count(state.followers)}。フォロー: ${count(state.following)}。課金: ${pay}。検索: ${search}。${shapeText} 1本の上限は${state.maxChars}文字。`;
 }
 
 function fitsAccountState(tweets, state, options = {}) {
   if (!Array.isArray(tweets) || tweets.length === 0) return false;
+  const shape = writingShape(state || {}, { delivery: options.delivery || (state && state.delivery) || '' });
   const promoReply = Boolean(options.allowPromoReply && state && !state.singleOnly);
-  const limit = promoReply ? 2 : writingShape(state).count;
-  if (tweets.length > limit) return false;
-  if (!promoReply && writingShape(state).count === 1 && tweets.length > 1) return false;
+  const maxCount = promoReply ? Math.max(shape.maxCount, 2) : shape.maxCount;
+  if (tweets.length > maxCount) return false;
+  if (shape.maxCount === 3 && tweets.length < shape.minCount) return false;
   return tweets.every(text => typeof text === 'string' && text.trim() && text.length <= state.maxChars);
 }
 

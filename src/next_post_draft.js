@@ -140,6 +140,11 @@ function accountShapeLine(accountState, shape, isEn) {
       ? 'Search is not visible, so write one short post and do not add a reply.'
       : '検索に出ていないので、短い投稿を1本だけ書く。続きは付けない。';
   }
+  if (accountState && accountState.subscription === 'premium' && shape && shape.maxCount === 3) {
+    return isEn
+      ? 'This account is on a paid X plan. Write a parent post plus one or two self-replies, two or three posts in total.'
+      : 'このアカウントはXの有料プランです。親投稿で場面を置き、自己リプライを1本か2本足して、2〜3本にする。';
+  }
   if (accountState && accountState.subscription === 'premium') {
     return isEn
       ? 'This account is on a paid X plan. Write one longer post, not a thread and not a feature list.'
@@ -469,13 +474,17 @@ function draftPrompt({ isEn, brief, shape, accountState, stateLine, timeSlot, re
   const decided = editorialDirective(decision, editorialContext, isEn);
   const shaped = formatGuide(genes, isEn);
   const domain = domainSlot ? angleLine({ isEn, domainSlot, focusProblem, bridge, productName: brandKnowledge && brandKnowledge.productName }) : '';
-  const form = shape.thread
+  const form = shape.maxCount === 3
+    ? (isEn
+      ? `Return JSON {"tweets":["first","second"]} or {"tweets":["first","second","third"]}. Choose two or three posts. Each is at most ${accountState.maxChars} characters. The first opens the scene. Each self-reply adds a concrete distinction or check. Do not repeat the first post.`
+      : `JSONだけ返す。{"tweets":["1本目","2本目"]} または {"tweets":["1本目","2本目","3本目"]}。内容に応じて2本か3本を選ぶ。各本は${accountState.maxChars}文字以内。1本目は場面。続く自己リプライで見分け方や確認を分ける。1本目を繰り返さない。`)
+    : (shape.thread
     ? (isEn
       ? `Return JSON {"tweets":["first","second"]}. Two tweets. Each is at most ${accountState.maxChars} characters. The first is the scene. The second continues it and names the offer once. Do not repeat the first tweet.`
       : `JSONだけ返す。{"tweets":["1本目","2本目"]}。2本の連続ツリー。各本は${accountState.maxChars}文字以内。1本目は場面。2本目はその続きで、ページの提供を一度だけ出す。1本目を繰り返さない。`)
     : (isEn
       ? `Return JSON {"tweets":["one post"]}. One post only, at most ${accountState.maxChars} characters. A paid account can take a developed thought. Do not turn the page headings into a list.`
-      : `JSONだけ返す。{"tweets":["本文"]}。1本だけ、${accountState.maxChars}文字以内。課金中なので、一つの場面を長く書いてよい。ページの見出しを箇条書きにしない。`);
+      : `JSONだけ返す。{"tweets":["本文"]}。1本だけ、${accountState.maxChars}文字以内。課金中なので、一つの場面を長く書いてよい。ページの見出しを箇条書きにしない。`));
   return isEn
     ? `You are VELOX. Write the next post by following the instructions you made for this URL and this account.
 ${instruction}
@@ -674,6 +683,7 @@ async function draftNextPostWithMeta({
   onStage = null,
   editorialContext = null
 }) {
+  accountState = { ...(accountState || {}), delivery: (genes && genes.delivery) || (accountState && accountState.delivery) || '' };
   const isEn = String(lang).toLowerCase().startsWith('en');
   const isolateLpContext = Boolean(masterPlan && masterPlan.isolateLpContext);
   const stateLine = formatAccountState(accountState, isEn ? 'en' : 'ja');
@@ -977,7 +987,7 @@ async function draftNextPostWithMeta({
     err.rejectReasons = reasons;
     throw err;
   }
-  let tweets = chosen.tweets.slice(0, promo ? 1 : shape.count);
+  let tweets = chosen.tweets.slice(0, promo ? 1 : (shape.maxCount || shape.count));
   if (promo) tweets = attachPromoReply(tweets, isEn ? 'en' : 'ja', targetUrl);
   const guarded = enforcePostThreadConstraints(tweets, { lang: isEn ? 'en' : 'ja', timeSlot });
   if (accountState && !fitsAccountState(guarded.tweets, accountState, { allowPromoReply: promo })) {
