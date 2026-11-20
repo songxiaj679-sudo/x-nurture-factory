@@ -69,12 +69,12 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
   const live = Array.isArray(signals) && signals.length
     ? (isEn
       ? `Current public workflow debate, qualitative only. Do not invent quotes, dates, or stats: ${JSON.stringify(signals).slice(0, 500)}`
-      : `いま公開の場で話題の作業論。引用・日付・数値は作らない: ${JSON.stringify(signals).slice(0, 500)}`)
+      : `いま公開の場で話題のこと。引用・日付・数値は作らない: ${JSON.stringify(signals).slice(0, 500)}`)
     : '';
   const threadLine = thread
     ? (isEn
       ? 'This is an honest two-tweet thread. Tweet 1 opens a genuine curiosity gap. Tweet 2, the self-reply, gives the practical difference. No "see profile" bait and no shock headline.'
-      : '2本の連続ツリーにする。1本目は続きが気になる誠実な引き。2本目の返信で実務上の違いを渡す。衝撃、続きはプロフへ、は禁止。')
+      : '2本の連続ツリーにする。1本目は続きが気になる誠実な引き。2本目の返信で、その話題の具体的な違いを渡す。衝撃、続きはプロフへ、は禁止。')
     : '';
   const choice = isEn
     ? 'Choose the layout that makes this point easiest to scan: short paragraphs, a contrast, a short list, an arrow, a question, or a conversational rewrite. Do not force the same marks or the same line pattern every time. If recent posts used that pattern, choose a different one. Explain the practical difference in ordinary language.'
@@ -88,11 +88,11 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
     : '';
   const lines = {
     before_after_rewrite: isEn
-      ? 'Archetype before_after_rewrite. Line 1 says why the common phrasing fails. After a blank line, show the weaker wording and the clearer wording in the layout you chose. Close by explaining the practical difference in ordinary language. The pair is an illustrative craft example, not a customer result and not a product tutorial.'
-      : '型は before_after_rewrite。1行目は、よくある言い方がなぜ届かないかを短く置く。空行のあと、弱い言い方と伝わる言い方の違いが目で追える形を、選んだレイアウトで書く。違いは自然な日本語で説明する。製品の導入結果や顧客事例ではなく、作業文の見本である。',
+      ? 'Archetype before_after_rewrite. Line 1 names the approach or view that misses for this topic. After a blank line, show that approach and the one that fits, in the layout you chose. Close by explaining the practical difference in ordinary language. The pair follows the topic card, such as care, choice, a daily habit, service, or the work itself. It is not a wording lesson, not a customer result, and not a product tutorial.'
+      : '型は before_after_rewrite。1行目は、その話題でうまくいきにくいやり方や見方を短く置く。空行のあと、そのやり方と、伝わる・うまくいくやり方や見方の対比を、選んだレイアウトで書く。話題はカードに従う。ケア、選び方、日常の習慣、接客、実務のどれでもよい。製品の導入結果や顧客事例ではなく、文章の添削講座にもしない。',
     actionable_checklist: isEn
       ? 'Archetype actionable_checklist. Line 1 says why this matters to the reader, then a blank line. Give a few short checks in the layout you chose. Then a blank line and one boundary sentence. No product clicks, no outcomes, and no invented counts.'
-      : '型は actionable_checklist。1行目で読み手の作業に関係あることを言い、空行を置く。確認は短い数行で、選んだレイアウトに載せる。空行のあと、境界を1行。製品の操作案内や成果の数値は入れない。',
+      : '型は actionable_checklist。1行目で読み手の場面に関係あることを言い、空行を置く。確認は短い数行で、選んだレイアウトに載せる。空行のあと、境界を1行。製品の操作案内や成果の数値は入れない。',
     failure_autopsy: isEn
       ? 'Archetype failure_autopsy. Line 1 opens an honest curiosity gap. After a blank line, give the plain-language cause and one practical check in the layout you chose. No cheap clickbait and no invented customer story.'
       : '型は failure_autopsy。1行目は誠実な引き。空行のあと、平易な原因と今日できる確認を、選んだレイアウトで分ける。衝撃や続きはプロフへ、は禁止。顧客の成功談は作らない。',
