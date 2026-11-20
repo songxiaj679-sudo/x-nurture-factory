@@ -77,8 +77,8 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
       : '親投稿と自己リプライで2本か3本にする。1本目は続きが気になる誠実な引き。続く返信で、その話題の具体的な違いを渡す。衝撃、続きはプロフへ、は禁止。')
     : '';
   const choice = isEn
-    ? 'Choose the layout that makes this point easiest to scan: short paragraphs, a contrast, a short list, an arrow, a question, or a conversational rewrite. Do not force the same marks or the same line pattern every time. If recent posts used that pattern, choose a different one. Explain the practical difference in ordinary language.'
-    : '読みやすさは内容に合わせて選ぶ。短い段落、対比、短い列挙、矢印、問いかけ、会話のような言い換えのうち、この内容に一番合う形を自分で選ぶ。毎回同じ記号や同じ行の形にしない。直近の投稿と同じ見た目が続くときは別の形にする。理由は自然な日本語で書く。';
+    ? 'Choose the layout that makes this point easiest to scan: short paragraphs, a contrast, a short list, an arrow, a question, or a conversational rewrite. Do not force the same marks or the same line pattern every time. If recent posts used that pattern, choose a different one. Explain the practical difference in ordinary language. An arrow only shows one state becoming the next, not a label next to an example.'
+    : '読みやすさは内容に合わせて選ぶ。短い段落、対比、短い列挙、矢印、問いかけ、会話のような言い換えのうち、この内容に一番合う形を自分で選ぶ。毎回同じ記号や同じ行の形にしない。直近の投稿と同じ見た目が続くときは別の形にする。理由は自然な日本語で書く。矢印は、前の状態が次の状態へ変わるときだけ使う。見出しと例のあいだには置かない。';
   const recent = (Array.isArray(recentTexts) ? recentTexts : [])
     .map(text => String(text || '').replace(/\s+/g, ' ').trim().slice(0, 80))
     .filter(Boolean)
