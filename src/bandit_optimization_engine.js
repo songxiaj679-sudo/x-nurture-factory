@@ -494,6 +494,9 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
       : ['single', 'parent_self_reply'],
     sourceType: ['topic_source', 'dossier', 'brand_only']
   };
+  const promoted = Array.isArray(constraints.promotedDynamicArms) ? constraints.promotedDynamicArms : [];
+  const extras = promoted.filter(id => typeof id === 'string' && id.startsWith('wc_') && !GENE_SPACES.angle.includes(id));
+  if (extras.length) spaces.angle = GENE_SPACES.angle.concat(extras);
   if (constraints.lockDelivery && spaces.delivery.includes(constraints.lockDelivery)) {
     spaces.delivery = [constraints.lockDelivery];
   }
@@ -501,7 +504,8 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
   for (const key of ['angle', 'hookType', 'claimSemanticKey']) {
     const banned = constraints.avoid && constraints.avoid[key];
     if (!banned) continue;
-    const remaining = spaces[key].filter(item => item !== banned);
+    const banList = Array.isArray(banned) ? banned : [banned];
+    const remaining = spaces[key].filter(item => !banList.includes(item));
     if (remaining.length) spaces[key] = remaining;
   }
   const pick = (key) => {

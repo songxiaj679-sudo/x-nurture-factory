@@ -33,6 +33,7 @@ const { resolvePlan, isPaidAccount, localDateKey, nextPlanSlot } = require('./pl
 const { buildWeeklyGrowthReport } = require('./weekly_growth_report');
 const { decideEarlyAction } = require('./metrics_harvest_engine');
 const { buildFrozenOutcome, classifyTraceCalibration } = require('./critic_calibration');
+const { selectWeeklyWildcard, freshHook, evaluateWildcardPromotions, WILDCARD_IDS } = require('./wildcard_evolution');
 const { fetchSituationalContext, filterRadarHints, industryQuery, radarLooksInternal } = require('./context_radar');
 const { detectAlgorithmRecovery } = require('./recovery_mode');
 const { applySlotJitter } = require('./post_timing');
@@ -379,8 +380,8 @@ async function retargetNextPendingJob(userId) {
             accountState,
             timeSlot: next.timeSlot || 'evening',
             constraints: action === 'deepen_winner'
-              ? { lockClaim: previousGenes.claimSemanticKey, avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType } }
-              : { avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType, claimSemanticKey: previousGenes.claimSemanticKey } }
+              ? { lockClaim: previousGenes.claimSemanticKey, avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType }, promotedDynamicArms: user.promotedDynamicArms || [] }
+              : { avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType, claimSemanticKey: previousGenes.claimSemanticKey }, promotedDynamicArms: user.promotedDynamicArms || [] }
           });
           const qualityAudit = [];
           const questions = user.audienceQuestionsCache && Array.isArray(user.audienceQuestionsCache.questions)
@@ -2427,7 +2428,11 @@ async function _harvestTweetMetricsAndEvolveKnowledgeCore(userId, options = {}) 
         if (frozenId && !peers.some(row => String(row.jobId) === String(frozenId))) {
           peers.push({ id: frozenId, jobId: frozenId, postedAt, metrics24hSnapshot: effectiveSnapshot });
         }
-        rememberFrozenOutcome(frozenId, effectiveSnapshot, { posts: peers });
+        rememberFrozenOutcome(frozenId, effectiveSnapshot, {
+          posts: peers,
+          userId,
+          wildcardRecipe: matchingJobData && matchingJobData.wildcardRecipe || null
+        });
         if (t.text && effectiveSnapshot && effectiveSnapshot.isFrozen && !normalized.isMissing && (effectiveSnapshot.impressions || 0) > 0 && postIsLearnable({ text: t.text })) {
           const episodeId = `tweet_${tId}`;
           const episode = createEpisodeFromPost({
@@ -2855,8 +2860,25 @@ function rememberFrozenOutcome(jobId, snapshot, context = {}) {
     const calibration = classifyTraceCalibration(existing, outcome24h.residualReward);
     const payload = { outcome24h };
     if (calibration) payload.calibration = calibration;
-    return ref.set(payload, { merge: true }).then(() => payload);
+    return ref.set(payload, { merge: true }).then(() => syncPromotedArms(database, existing.userId || context.userId, jobId, existing, outcome24h, context).catch(() => null).then(() => payload));
   }).catch(() => null);
+}
+
+async function syncPromotedArms(database, userId, jobId, existing, outcome24h, context) {
+  if (!database || !userId || !Number.isFinite(Number(outcome24h && outcome24h.residualReward))) return;
+  const traceSnap = await database.collection('generation_traces').where('userId', '==', userId).limit(200).get();
+  const rows = traceSnap.docs.map(doc => ({ jobId: doc.id, ...(doc.data() || {}) }));
+  const patch = { jobId: String(jobId), ...existing, outcome24h, wildcardRecipe: existing.wildcardRecipe || context.wildcardRecipe || null };
+  const index = rows.findIndex(row => String(row.jobId) === String(jobId));
+  if (index >= 0) rows[index] = { ...rows[index], ...patch };
+  else rows.push(patch);
+  const userRef = database.collection('saas_users').doc(userId);
+  const userSnap = await userRef.get();
+  const current = userSnap && userSnap.exists ? ((userSnap.data() || {}).promotedDynamicArms || []) : [];
+  const next = evaluateWildcardPromotions(rows, current);
+  if (JSON.stringify(next) !== JSON.stringify(current.filter(id => WILDCARD_IDS.includes(id)))) {
+    await userRef.set({ promotedDynamicArms: next }, { merge: true });
+  }
 }
 
 async function resolveAudienceCraft({ userId, user, brandKnowledge, posts, lang, radar, budgetDegraded }) {
@@ -3028,7 +3050,8 @@ async function prepareNextPost(userId, options = {}) {
     brandKnowledge: extracted.brandKnowledge,
     portfolioPlan,
     accountState,
-    timeSlot
+    timeSlot,
+    constraints: { promotedDynamicArms: user.promotedDynamicArms || [] }
   });
   const domainSlot = !(portfolioPlan && portfolioPlan.allowPromoUrl) && (!portfolioPlan || portfolioPlan.portfolioRole !== 'explicit_promo_offer');
   const focusPlaybook = domainSlot
@@ -3224,6 +3247,24 @@ async function prepareNextPost(userId, options = {}) {
   const learnedSource = chooseSourceMaterial({ genes, topicSource, sourceDossier, masterPlan });
   topicSource = learnedSource.topicSource;
   sourceDossier = learnedSource.sourceDossier;
+  let weekJobs = posts.slice();
+  try {
+    const pendingWeek = await db.collection('autopilot_jobs').where('userId', '==', userId).where('status', '==', 'pending').limit(20).get();
+    pendingWeek.forEach(doc => weekJobs.push({ id: doc.id, ...(doc.data() || {}) }));
+  } catch (_weekErr) {}
+  const wildcard = selectWeeklyWildcard({
+    accountState,
+    masterPlan,
+    jobs: weekJobs,
+    promotedArms: user.promotedDynamicArms || []
+  });
+  const recentHooks = posts.slice(0, 3).map(post => post && post.genes && post.genes.hookType).filter(Boolean);
+  const draftGenes = wildcard
+    ? { ...genes, angle: wildcard.id, wildcardRecipe: wildcard.id, isWildcard: true, hookType: freshHook(genes.hookType, recentHooks) }
+    : { ...genes, isWildcard: false, wildcardRecipe: null };
+  if (wildcard) {
+    mapElitesCellId = [draftGenes.angle, draftGenes.hookType, draftGenes.format, voiceProfile && voiceProfile.stagePosture].filter(Boolean).join('|').slice(0, 120);
+  }
   let drafted;
   if (budgetDegraded && focusPlaybook && budgetApi) {
     const degradedText = budgetApi.degradedPostText(focusPlaybook, {
@@ -3270,7 +3311,7 @@ async function prepareNextPost(userId, options = {}) {
     portfolioPlan,
     targetUrl,
     recentPosts: rememberedPostTexts(posts, accountState.lang),
-    genes,
+    genes: draftGenes,
     contextSignals: questions.length ? { questions, signals: contextSignals } : contextSignals,
     retargetContext,
     learnedDirectives,
@@ -3345,13 +3386,15 @@ async function prepareNextPost(userId, options = {}) {
     selectedTopicDomain: masterPlan.selectedTopicDomain || '',
     sourceType: drafted.sourceType || 'brand_only',
     segmentCount: drafted.segmentCount || (Array.isArray(tweets) ? tweets.length : 1),
-    delivery: drafted.delivery || (genes && genes.delivery) || 'single',
+    delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single',
+    isWildcard: draftGenes.isWildcard === true,
+    wildcardRecipe: draftGenes.wildcardRecipe || null,
     criticDegraded: drafted.criticDegraded === true,
     criticAxes: drafted.criticAxes || null,
     budgetDegraded,
     alignmentOk: alignment.alignmentOk,
     allowPromoUrl: portfolioPlan.allowPromoUrl,
-    genes,
+    genes: draftGenes,
     mapElitesCellId,
     visualCard,
     arcCount: continueArc ? arcCount + 1 : 0,
@@ -3442,7 +3485,9 @@ async function prepareNextPost(userId, options = {}) {
     selectedTopicDomain: masterPlan.selectedTopicDomain || '',
     sourceType: drafted.sourceType || 'brand_only',
     segmentCount: drafted.segmentCount || (Array.isArray(tweets) ? tweets.length : 1),
-    delivery: drafted.delivery || (genes && genes.delivery) || 'single',
+    delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single',
+    isWildcard: draftGenes.isWildcard === true,
+    wildcardRecipe: draftGenes.wildcardRecipe || null,
     visualCardTemplate: visualCard.template || '',
     criticDegraded: drafted.criticDegraded === true,
     criticAxes: drafted.criticAxes || null,

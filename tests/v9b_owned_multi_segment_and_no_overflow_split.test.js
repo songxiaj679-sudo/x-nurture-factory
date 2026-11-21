@@ -45,6 +45,6 @@ test('saved jobs and traces keep segment count and delivery', () => {
   assert.match(draft, /segmentCount: guarded\.tweets\.length/);
   assert.match(draft, /delivery: accountState && accountState\.delivery === 'parent_self_reply'/);
   assert.equal(promo.includes('segmentCount: drafted.segmentCount'), true);
-  assert.equal(promo.includes("delivery: drafted.delivery || (genes && genes.delivery) || 'single'"), true);
+  assert.equal(promo.includes("delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single'"), true);
   assert.match(promo, /generation_traces/);
 });

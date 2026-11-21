@@ -666,6 +666,7 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
     : (registerLock === 'plain_ja'
       ? '見本は1組だけ。店の中身は写さない。硬い例: 「確認項目は以下の通りです。営業時間が最新であること／予約変更の締切が明記されていること／連絡先が分かること」自然な例: 「『開いてると思って来たのに閉まってた』が一番もったいないので、休みの変更だけは入口より先に目に入る場所へ置きます。」常体の完成例: 開いてると思って来たのに閉まっていた。予定では直っていても、相手は入口の紙を見る。休みを変えたあとは、入口の前から一度だけ見る。'
       : '完成例は1本だけ。店の中身は写さない。です・ますで書く。開いてると思って来たのに閉まっていた、ということは起きます。自分の予定では直って見えても、相手は入口の紙を見ています。休みを変えたあとは、入口の前から一度だけ見ておくと安心です。');
+  const wildLine = require('./wildcard_evolution').recipeLine((genes && (genes.wildcardRecipe || genes.angle)) || '', isEn);
   const preferCount = Number(genes && genes.targetSegmentCount);
   const preferLine = preferCount === 3
     ? (isEn ? ' This time prefer a 3-part post. If the third part has no standalone role, keep two parts. Do not spill leftover text.' : ' 今回は3段構成を優先する。3段目に独立した役割がないなら2段に収める。はみ出し分割は禁止。')
@@ -698,6 +699,7 @@ Match voice.accountRole and voice.register strictly. Do NOT invent unverified nu
 a shows the approach that misses for this reader. b opens from the everyday assumption and turns toward what fits, without fake times or invented metrics. c states one concrete point worth saving in 2 natural, complete sentences matching the target length—never write a tiny slogan fragment such as "The rule is...", and never write a setup manual telling readers to feed a URL into the tool when this post is not an explicit promotion. When an archetype is set, all three candidates are different takes of THAT archetype, not three copies of "many people assume, but". Do not print the words everydayAssumption or underlyingMechanism. Do not open with an academic label. Do not write a paper-style ending.
 ${archetypeLine || ''}
 ${replySplit}
+${wildLine}
 ${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `Qualitative public context, never a quote or a stat: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 Do not include a URL.${promo ? ' Do not add the disclosure. The program adds it.' : ''}
@@ -724,6 +726,7 @@ voiceのaccountRole（公式ブランドか個人運用者か）と文体を厳�
 aはその話題でうまくいきにくい見方を平易に置く。bは日常の思い込みから入り、読者に合う見方へ切り返す（架空の日時や数字は使わない）。cは保存したくなる具体を1点で言い切る。型が指定されているときは、3案ともその型の別案にし、「という見方があります」から「ただ」へ落ちる同じ構文を繰り返さない。everydayAssumption や underlyingMechanism という内部語、学問名の前置きは本文に出さない。
 ${archetypeLine || ''}
 ${replySplit}
+${wildLine}
 ${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `公開の話題。引用も数値も作らない: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 URLは入れない。${promo ? '【PR】表記はプログラムが付ける。' : ''}
