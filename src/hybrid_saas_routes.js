@@ -1128,7 +1128,8 @@ let outboundCursor = null;
 
 async function processOutboundReplyDiscovery() {
   if (String(process.env.X_OUTBOUND_REPLY_DISCOVERY || 'true').toLowerCase() === 'false') return { saved: 0 };
-  const { searchRecentPublicTweets, decryptCredentials } = require('./official_api_client');
+  const { searchRecentPublicTweets, decryptCredentials, fetchMyAccountState } = require('./official_api_client');
+  const { describeAccountState } = require('./customer_post_state');
   const { searchQueryFor, selectDiscoveryCard, discoverOutboundCandidates, discoveryStatusFromSearch, saveOutboundDiscovery } = require('./outbound_reply_queue');
   const { completeWriter, completeCritic } = require('./llm_router');
   const { isPaidAccount } = require('./plan_post_budget');
@@ -1149,6 +1150,12 @@ async function processOutboundReplyDiscovery() {
     if (!isPaidAccount(user) || user.autopilotPaused || user.xLinkHealthStatus === 'suspended' || !user.xOfficialCredentials || !card) continue;
     const creds = decryptCredentials(user.xOfficialCredentials);
     creds.saasUserId = doc.id;
+    let accountSubscription = 'unknown';
+    try {
+      accountSubscription = describeAccountState(await fetchMyAccountState(creds), user).subscription;
+    } catch (accountErr) {
+      console.warn(`[Outbound Account] ${String(accountErr && accountErr.message || '').slice(0, 120)}`);
+    }
     const found = await searchRecentPublicTweets(creds, {
       query: searchQueryFor(card, String(user.aiTargetLang || '').toLowerCase().startsWith('en') ? 'en' : 'ja')
     });
@@ -1164,7 +1171,7 @@ async function processOutboundReplyDiscovery() {
         return Number.isFinite(at) && Date.now() - at < 24 * 60 * 60 * 1000;
       });
       rows = await discoverOutboundCandidates({
-        user,
+        user: { ...user, accountSubscription },
         tweets: found.tweets,
         completeWriter,
         completeCritic,
@@ -3090,7 +3097,8 @@ function registerHybridSaasRoutes(app, options = {}) {
       if (candidate.status !== 'pending_approval' && candidate.status !== 'held') {
         return res.status(409).json({ ok: false, error: say('承認待ちの候補だけ送信できます。', 'Only a waiting candidate can be sent.') });
       }
-      const { detectOptOut, replyAllowedNow, replyPassesSafety, planReplyCap, replySentToday } = require('./auto_reply_policy');
+      const { detectOptOut, replyAllowedNow, planReplyCap, replySentToday } = require('./auto_reply_policy');
+      const { passesOutboundSafety, savedOutboundBudget } = require('./outbound_reply_queue');
       const authorId = String(candidate.authorId || '');
       if (detectOptOut(candidate.sourceText)) {
         if (authorId) await userRef.collection('blocked_reply_authors').doc(authorId).set({ authorId, blockedAt: new Date(), reason: 'opt_out' }, { merge: true });
@@ -3116,7 +3124,14 @@ function registerHybridSaasRoutes(app, options = {}) {
         return res.status(status).json({ ok: false, code: decision.reason, error: say('この返信は今は送信できません。', 'This reply cannot be sent right now.') });
       }
       const text = candidate.draftText;
-      if (!replyPassesSafety(text, user.ngTopics)) {
+      const replyLang = candidate.replyLang === 'en' ? 'en' : 'ja';
+      const budget = savedOutboundBudget(candidate, replyLang);
+      const safety = passesOutboundSafety(text, {
+        ...user,
+        accountSubscription: budget.accountSubscription,
+        outboundMaxChars: budget.maxChars
+      }, replyLang);
+      if (!safety.ok) {
         return res.status(400).json({ ok: false, error: say('この返信は安全確認を通らないため送信できません。', 'This reply did not pass the safety checks.') });
       }
       if (!officialApiOperationAllowed(user, creds)) return res.status(403).json({ ok: false, error: say('このアカウントでは公式API送信が許可されていません。', 'Official posting is not enabled for this account.') });

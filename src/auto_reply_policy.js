@@ -126,9 +126,10 @@ function replyAllowedNow({ authorId, selfTwitterId, blocked, lastReplyAt, now = 
   return { ok: true, reason: '' };
 }
 
-function replyPassesSafety(text, ngTopics = '') {
+function replyPassesSafety(text, ngTopics = '', maxChars = 280) {
   const body = String(text || '').trim();
-  if (body.length < 8 || body.length > 280) return false;
+  const limit = Number.isFinite(Number(maxChars)) && Number(maxChars) >= 8 ? Number(maxChars) : 280;
+  if (body.length < 8 || body.length > limit) return false;
   if (/https?:\/\//i.test(body)) return false;
   if (/いかがでしたでしょうか|保存必須|必ず成果|guarantee/i.test(body)) return false;
   const blocked = Array.isArray(ngTopics) ? ngTopics : String(ngTopics || '').split(/[\n,、]/);
