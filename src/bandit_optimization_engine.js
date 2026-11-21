@@ -396,12 +396,23 @@ function computeDeconfoundedRewards(posts) {
   return computeResidualRewards(posts);
 }
 
+const GENE_REWARD_KEYS = Object.freeze(['angle', 'hookType', 'format', 'ctaMode', 'claimSemanticKey', 'delivery', 'sourceType', 'segmentCount']);
+
 function geneValue(post, key) {
-  return post && post.genes && post.genes[key];
+  if (!post) return '';
+  if (key === 'sourceType') {
+    const value = post.sourceType || (post.genes && post.genes.sourceType) || '';
+    return ['topic_source', 'dossier', 'brand_only'].includes(value) ? value : '';
+  }
+  if (key === 'segmentCount') {
+    const raw = post.segmentCount != null ? post.segmentCount : (post.genes && post.genes.segmentCount);
+    const value = String(raw == null ? '' : raw);
+    return ['1', '2', '3'].includes(value) ? value : '';
+  }
+  return post.genes && post.genes[key];
 }
 
-function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan = null, accountState = {}, timeSlot = 'evening', random = Math.random, constraints = {} } = {}) {
-  const rewards = computeDeconfoundedRewards(posts);
+function applyGeneRewardBatch(rewards, timeSlot) {
   const account = Object.create(null);
   const slot = Object.create(null);
   const safeKey = key => {
@@ -433,14 +444,39 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
       cell.beta *= 0.94;
     }
   };
-  for (const reward of rewards) {
+  for (const reward of Array.isArray(rewards) ? rewards : []) {
+    if (!reward || !reward.post) continue;
     decay(account);
     decay(slot);
-    for (const key of ['angle', 'hookType', 'format', 'ctaMode', 'claimSemanticKey', 'delivery']) {
+    for (const key of GENE_REWARD_KEYS) {
       add(account, geneValue(reward.post, key), reward.weight, reward.residual);
       if (reward.post.timeSlot === timeSlot) add(slot, geneValue(reward.post, key), reward.weight, reward.residual);
     }
   }
+  return { account, slot };
+}
+
+function chooseSourceMaterial({ genes, topicSource, sourceDossier, masterPlan } = {}) {
+  const ring = String(masterPlan && masterPlan.topicRing || '');
+  const eligible = Boolean(masterPlan && masterPlan.isolateLpContext) && (ring === 'ring1_craft' || ring === 'ring2_broad_adjacent');
+  const card = topicSource || null;
+  const dossier = sourceDossier && typeof sourceDossier === 'object' && Object.keys(sourceDossier).some(key => sourceDossier[key]) ? sourceDossier : null;
+  if (!eligible) {
+    return { topicSource: card, sourceDossier: dossier, sourceType: card ? 'topic_source' : (dossier ? 'dossier' : 'brand_only') };
+  }
+  const wanted = genes && genes.sourceType;
+  if (!card) {
+    return dossier
+      ? { topicSource: null, sourceDossier: dossier, sourceType: 'dossier' }
+      : { topicSource: null, sourceDossier: null, sourceType: 'brand_only' };
+  }
+  if (wanted === 'dossier' && dossier) return { topicSource: null, sourceDossier: dossier, sourceType: 'dossier' };
+  if (wanted === 'topic_source' || !dossier) return { topicSource: card, sourceDossier: dossier, sourceType: 'topic_source' };
+  return { topicSource: null, sourceDossier: dossier, sourceType: 'dossier' };
+}
+
+function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan = null, accountState = {}, timeSlot = 'evening', random = Math.random, constraints = {} } = {}) {
+  const { account, slot } = applyGeneRewardBatch(computeDeconfoundedRewards(posts), timeSlot);
   const newest = posts.slice().sort((a, b) => new Date(b.postedAt || 0) - new Date(a.postedAt || 0));
   const recent = key => newest.map(post => geneValue(post, key)).filter(Boolean);
   const single = accountState.postShape === 'single' || accountState.subscription === 'premium' || accountState.singleOnly;
@@ -455,8 +491,12 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
     claimSemanticKey: claims.length ? claims : ['page_fact'],
     delivery: accountState.singleOnly
       ? ['single']
-      : ['single', 'parent_self_reply']
+      : ['single', 'parent_self_reply'],
+    sourceType: ['topic_source', 'dossier', 'brand_only']
   };
+  if (constraints.lockDelivery && spaces.delivery.includes(constraints.lockDelivery)) {
+    spaces.delivery = [constraints.lockDelivery];
+  }
   if (constraints.lockClaim) spaces.claimSemanticKey = [constraints.lockClaim];
   for (const key of ['angle', 'hookType', 'claimSemanticKey']) {
     const banned = constraints.avoid && constraints.avoid[key];
@@ -497,13 +537,25 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
     if (random() < 0.2) return ranked[1] || ranked[0];
     return ranked[0];
   };
+  const delivery = pickDelivery();
+  spaces.segmentCount = accountState.singleOnly || delivery === 'single' ? ['1'] : ['2', '3'];
+  for (const option of [...spaces.sourceType, ...spaces.segmentCount]) {
+    const seen = account[option];
+    if (!seen || typeof seen !== 'object' || !Number.isFinite(seen.alpha) || !Number.isFinite(seen.beta)) {
+      account[option] = { alpha: 0, beta: 0 };
+    }
+  }
+  const targetSegmentCount = Number(pick('segmentCount'));
   return {
     angle: pick('angle'),
     hookType: pick('hookType'),
     format: pick('format'),
     ctaMode: pick('ctaMode'),
     claimSemanticKey: pick('claimSemanticKey'),
-    delivery: pickDelivery()
+    delivery,
+    sourceType: pick('sourceType'),
+    segmentCount: String(targetSegmentCount),
+    targetSegmentCount
   };
 }
 
@@ -591,6 +643,9 @@ module.exports = {
   GENE_SPACES,
   computeDeconfoundedRewards,
   chooseGenesForPost,
+  applyGeneRewardBatch,
+  chooseSourceMaterial,
+  GENE_REWARD_KEYS,
   CONTENT_ANGLES,
   sampleBetaDistribution,
   selectActionViaThompsonSampling,

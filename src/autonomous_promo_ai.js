@@ -21,7 +21,7 @@ const { queryRelevantEpisodes, formatEpisodesForPrompt } = require('./episodic_m
 const { restoreMandatoryDirectives } = require('./meta_prompt_optimizer');
 const { fetchPublicText } = require('./url_fetch_guard');
 const { containsJapaneseScript } = require('./measured_pair');
-const { extractPageHypotheses, hypothesisForPlaybook, chooseHypothesis, formatHypothesis, pageVersionHash, chooseGenesForPost, selectPlaybookByPerformance } = require('./bandit_optimization_engine');
+const { extractPageHypotheses, hypothesisForPlaybook, chooseHypothesis, formatHypothesis, pageVersionHash, chooseGenesForPost, chooseSourceMaterial, selectPlaybookByPerformance } = require('./bandit_optimization_engine');
 const { sanitizePostOrReplyText, decryptCredentials, fetchMyAccountState } = require('./official_api_client');
 const { describeAccountState, formatAccountState } = require('./customer_post_state');
 const { draftNextPostText, draftNextPostWithMeta, selectFocusPlaybook } = require('./next_post_draft');
@@ -3209,6 +3209,9 @@ async function prepareNextPost(userId, options = {}) {
       sourceDossier = null;
     }
   }
+  const learnedSource = chooseSourceMaterial({ genes, topicSource, sourceDossier, masterPlan });
+  topicSource = learnedSource.topicSource;
+  sourceDossier = learnedSource.sourceDossier;
   let drafted;
   if (budgetDegraded && focusPlaybook && budgetApi) {
     const degradedText = budgetApi.degradedPostText(focusPlaybook, {

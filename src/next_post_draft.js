@@ -666,10 +666,14 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
     : (registerLock === 'plain_ja'
       ? '見本は1組だけ。店の中身は写さない。硬い例: 「確認項目は以下の通りです。営業時間が最新であること／予約変更の締切が明記されていること／連絡先が分かること」自然な例: 「『開いてると思って来たのに閉まってた』が一番もったいないので、休みの変更だけは入口より先に目に入る場所へ置きます。」常体の完成例: 開いてると思って来たのに閉まっていた。予定では直っていても、相手は入口の紙を見る。休みを変えたあとは、入口の前から一度だけ見る。'
       : '完成例は1本だけ。店の中身は写さない。です・ますで書く。開いてると思って来たのに閉まっていた、ということは起きます。自分の予定では直って見えても、相手は入口の紙を見ています。休みを変えたあとは、入口の前から一度だけ見ておくと安心です。');
+  const preferCount = Number(genes && genes.targetSegmentCount);
+  const preferLine = preferCount === 3
+    ? (isEn ? ' This time prefer a 3-part post. If the third part has no standalone role, keep two parts. Do not spill leftover text.' : ' 今回は3段構成を優先する。3段目に独立した役割がないなら2段に収める。はみ出し分割は禁止。')
+    : (preferCount === 2 ? (isEn ? ' This time prefer a 2-part post. Do not spill leftover text into a third part.' : ' 今回は2段構成を優先する。はみ出し分割は禁止。') : '');
   const replySplit = (accountState && accountState.delivery) === 'parent_self_reply' || (genes && genes.delivery) === 'parent_self_reply'
     ? (isEn
       ? 'Parent plus self-reply. This split wins over any archetype line that puts the cause in the body. The first post stops at the scene or the odd feeling. The cause, the way to tell, and the check go in the self-replies. Choose two or three parts from the depth of the point. Do not spill an unfinished sentence into the next part. Two parts: scene, then the cause and one move. Three parts only when the third is its own practical step.'
-      : '親投稿と自己リプライ。この分担は、型が本文で原因まで書く指示より優先する。1本目は違和感や場面で止める。原因、見分け方、やり方、確認は自己リプライに置く。内容の深さに応じて2段か3段を選ぶ。文字数があふれたから3段目にこぼす分割は禁止。2段は1段目が場面、2段目が原因と1手。3段は1段目が場面、2段目が仕組み、3段目がすぐ試せる手順で、3段目が独立しているときだけ使う。')
+      : '親投稿と自己リプライ。この分担は、型が本文で原因まで書く指示より優先する。1本目は違和感や場面で止める。原因、見分け方、やり方、確認は自己リプライに置く。内容の深さに応じて2段か3段を選ぶ。文字数があふれたから3段目にこぼす分割は禁止。2段は1段目が場面、2段目が原因と1手。3段は1段目が場面、2段目が仕組み、3段目がすぐ試せる手順で、3段目が独立しているときだけ使う。') + preferLine
     : '';
   const officialVoice = voiceProfile && voiceProfile.accountRole === 'official_brand'
     ? (isEn
@@ -1127,6 +1131,7 @@ async function draftNextPostWithMeta({
     focusTopicId: focusTopic && focusTopic.id || '',
     sourceType: resolveSourceType(topicSource, sourceDossier, masterPlan),
     segmentCount: guarded.tweets.length,
+    targetSegmentCount: Number(genes && genes.targetSegmentCount) || guarded.tweets.length,
     delivery: accountState && accountState.delivery === 'parent_self_reply' && guarded.tweets.length > 1 ? 'parent_self_reply' : 'single'
   };
 }
