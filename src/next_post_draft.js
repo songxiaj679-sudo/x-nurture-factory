@@ -453,7 +453,72 @@ function spokenExplainer(isEn, topicSource, sourceDossier, masterPlan) {
     : '要約ではなくわかりやすい専門解説にする。詳しい知人が目の前で噛み砕く自然な口語で、抽象語は日常の言葉か具体例に置き換える。つまりどういうことかを1読で伝える。格言や標語で締めない。';
 }
 
-function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, shape, accountState, userPrompt, brandKnowledge, voiceProfile, genes, portfolioPlan, learnedDirectives, questions, liveSignals, archetypeLine, brandContextNotes, ngTopics, decision, editorialContext, focusClaim, domainSlot, focusProblem, bridge, focusPlaybook, isolateLpContext, sourceDossier, masterPlan, topicSource = null }) {
+function charLimit(value, max) {
+  return Array.from(String(value || '').replace(/\s+/g, ' ').trim()).slice(0, max).join('');
+}
+
+function selectPushbackSeed({ masterPlan, pushback = '', topicSource = null, brandKnowledge = null } = {}) {
+  const ring = String(masterPlan && masterPlan.topicRing || '');
+  if (ring !== 'ring1_craft' && ring !== 'ring2_broad_adjacent') return null;
+  const voice = charLimit(pushback, 200);
+  if (Array.from(voice).length >= 8) return { source: 'audience_pushback', text: voice };
+  const myth = charLimit(topicSource && topicSource.commonMyth, 120);
+  if (myth) return { source: 'article_myth', text: myth };
+  const stance = resolveEditorialStance(brandKnowledge);
+  const norm = charLimit(stance && stance.rejectedNorm, 100);
+  if (norm) return { source: 'brand_pov', text: norm };
+  return null;
+}
+
+function tensionFactCorpus({ seed = null, topicSource = null, brandKnowledge = null } = {}) {
+  const stance = resolveEditorialStance(brandKnowledge);
+  const claims = brandKnowledge && Array.isArray(brandKnowledge.verifiedClaims) ? brandKnowledge.verifiedClaims : [];
+  return [
+    seed && seed.text,
+    topicSource && topicSource.title,
+    topicSource && topicSource.coreFact,
+    topicSource && topicSource.whyItMatters,
+    topicSource && topicSource.mechanism,
+    topicSource && topicSource.actionableTakeaway,
+    topicSource && topicSource.commonMyth,
+    stance && stance.rejectedNorm,
+    stance && stance.coreBelief,
+    stance && stance.neverSays,
+    brandKnowledge && brandKnowledge.oneLineMechanism,
+    brandKnowledge && brandKnowledge.icpSummary,
+    ...(brandKnowledge && Array.isArray(brandKnowledge.domainProblems) ? brandKnowledge.domainProblems : []),
+    ...claims.map(claim => [claim && claim.mechanism, claim && claim.proofQuote, ...(claim && claim.verifiedNumbers || [])].filter(Boolean).join(' '))
+  ].filter(Boolean).join('\n');
+}
+
+function tensionInventsNumber(tension, corpus) {
+  const tokens = String(tension || '').match(/\d+(?:[.,]\d+)?/g) || [];
+  const source = String(corpus || '');
+  return tokens.some(token => !source.includes(token));
+}
+
+function sanitizeBriefTension(brief, { seed = null, topicSource = null, brandKnowledge = null, isEn = false } = {}) {
+  const base = brief && typeof brief === 'object' ? { ...brief } : {};
+  const dropped = { ...base, tension: null, tensionReversesInput: false, passesBrandSwap: false, tensionSource: null };
+  const tension = charLimit(base.tension, isEn ? 130 : 70);
+  if (!seed || !seed.text || !tension) return dropped;
+  if (base.tensionReversesInput !== true || base.passesBrandSwap !== true) return dropped;
+  if (tensionInventsNumber(tension, tensionFactCorpus({ seed, topicSource, brandKnowledge }))) return dropped;
+  const near = [topicSource && topicSource.coreFact, topicSource && topicSource.actionableTakeaway]
+    .map(text => charLimit(text, 220))
+    .filter(Boolean)
+    .some(text => hookLineSimilarity(tension, text) >= 0.45);
+  if (near) return dropped;
+  return {
+    ...base,
+    tension,
+    tensionReversesInput: true,
+    passesBrandSwap: true,
+    tensionSource: seed.source
+  };
+}
+
+function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, shape, accountState, userPrompt, brandKnowledge, voiceProfile, genes, portfolioPlan, learnedDirectives, questions, liveSignals, archetypeLine, brandContextNotes, ngTopics, decision, editorialContext, focusClaim, domainSlot, focusProblem, bridge, focusPlaybook, isolateLpContext, sourceDossier, masterPlan, topicSource = null, tensionSeed = null }) {
   const form = accountShapeLine(accountState, shape, isEn);
   const instruction = customerInstruction(userPrompt, isEn, decision);
   const grounded = knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot, isolateLpContext === true, masterPlan && masterPlan.topicRing || '');
@@ -492,6 +557,11 @@ function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, 
       ? 'Do not choose a question hook or reflective question ending unless the plan explicitly asks for genuine_tension.'
       : 'hookAngle や結びの型に疑問形・問いかけは選ばないこと。')
     : '';
+  const collision = tensionSeed && tensionSeed.text
+    ? (isEn
+      ? `Collision partner (${tensionSeed.source}): ${tensionSeed.text}. tension is one sentence of at most 130 characters where this partner runs against the source fact and this brand's stance. Set tensionReversesInput and passesBrandSwap true only when the sentence reverses the partner and would fail if another company in the same field said it. A paraphrase of the article conclusion is false for both. When the objection or the article already states a number or a concrete fact, use that fact as the core. Do not invent a number.`
+      : `衝突の相手（${tensionSeed.source}）: ${tensionSeed.text}。tension は70字以内の1文で、この相手と一次事実・このブランドの立場が逆向きにぶつかる主張だけを書く。記事の結論の言い換え、同業他社名へ入れ替えても成立する一般論は tensionReversesInput と passesBrandSwap をどちらも false にする。逆向きで、このブランドだから言い切れるときだけ両方 true。反論や一次記事にある数字と具体事実は、抽象論へ逃げずそのまま核に使う。そこに無い数字は作らない。`)
+    : '';
   return isEn
     ? `You are VELOX. From this URL and this account, write the instructions for one post. Do not write the post.
 ${instruction}
@@ -510,11 +580,12 @@ ${form}
 ${decided}
 ${freshClaim}
 ${noQuestion}
+${collision}
 ${stateLine}
 Time slot: ${timeSlot}
 ${pageBriefLine({ isEn: true, page, hypothesisText, isolateLpContext, masterPlan, brandKnowledge })}
 Earlier posts: ${JSON.stringify(recent)}
-Return JSON only: {"offer":"","reader":"","scene":"","voice":"","thisPost":"","doNot":"","readerPayoff":"","hookAngle":"","everydayAssumption":"","underlyingMechanism":""}`
+Return JSON only: {"offer":"","reader":"","scene":"","voice":"","thisPost":"","doNot":"","readerPayoff":"","hookAngle":"","everydayAssumption":"","underlyingMechanism":"","tension":"","tensionReversesInput":false,"passesBrandSwap":false}`
     : `あなたはVELOXです。このURLと、このアカウントの個性から、投稿の指示だけを作ってください。本文は書かないでください。
 ${instruction}
 ${grounded}
@@ -531,12 +602,13 @@ ${blocked ? `次の語や話題は絶対に使わない: ${blocked}` : ''}
 ${decided}
 ${freshClaim}
 ${noQuestion}
+${collision}
 ${form}
 ${stateLine}
 時間帯: ${timeSlot}
 ${pageBriefLine({ isEn: false, page, hypothesisText, isolateLpContext, masterPlan, brandKnowledge })}
 過去の投稿: ${JSON.stringify(recent)}
-JSONだけ返す。{"offer":"","reader":"","scene":"","voice":"","thisPost":"","doNot":"","readerPayoff":"","hookAngle":"","everydayAssumption":"","underlyingMechanism":""}`;
+JSONだけ返す。{"offer":"","reader":"","scene":"","voice":"","thisPost":"","doNot":"","readerPayoff":"","hookAngle":"","everydayAssumption":"","underlyingMechanism":"","tension":"","tensionReversesInput":false,"passesBrandSwap":false}`;
 }
 
 function readBrief(raw, page, isEn) {
@@ -552,7 +624,10 @@ function readBrief(raw, page, isEn) {
       readerPayoff: clip(parsed.readerPayoff, 180),
       hookAngle: clip(parsed.hookAngle, 140),
       everydayAssumption: clip(parsed.everydayAssumption, 180),
-      underlyingMechanism: clip(parsed.underlyingMechanism, 180)
+      underlyingMechanism: clip(parsed.underlyingMechanism, 180),
+      tension: charLimit(parsed.tension, isEn ? 130 : 70),
+      tensionReversesInput: parsed.tensionReversesInput === true,
+      passesBrandSwap: parsed.passesBrandSwap === true
     };
   } catch (err) {
     return fallbackBrief(page, isEn);
@@ -719,6 +794,15 @@ function hookAngleForChoice(chosen, hooks) {
   return hit ? hit.angle : null;
 }
 
+function finalizeSelectedHookAngle(chosen, hooks, hookDuelUsed, candidates) {
+  const matched = hookAngleForChoice(chosen, hooks);
+  if (matched || hookDuelUsed !== true) return matched || null;
+  const id = String(chosen && chosen.id || '');
+  const index = (Array.isArray(candidates) ? candidates : []).findIndex(row => row && row.id === id);
+  if (id === 'c' || index === 2) return 'control';
+  return null;
+}
+
 function pinOpening(tweets, hook, maxChars) {
   if (!hook || !Array.isArray(tweets) || !tweets.length) return tweets;
   if (hookAngleForChoice({ tweets }, [{ angle: 'kept', text: hook }])) return tweets;
@@ -820,6 +904,11 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
       : '完成例は1本だけ。店の中身は写さない。です・ますで書く。開いてると思って来たのに閉まっていた、ということは起きます。自分の予定では直って見えても、相手は入口の紙を見ています。休みを変えたあとは、入口の前から一度だけ見ておくと安心です。');
   const wildLine = require('./wildcard_evolution').recipeLine((genes && (genes.wildcardRecipe || genes.angle)) || '', isEn);
   const povLine = stanceLine(brandKnowledge, masterPlan, genes, isEn);
+  const tensionLine = brief && brief.tension
+    ? (isEn
+      ? `The spine is this one sentence. Do not summarize the notes. Prove this collision in concrete job language. Use the external notes only as the shelf of facts that keeps the sentence honest. If that sentence or the notes already contain a number or a concrete fact, keep it as the core and do not replace it with a vaguer claim. Do not invent a number.\n${brief.tension}`
+      : `この投稿の背骨は次の1文だけ。外部メモを要約しない。この衝突を現場の言葉と具体例で立証する。外部メモは嘘をつかないための事実の棚としてだけ使う。反論や一次記事にある数字と具体事実は、抽象論へ逃げずそのまま核に使う。そこに無い数字は作らない。\n${brief.tension}`)
+    : '';
   const hookLine = winningHookLine(winningHooks, isEn);
   const evolvedLine = evolutionPatch && (evolutionPatch.doMore || evolutionPatch.avoidMore)
     ? (isEn
@@ -860,6 +949,7 @@ ${archetypeLine || ''}
 ${replySplit}
 ${wildLine}
 ${povLine}
+${tensionLine}
 ${hookLine}
 ${evolvedLine}
 ${spokenPair}
@@ -880,7 +970,7 @@ ${officialVoice}
 ${notes ? `Customer notes: ${notes}` : ''}
 ${blocked ? `Forbidden: ${blocked}` : ''}
 ${episodeContext || ''}
-Brief: ${JSON.stringify(brief)}`
+Brief: ${JSON.stringify(briefForWriter(brief))}`
     : `切り口の違う完成度の高い3案をJSONで返す。{"candidates":[{"id":"a","tweets":[]},{"id":"b","tweets":[]},{"id":"c","tweets":[]}]}
 各案は${shape.maxCount === 3 ? '2本か3本' : count + '本'}。1本あたり必ず${minTarget}〜${safeTarget}文字の範囲に収め、上限${bodyLimit}文字は1文字も超えないこと。
 ${stopEarly}
@@ -891,6 +981,7 @@ ${archetypeLine || ''}
 ${replySplit}
 ${wildLine}
 ${povLine}
+${tensionLine}
 ${hookLine}
 ${evolvedLine}
 ${spokenPair}
@@ -911,7 +1002,17 @@ ${officialVoice}
 ${notes ? `実務メモ: ${notes}` : ''}
 ${blocked ? `禁止: ${blocked}` : ''}
 ${episodeContext || ''}
-指示: ${JSON.stringify(brief)}`;
+指示: ${JSON.stringify(briefForWriter(brief))}`;
+}
+
+function briefForWriter(brief) {
+  if (brief && brief.tension) return brief;
+  const copy = { ...(brief || {}) };
+  delete copy.tension;
+  delete copy.tensionReversesInput;
+  delete copy.passesBrandSwap;
+  delete copy.tensionSource;
+  return copy;
 }
 
 function attachPromoReply(tweets, lang, targetUrl) {
@@ -961,7 +1062,8 @@ async function draftNextPostWithMeta({
   editorialContext = null,
   criticAxisWeights = null,
   promptEvolution = null,
-  evolutionVersion = 'baseline'
+  evolutionVersion = 'baseline',
+  hookPayload = null
 }) {
   accountState = { ...(accountState || {}), delivery: (genes && genes.delivery) || (accountState && accountState.delivery) || '' };
   const isEn = String(lang).toLowerCase().startsWith('en');
@@ -1005,6 +1107,10 @@ async function draftNextPostWithMeta({
     ngTopics
   };
   const questions = contextSignals && Array.isArray(contextSignals.questions) ? contextSignals.questions : [];
+  const pushback = contextSignals && !Array.isArray(contextSignals)
+    ? String(contextSignals.pushback || (Array.isArray(contextSignals.pushbacks) ? contextSignals.pushbacks.find(Boolean) : '') || '')
+    : '';
+  const tensionSeed = selectPushbackSeed({ masterPlan, pushback, topicSource, brandKnowledge });
   const liveSignals = Array.isArray(contextSignals) ? contextSignals : (contextSignals && Array.isArray(contextSignals.signals) ? contextSignals.signals : []);
   const archetypeLine = archetype
     ? require('./editorial_archetypes').archetypePromptLines({ archetype, topic: focusTopic, signals: liveSignals, isEn, thread: shape.thread === true, recentTexts: recent, delivery: accountState.delivery || (genes && genes.delivery) || '' })
@@ -1048,8 +1154,8 @@ async function draftNextPostWithMeta({
   try {
     emitStage('draft_brief');
     const briefBudget = stageBudget(deadlineAt, tier === 'fast' ? 18000 : 45000, timeoutMs);
-    brief = readBrief(await billedDraft(briefPrompt({
-      isEn, page, recent, hypothesisText: isolateLpContext ? '' : hypothesisText, stateLine, timeSlot, shape, accountState, userPrompt: combinedPrompt, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, questions, liveSignals, archetypeLine, focusClaim: isolateLpContext ? null : focusClaim, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide
+    brief = sanitizeBriefTension(readBrief(await billedDraft(briefPrompt({
+      isEn, page, recent, hypothesisText: isolateLpContext ? '' : hypothesisText, stateLine, timeSlot, shape, accountState, userPrompt: combinedPrompt, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, questions, liveSignals, archetypeLine, focusClaim: isolateLpContext ? null : focusClaim, tensionSeed, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide
     }), {
       tier,
       timeoutMs: briefBudget || Math.min(timeoutMs, 18000),
@@ -1059,9 +1165,9 @@ async function draftNextPostWithMeta({
       maxTokens: 2000,
       routeState,
       qualityAudit
-    }), page, isEn);
+    }), page, isEn), { seed: tensionSeed, topicSource, brandKnowledge, isEn });
   } catch (err) {
-    brief = fallbackBrief(page, isEn);
+    brief = sanitizeBriefTension(fallbackBrief(page, isEn), { seed: tensionSeed, topicSource, brandKnowledge, isEn });
   }
 
   const candidateSchema = {
@@ -1098,13 +1204,15 @@ async function draftNextPostWithMeta({
   let rejectedHooks = [];
   let hookDuelUsed = false;
   const hookBudget = stageBudget(deadlineAt, 12000, timeoutMs);
-  if (useLiveRouter() && planHookBudget(apiCalls, callCap) && hookBudget >= 8000) {
+  const duelLive = useLiveRouter() && planHookBudget(apiCalls, callCap) && hookBudget >= 8000;
+  if (duelLive || (hookPayload && !useLiveRouter())) {
     try {
       const duel = await generateAdversarialHooks({
+        payload: hookPayload || null,
         recentTexts: memory,
         isEn,
         allowed: true,
-        complete: () => billedDraft(hookDuelPrompt({ isEn, stance: resolveEditorialStance(promptKnowledge), recentTexts: memory }), {
+        complete: hookPayload ? null : () => billedDraft(hookDuelPrompt({ isEn, stance: resolveEditorialStance(promptKnowledge), recentTexts: memory }), {
           tier: tier === 'fast' ? 'fast' : tier,
           timeoutMs: hookBudget,
           retryTimeoutMs: Math.min(timeoutMs, 8000),
@@ -1362,7 +1470,9 @@ async function draftNextPostWithMeta({
     segmentCount: guarded.tweets.length,
     targetSegmentCount: Number(genes && genes.targetSegmentCount) || guarded.tweets.length,
     delivery: accountState && accountState.delivery === 'parent_self_reply' && guarded.tweets.length > 1 ? 'parent_self_reply' : 'single',
-    selectedHookAngle: hookAngleForChoice(chosen, winningHooks),
+    selectedHookAngle: finalizeSelectedHookAngle(chosen, winningHooks, hookDuelUsed, candidates),
+    tensionUsed: Boolean(brief && brief.tension),
+    tensionSource: brief && brief.tension ? brief.tensionSource : null,
     hookDuelUsed,
     hookDuel: { kept: winningHooks, rejected: rejectedHooks.slice(0, 2) },
     evolutionVersion: evolutionVersion || 'baseline',
@@ -1375,4 +1485,4 @@ async function draftNextPostText(params) {
   return drafted.tweets;
 }
 
-module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType, detectOverflowSplit, generateAdversarialHooks, filterAdversarialHooks, planHookBudget, hookAngleForChoice };
+module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType, detectOverflowSplit, generateAdversarialHooks, filterAdversarialHooks, planHookBudget, hookAngleForChoice, selectPushbackSeed, sanitizeBriefTension, finalizeSelectedHookAngle };

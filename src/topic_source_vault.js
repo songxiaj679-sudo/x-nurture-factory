@@ -152,8 +152,8 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const ask = completeJson || require('./grok_client').completeJson;
   const prompt = lang === 'en'
-    ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway. Extract the specialist mechanism and a judgment the reader can use, not a tool manual or a price comparison. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
-    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
+    ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth. Extract the specialist mechanism and a judgment the reader can use, not a tool manual or a price comparison. commonMyth is the shop-floor assumption this article overturns, at most 120 characters. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
+    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。commonMyth は、その記事が覆している現場の思い込みを120字以内で書く。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
   const scored = await ask({
     tier: 'fast',
     timeoutMs: 20000,
@@ -174,6 +174,7 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
     whyItMatters: field(parsed.whyItMatters, 180),
     mechanism: field(parsed.mechanism, 220),
     actionableTakeaway: field(parsed.actionableTakeaway, 180),
+    commonMyth: field(parsed.commonMyth, 120),
     fetchedAt: (now instanceof Date ? now : new Date()).toISOString(),
     usedCount: 0,
     lastUsedAt: null

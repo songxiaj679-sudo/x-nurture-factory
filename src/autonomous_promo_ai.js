@@ -385,9 +385,9 @@ async function retargetNextPendingJob(userId) {
               : { avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType, claimSemanticKey: previousGenes.claimSemanticKey }, promotedDynamicArms: user.promotedDynamicArms || [] }
           });
           const qualityAudit = [];
-          const questions = user.audienceQuestionsCache && Array.isArray(user.audienceQuestionsCache.questions)
-            ? user.audienceQuestionsCache.questions
-            : [];
+          const audienceCache = user.audienceQuestionsCache;
+          const questions = audienceCache && Array.isArray(audienceCache.questions) ? audienceCache.questions : [];
+          const pushback = require('./audience_questions').latestAudiencePushback(audienceCache);
           const hasPage = Boolean(pageSummary && pageSummary.ok);
           const safePlan = hasPage ? portfolioPlan : { ...portfolioPlan, allowPromoUrl: false, requireDisclosure: false };
           let editorialContext = null;
@@ -482,7 +482,7 @@ async function retargetNextPendingJob(userId) {
               : (accountState.lang === 'en'
                 ? 'The previous post did not travel, so use a different point.'
                 : '直前の投稿は伸びなかったので、別の論点にする。'),
-            contextSignals: questions.length ? { questions, signals: user.contextRadarCache && user.contextRadarCache.signals } : (user.contextRadarCache && user.contextRadarCache.signals),
+            contextSignals: (questions.length || pushback) ? { questions, signals: user.contextRadarCache && user.contextRadarCache.signals, pushback } : (user.contextRadarCache && user.contextRadarCache.signals),
             qualityAudit,
             editorialContext
           });
@@ -520,6 +520,8 @@ async function retargetNextPendingJob(userId) {
             masterPhase: masterPlan.phase || '',
             selectedTopicDomain: masterPlan.selectedTopicDomain || '',
             criticDegraded: drafted.criticDegraded === true,
+            tensionUsed: drafted.tensionUsed === true,
+            tensionSource: drafted.tensionSource || null,
             allowPromoUrl: safePlan.allowPromoUrl,
             recoveryMode,
             visualCard: planVisualCard({
@@ -3134,9 +3136,9 @@ async function prepareNextPost(userId, options = {}) {
         ? 'The same topic already continued twice, so switch to a different point.'
         : '同じ話題は2回続けたので、別の論点にする。')
       : '');
-  const questions = user.audienceQuestionsCache && Array.isArray(user.audienceQuestionsCache.questions)
-    ? user.audienceQuestionsCache.questions
-    : [];
+  const audienceCache = user.audienceQuestionsCache;
+  const questions = audienceCache && Array.isArray(audienceCache.questions) ? audienceCache.questions : [];
+  const pushback = require('./audience_questions').latestAudiencePushback(audienceCache);
   let userEpisodes = [];
   try {
     const episodeSnap = await db.collection('saas_users').doc(userId).collection('episodic_memories').limit(30).get();
@@ -3338,7 +3340,7 @@ async function prepareNextPost(userId, options = {}) {
     criticAxisWeights: user.criticAxisWeights || null,
     promptEvolution: user.promptEvolution || null,
     evolutionVersion,
-    contextSignals: questions.length ? { questions, signals: contextSignals } : contextSignals,
+    contextSignals: (questions.length || pushback) ? { questions, signals: contextSignals, pushback } : contextSignals,
     retargetContext,
     learnedDirectives,
     episodeContext,
@@ -3416,6 +3418,8 @@ async function prepareNextPost(userId, options = {}) {
     isWildcard: draftGenes.isWildcard === true,
     wildcardRecipe: draftGenes.wildcardRecipe || null,
     evolutionVersion: drafted.evolutionVersion || 'baseline',
+    tensionUsed: drafted.tensionUsed === true,
+    tensionSource: drafted.tensionSource || null,
     criticDegraded: drafted.criticDegraded === true,
     criticAxes: drafted.criticAxes || null,
     budgetDegraded,
@@ -3517,6 +3521,8 @@ async function prepareNextPost(userId, options = {}) {
     wildcardRecipe: draftGenes.wildcardRecipe || null,
     evolutionVersion: drafted.evolutionVersion || 'baseline',
     selectedHookAngle: drafted.selectedHookAngle || null,
+    tensionUsed: drafted.tensionUsed === true,
+    tensionSource: drafted.tensionSource || null,
     hookDuelUsed: drafted.hookDuelUsed === true,
     visualCardTemplate: visualCard.template || '',
     criticDegraded: drafted.criticDegraded === true,

@@ -1230,7 +1230,7 @@ async function syncAllActiveCustomersPostMetrics(options = {}) {
         } else {
           totalSynced++;
           try {
-            const { abstractAudienceQuestions, audienceCacheFresh } = require('./audience_questions');
+            const { abstractAudienceQuestions, abstractAudiencePushbacks, audienceCacheFresh } = require('./audience_questions');
             if (!audienceCacheFresh(uData.audienceQuestionsCache) && uData.xOfficialCredentials) {
               const creds = decryptCredentials(uData.xOfficialCredentials);
               creds.saasUserId = doc.id;
@@ -1239,6 +1239,7 @@ async function syncAllActiveCustomersPostMetrics(options = {}) {
                 await db.collection('saas_users').doc(doc.id).set({
                   audienceQuestionsCache: {
                     questions: abstractAudienceQuestions(mentions.mentions),
+                    pushbacks: abstractAudiencePushbacks(mentions.mentions),
                     fetchedAt: new Date().toISOString()
                   }
                 }, { merge: true });
