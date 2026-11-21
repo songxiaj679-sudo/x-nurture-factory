@@ -117,6 +117,18 @@ async function readFeed(feedUrl, deadline, fetchText, assertUrl) {
   })).filter(item => item.title);
 }
 
+function readScrape(parsed, allowHtml) {
+  const data = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : {};
+  const markdown = typeof data.markdown === 'string' ? data.markdown : '';
+  const html = allowHtml && typeof data.html === 'string' ? data.html : '';
+  const meta = data.metadata && typeof data.metadata === 'object' ? data.metadata : null;
+  return {
+    text: markdown || html,
+    format: markdown ? 'markdown' : 'html',
+    meta
+  };
+}
+
 async function crawlSite(options = {}) {
   const started = Date.now();
   const deadline = started + CRAWL_BUDGET_MS;
@@ -143,8 +155,14 @@ async function crawlSite(options = {}) {
     }
   }
   const pages = [];
-  const remember = async (url, text, via) => {
-    pages.push({ url, text: String(text || ''), via });
+  const remember = async (url, text, via, details = {}) => {
+    pages.push({
+      url,
+      text: String(text || ''),
+      via,
+      format: details.format || (via === 'local' ? 'html' : 'markdown'),
+      meta: details.meta && typeof details.meta === 'object' ? details.meta : null
+    });
     if (via === 'firecrawl') {
       quota.pagesUsed += 1;
       await writeQuota({ userId: options.userId, db: options.db, quota });
@@ -161,8 +179,9 @@ async function crawlSite(options = {}) {
     try {
       await guard(entryUrl, assertUrl);
       const scraped = await firecrawl('/v2/scrape', { url: entryUrl, formats: ['markdown'], onlyMainContent: true }, key, fetchImpl, Math.min(12000, remaining(deadline)));
-      entryHtml = scraped.data && (scraped.data.markdown || scraped.data.html) || '';
-      await remember(entryUrl, entryHtml, 'firecrawl');
+      const read = readScrape(scraped, true);
+      entryHtml = read.text;
+      if (entryHtml) await remember(entryUrl, entryHtml, 'firecrawl', read);
     } catch (err) {
       entryHtml = '';
     }
@@ -201,7 +220,8 @@ async function crawlSite(options = {}) {
       await guard(href, assertUrl);
       if (key && allowFirecrawl && quota.pagesUsed < DAILY_PAGE_CAP) {
         const scraped = await firecrawl('/v2/scrape', { url: href, formats: ['markdown'], onlyMainContent: true }, key, fetchImpl, Math.min(8000, remaining(deadline)));
-        await remember(href, scraped.data && scraped.data.markdown || '', 'firecrawl');
+        const read = readScrape(scraped, false);
+        if (read.text) await remember(href, read.text, 'firecrawl', read);
       }
     } catch (err) {}
   }

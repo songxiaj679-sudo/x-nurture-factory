@@ -107,6 +107,95 @@ function sameOriginLinks(html, entryUrl) {
   return [...new Set(found)].slice(0, 2);
 }
 
+function normalizeSourceUrl(value) {
+  const raw = String(value || '').trim();
+  try {
+    const url = new URL(raw);
+    url.hash = '';
+    if (url.pathname.length > 1) url.pathname = url.pathname.replace(/\/+$/, '');
+    return url.toString();
+  } catch (err) {
+    return raw;
+  }
+}
+
+function urlsMatch(left, right) {
+  return normalizeSourceUrl(left) === normalizeSourceUrl(right);
+}
+
+function hasStoredPageFacts(cached) {
+  return Boolean(cached)
+    && typeof cached.pageTitle === 'string'
+    && typeof cached.pageDescription === 'string'
+    && Array.isArray(cached.pageHeadings);
+}
+
+function storedPageFacts(pageSummary) {
+  return {
+    pageTitle: String(pageSummary && pageSummary.title || '').slice(0, 120),
+    pageDescription: String(pageSummary && pageSummary.description || '').slice(0, 240),
+    pageHeadings: (Array.isArray(pageSummary && pageSummary.headings) ? pageSummary.headings : [])
+      .map(item => String(item || '').trim().slice(0, 100))
+      .filter(Boolean)
+      .slice(0, 5)
+  };
+}
+
+function freshStoredKnowledge(cached, targetUrl, outputLang, now) {
+  if (!cached || cached.schemaVersion !== 3) return false;
+  if ((cached.outputLang || 'ja') !== outputLang) return false;
+  if (!urlsMatch(cached.sourceUrl, targetUrl)) return false;
+  const extractedAt = cached.extractedAt ? new Date(cached.extractedAt).getTime() : 0;
+  if (!extractedAt || now.getTime() - extractedAt >= CACHE_MS || now.getTime() < extractedAt) return false;
+  return hasStoredPageFacts(cached);
+}
+
+function pageSummaryFromStored(cached, targetUrl) {
+  const facts = storedPageFacts({
+    title: cached.pageTitle,
+    description: cached.pageDescription,
+    headings: cached.pageHeadings
+  });
+  return {
+    ok: true,
+    url: normalizeSourceUrl(targetUrl),
+    title: facts.pageTitle,
+    description: facts.pageDescription,
+    headings: facts.pageHeadings,
+    snippet: facts.pageDescription,
+    pageVersion: cached.contentHash || ''
+  };
+}
+
+function pageFromMarkdown(url, markdown, meta = null) {
+  const source = String(markdown || '').replace(/\r\n/g, '\n');
+  const info = meta && typeof meta === 'object' ? meta : {};
+  const headings = [];
+  const headingPattern = /^#{1,3}[ \t]+(.+)$/gm;
+  let match;
+  while ((match = headingPattern.exec(source)) && headings.length < 8) {
+    const text = sanitizeExternalText(String(match[1] || '').replace(/[#\s]+$/g, ''));
+    if (text) headings.push(text.slice(0, 120));
+  }
+  const paragraphs = source.split(/\n\s*\n/).map(block => sanitizeExternalText(block.split('\n').filter(line => {
+    const trimmed = line.trim();
+    if (!trimmed || /^#{1,6}\s/.test(trimmed) || /^!\[[^\]]*\]\([^)]+\)/.test(trimmed)) return false;
+    if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) return false;
+    return true;
+  }).join(' '))).filter(Boolean);
+  const title = sanitizeExternalText(info.title || info.ogTitle || headings[0] || '').slice(0, 180);
+  const description = clipCleanText(sanitizeExternalText(info.description || info.ogDescription || info['og:description'] || paragraphs[0] || ''), 240);
+  return {
+    ok: true,
+    url,
+    title,
+    description,
+    headings,
+    listItems: [],
+    snippet: sanitizeExternalText(source.replace(/^#{1,6}[ \t]+/gm, '')).slice(0, 10000)
+  };
+}
+
 function pageFromHtml(url, html) {
   const headings = [];
   const headingPattern = /<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/gi;
@@ -315,6 +404,14 @@ async function extractBrandKnowledge(targetUrl, options = {}) {
       return { ok: true, pageSummary: hit.pageSummary, brandKnowledge: hit.brandKnowledge, fromCache: true };
     }
   }
+  if (!options.forceRefresh && freshStoredKnowledge(options.cachedKnowledge, targetUrl, outputLang, now)) {
+    return {
+      ok: true,
+      pageSummary: pageSummaryFromStored(options.cachedKnowledge, targetUrl),
+      brandKnowledge: options.cachedKnowledge,
+      fromCache: true
+    };
+  }
     try {
     const crawled = await crawlSite({
       url: targetUrl,
@@ -328,8 +425,16 @@ async function extractBrandKnowledge(targetUrl, options = {}) {
     if (!crawled.ok || !crawled.pages.length) {
       return { ok: false, pageSummary: { ok: false, error: crawled.error || 'fetch_failed' }, brandKnowledge: null, fromCache: false, error: crawled.error || 'fetch_failed' };
     }
-    const pages = crawled.pages.map(page => ({ url: page.url, html: scrubSource(page.text), via: page.via }));
-    const parsed = pages.map(page => pageFromHtml(page.url, page.html));
+    const pages = crawled.pages.map(page => ({
+      url: page.url,
+      html: scrubSource(page.text),
+      via: page.via,
+      format: page.format || '',
+      meta: page.meta || null
+    }));
+    const parsed = pages.map(page => (page.format === 'markdown'
+      ? pageFromMarkdown(page.url, page.html, page.meta)
+      : pageFromHtml(page.url, page.html)));
     const primary = parsed[0];
     const jsonLd = pages.slice(0, 1).flatMap(page => readJsonLd(page.html));
     const structured = [];
@@ -348,8 +453,13 @@ async function extractBrandKnowledge(targetUrl, options = {}) {
     const contentHash = pageSummary.pageVersion;
     const cached = options.cachedKnowledge;
     const cachedAt = cached && cached.extractedAt ? new Date(cached.extractedAt).getTime() : 0;
-    if (!options.forceRefresh && cached && cached.schemaVersion === 3 && (cached.outputLang || 'ja') === outputLang && cached.contentHash === contentHash && cachedAt && now.getTime() - cachedAt < CACHE_MS) {
-      return { ok: true, pageSummary, brandKnowledge: cached, fromCache: true };
+    if (!options.forceRefresh && cached && cached.schemaVersion === 3 && (cached.outputLang || 'ja') === outputLang && cached.contentHash === contentHash && cachedAt && now.getTime() - cachedAt < CACHE_MS && urlsMatch(cached.sourceUrl, targetUrl)) {
+      if (hasStoredPageFacts(cached)) return { ok: true, pageSummary, brandKnowledge: cached, fromCache: true };
+      const enriched = { ...cached, ...storedPageFacts(pageSummary), sourceUrl: normalizeSourceUrl(targetUrl) };
+      if (options.db && options.userId) {
+        await options.db.collection('saas_users').doc(options.userId).set({ brandKnowledge: enriched }, { merge: true });
+      }
+      return { ok: true, pageSummary, brandKnowledge: enriched, fromCache: true };
     }
     const fallback = fallbackKnowledge(pageSummary, corpus);
     let knowledge = fallback;
@@ -462,10 +572,11 @@ async function extractBrandKnowledge(targetUrl, options = {}) {
     }
     const brandKnowledge = {
       ...knowledge,
+      ...storedPageFacts(pageSummary),
       schemaVersion: 3,
       outputLang,
       contentHash,
-      sourceUrl: pageSummary.url,
+      sourceUrl: normalizeSourceUrl(targetUrl),
       pageCount: pages.length,
       extractedAt: now.toISOString()
     };
@@ -489,6 +600,7 @@ async function extractBrandKnowledge(targetUrl, options = {}) {
 
 module.exports = {
   extractBrandKnowledge,
+  pageFromMarkdown,
   groundKnowledge,
   sanitizeExternalText,
   filterGroundedNumbers,
