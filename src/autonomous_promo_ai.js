@@ -3180,7 +3180,15 @@ async function prepareNextPost(userId, options = {}) {
     portfolioPlan
   });
   let sourceDossier = null;
+  let topicSource = null;
   let dossierLive = false;
+  if (masterPlan.isolateLpContext && (masterPlan.topicRing === 'ring1_craft' || masterPlan.topicRing === 'ring2_broad_adjacent')) {
+    try {
+      topicSource = await require('./topic_source_vault').pickTopicSourceForPost(db, userId, { outputLang: accountState.lang });
+    } catch (_topicErr) {
+      topicSource = null;
+    }
+  }
   if (!budgetDegraded && masterPlan.isolateLpContext) {
     try {
       const fetched = await require('./source_dossier_engine').fetchSourceDossier({
@@ -3231,6 +3239,7 @@ async function prepareNextPost(userId, options = {}) {
     focusTopic: masterPlan.focusTopic || audienceCraft.focusTopic,
     masterPlan,
     sourceDossier,
+    topicSource,
     enforceReadability: true,
     timeoutMs: 180000,
     maxDraftCalls: dossierLive ? 4 : 5,
@@ -3388,6 +3397,11 @@ async function prepareNextPost(userId, options = {}) {
         }, { merge: true });
       } catch (_activationErr) {}
     }
+  }
+  if (topicSource && topicSource.sourceId) {
+    try {
+      await require('./topic_source_vault').markTopicSourceUsed(db, userId, topicSource.sourceId, new Date());
+    } catch (_usedErr) {}
   }
   await cancelOtherPendingJobs(userId, targetUrl, pageSummary.pageVersion, jobId);
   const audits = Array.isArray(qualityAudit) ? qualityAudit : [];
