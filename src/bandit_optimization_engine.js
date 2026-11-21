@@ -455,7 +455,7 @@ function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan =
     claimSemanticKey: claims.length ? claims : ['page_fact'],
     delivery: accountState.singleOnly
       ? ['single']
-      : (accountState.subscription === 'premium' ? ['single', 'parent_self_reply'] : ['parent_self_reply'])
+      : ['single', 'parent_self_reply']
   };
   if (constraints.lockClaim) spaces.claimSemanticKey = [constraints.lockClaim];
   for (const key of ['angle', 'hookType', 'claimSemanticKey']) {

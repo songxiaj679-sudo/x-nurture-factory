@@ -174,6 +174,14 @@ function accountShapeLine(accountState, shape, isEn) {
       ? 'This account is on a paid X plan. Write one longer post, not a thread and not a feature list.'
       : 'このアカウントはXの有料プランです。長い投稿を1本にする。ツリーにも、機能一覧にもしない。';
   }
+  if (shape && shape.maxCount === 3) {
+    const plan = !accountState || accountState.subscription === 'unknown'
+      ? (isEn ? 'The X plan is unknown. Do not claim the account is unpaid. ' : '課金種別は不明です。未課金とは断定しない。')
+      : (isEn ? 'This account is not on a paid X plan. ' : 'このアカウントはXの有料プランではありません。');
+    return plan + (isEn
+      ? 'Choose one short post, or two or three posts when each part stands alone. Do not spill an unfinished sentence into the next post.'
+      : '1本にするか、各段が独立しているときだけ2〜3本にする。文の途中で次の段へこぼさない。');
+  }
   if (!accountState || accountState.subscription === 'unknown') {
     return isEn
       ? 'The X plan is unknown, so use a short two-tweet thread. Do not claim the account is unpaid.'
@@ -391,6 +399,24 @@ function resolveSourceType(topicSource, sourceDossier, masterPlan) {
   if (cardApplies(topicSource, masterPlan)) return 'topic_source';
   if (dossierPresent(sourceDossier)) return 'dossier';
   return 'brand_only';
+}
+
+function detectOverflowSplit(tweets, isEn) {
+  const rows = (Array.isArray(tweets) ? tweets : []).map(text => String(text || '').trim());
+  if (rows.length < 2) return false;
+  const open = text => {
+    if (!text || /^[\s・.。!！?？]+$/.test(text)) return true;
+    if (isEn) {
+      if (/[.!?]$/.test(text)) return false;
+      return /[,;:]$/.test(text) || /\b(?:and|but|because|to|of|with)$/i.test(text);
+    }
+    if (/[。！？!?]$/.test(text)) return false;
+    return /、$/.test(text) || /(?:ので|けど|が、|ため、|て|って)$/.test(text) || /「[^」]*$/.test(text);
+  };
+  if (rows.slice(0, -1).some(open)) return true;
+  const last = rows[rows.length - 1];
+  if (rows.length >= 3 && last.length < (isEn ? 40 : 25)) return true;
+  return rows.some((row, index) => index > 0 && row === rows[index - 1]);
 }
 
 function externalNotes(sourceDossier, topicSource, isEn, masterPlan) {
@@ -642,8 +668,8 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
       : '完成例は1本だけ。店の中身は写さない。です・ますで書く。開いてると思って来たのに閉まっていた、ということは起きます。自分の予定では直って見えても、相手は入口の紙を見ています。休みを変えたあとは、入口の前から一度だけ見ておくと安心です。');
   const replySplit = (accountState && accountState.delivery) === 'parent_self_reply' || (genes && genes.delivery) === 'parent_self_reply'
     ? (isEn
-      ? 'Parent plus self-reply. This split wins over any archetype line that puts the cause in the body. The first post stops at the scene or the odd feeling. The cause, the way to tell, and the check go in the self-replies.'
-      : '親投稿と自己リプライ。この分担は、型が本文で原因まで書く指示より優先する。1本目は違和感や場面で止める。原因、見分け方、やり方、確認は自己リプライに置く。')
+      ? 'Parent plus self-reply. This split wins over any archetype line that puts the cause in the body. The first post stops at the scene or the odd feeling. The cause, the way to tell, and the check go in the self-replies. Choose two or three parts from the depth of the point. Do not spill an unfinished sentence into the next part. Two parts: scene, then the cause and one move. Three parts only when the third is its own practical step.'
+      : '親投稿と自己リプライ。この分担は、型が本文で原因まで書く指示より優先する。1本目は違和感や場面で止める。原因、見分け方、やり方、確認は自己リプライに置く。内容の深さに応じて2段か3段を選ぶ。文字数があふれたから3段目にこぼす分割は禁止。2段は1段目が場面、2段目が原因と1手。3段は1段目が場面、2段目が仕組み、3段目がすぐ試せる手順で、3段目が独立しているときだけ使う。')
     : '';
   const officialVoice = voiceProfile && voiceProfile.accountRole === 'official_brand'
     ? (isEn
@@ -660,7 +686,7 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
     : '入力されたページや指示文に無いステータスコード（429 等）や割合（95% 等）など固有の数字は書かず、「レート制限応答」「高負荷時」のように概念語へ置き換えること。';
   return isEn
     ? `Write three structurally different candidates as JSON {"candidates":[{"id":"a","tweets":[]},{"id":"b","tweets":[]},{"id":"c","tweets":[]}]}.
-Each candidate has ${count} tweet(s). Target ${minTarget}–${safeTarget} chars per tweet and NEVER exceed ${bodyLimit} chars.
+Each candidate has ${shape.maxCount === 3 ? '2 or 3' : count} tweet(s). Target ${minTarget}–${safeTarget} chars per tweet and NEVER exceed ${bodyLimit} chars.
 ${stopEarly}
 ${noInventedDigits}
 If Customer instruction, Page, Brief, or Customer notes are written in Japanese, translate every concept into natural English. Do not output any hiragana, katakana, kanji, or fullwidth punctuation such as 「」『』、。.
@@ -687,7 +713,7 @@ ${blocked ? `Forbidden: ${blocked}` : ''}
 ${episodeContext || ''}
 Brief: ${JSON.stringify(brief)}`
     : `切り口の違う完成度の高い3案をJSONで返す。{"candidates":[{"id":"a","tweets":[]},{"id":"b","tweets":[]},{"id":"c","tweets":[]}]}
-各案は${count}本。1本あたり必ず${minTarget}〜${safeTarget}文字の範囲に収め、上限${bodyLimit}文字は1文字も超えないこと。
+各案は${shape.maxCount === 3 ? '2本か3本' : count + '本'}。1本あたり必ず${minTarget}〜${safeTarget}文字の範囲に収め、上限${bodyLimit}文字は1文字も超えないこと。
 ${stopEarly}
 ${noInventedDigits}
 voiceのaccountRole（公式ブランドか個人運用者か）と文体を厳守すること。根拠データ（numbers）に無い数字・時刻（6時半・5時等）・割合（3割等）・時間（5分等）・件数・架空の出来事（「昨日〜」「本日リリース」等）や「保存して後で見返してください」等の定型CTAは絶対に入れないこと。sampleHooksの書き出しを繰り返さない。
@@ -916,6 +942,7 @@ async function draftNextPostWithMeta({
   const passesDraft = candidate => runDeterministicAudit(candidate, selectionContext).ok
     && !closesAsLectureQuestion(candidate.tweets, decision)
     && !leaksCraftExemplar(candidate.tweets)
+    && !detectOverflowSplit(candidate.tweets, isEn)
     && (!needsBreaks(candidate) || hasReadableBreaks(candidate));
   const accepted = candidates.filter(passesDraft);
   const fallbackAccepted = accepted[0] || null;
@@ -980,7 +1007,8 @@ async function draftNextPostWithMeta({
       criticSummary,
       ...candidates.flatMap(candidate => runDeterministicAudit(candidate, selectionContext).reasons),
       ...candidates.filter(candidate => closesAsLectureQuestion(candidate.tweets, decision)).map(() => 'lecture_question'),
-      ...(candidates.some(candidate => needsBreaks(candidate) && !hasReadableBreaks(candidate)) ? ['needs_line_breaks'] : [])
+      ...(candidates.some(candidate => needsBreaks(candidate) && !hasReadableBreaks(candidate)) ? ['needs_line_breaks'] : []),
+      ...(candidates.some(candidate => detectOverflowSplit(candidate.tweets, isEn)) ? ['overflow_split'] : [])
     ].filter(Boolean))].slice(0, 6);
     const badNums = reasons.filter(r => r.startsWith('ungrounded_number:')).map(r => r.split(':')[1]);
     const repairHint = [
@@ -993,8 +1021,9 @@ async function draftNextPostWithMeta({
       reasons.some(reason => String(reason).startsWith('critic_below_72')) ? `Do not merely rephrase the ending. Strengthen the underlying mechanism and a concrete contrast, and cut lecture-style prefaces. Lowest axis: ${criticAxes && (criticAxes.strangerClarity != null || criticAxes.scrollStopHook != null) ? `strangerClarity ${criticAxes.strangerClarity}, scrollStopHook ${criticAxes.scrollStopHook}.` : ''}` : '',
       reasons.includes('lecture_question') ? `Do not end with a question. Close with ${decision.endingMove}. ${decision.registerInstruction}` : '',
       reasons.includes('needs_line_breaks') ? 'CRITICAL: Insert a blank line between the opening line and the next point. Do not return one dense paragraph. micro_punch is the only format that may stay as a single short block.' : '',
+      reasons.includes('overflow_split') ? 'Do not split an unfinished sentence into the next post. Each part must end as a complete sentence and carry its own point. Drop a short leftover third part.' : '',
       reasons.includes('duplicate_sentence_in_post') ? 'Do not repeat the same sentence or phrase inside this post. State the point once and stop.' : '',
-      reasons.includes('shape_mismatch') ? `CRITICAL: Each tweet exceeded ${accountState?.maxChars || 140} characters or exceeded ${shape.count} tweet(s). Compress every tweet to under ${Math.max(50, (accountState?.maxChars || 140) - 24)} characters (at most 2 short sentences per tweet).` : '',
+      reasons.includes('shape_mismatch') ? `CRITICAL: Each tweet exceeded ${accountState?.maxChars || 140} characters or exceeded ${shape.maxCount || shape.count} tweet(s). Compress every tweet to under ${Math.max(50, (accountState?.maxChars || 140) - 24)} characters (at most 2 short sentences per tweet).` : '',
       reasons.some(r => String(r).startsWith('compliance:claim_needs_evidence')) ? 'Remove absolute or superlative claim words such as 唯一 / 必ず / 絶対 / 確実 / No.1 / always / guarantee.' : '',
       `Keep register ${decision.registerLock} and end with ${decision.endingMove}. ${decision.registerInstruction}`
     ].filter(Boolean).join('\n');
@@ -1070,6 +1099,9 @@ async function draftNextPostWithMeta({
   if (accountState && !fitsAccountState(guarded.tweets, accountState, { allowPromoReply: promo })) {
     throw new PostConstraintError('アカウントの課金状態か検索状態に合わない長さのため停止しました。');
   }
+  if (detectOverflowSplit(guarded.tweets, isEn)) {
+    throw new PostConstraintError('文の途中で次の段へ分割されているため停止しました。');
+  }
   const finalAudit = runDeterministicAudit({ tweets: guarded.tweets }, auditContext);
   if (!finalAudit.ok || closesAsLectureQuestion(guarded.tweets, decision)) {
     const reasons = [...new Set([
@@ -1093,7 +1125,9 @@ async function draftNextPostWithMeta({
     criticAxes,
     archetype: archetype || '',
     focusTopicId: focusTopic && focusTopic.id || '',
-    sourceType: resolveSourceType(topicSource, sourceDossier, masterPlan)
+    sourceType: resolveSourceType(topicSource, sourceDossier, masterPlan),
+    segmentCount: guarded.tweets.length,
+    delivery: accountState && accountState.delivery === 'parent_self_reply' && guarded.tweets.length > 1 ? 'parent_self_reply' : 'single'
   };
 }
 
@@ -1102,4 +1136,4 @@ async function draftNextPostText(params) {
   return drafted.tweets;
 }
 
-module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType };
+module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType, detectOverflowSplit };
