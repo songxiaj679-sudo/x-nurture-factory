@@ -278,7 +278,7 @@ function pickCriticDecision(scores, options) {
   return judgeCriticRow(ranked[0], options);
 }
 
-function knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot = false, isolated = false) {
+function knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot = false, isolated = false, topicRing = '') {
   const facts = brandKnowledge ? {
     productName: brandKnowledge.productName,
     mechanism: brandKnowledge.oneLineMechanism,
@@ -298,6 +298,7 @@ function knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn,
     ].slice(0, 8)
   } : null;
   if (domainSlot && facts) facts.claims = [];
+  if (facts && topicRing === 'ring3_product_bridge') facts.terminology = [];
   const voice = voiceProfile ? {
     accountRole: voiceProfile.accountRole || 'operator',
     posture: voiceProfile.stagePosture,
@@ -380,7 +381,7 @@ function angleLine({ isEn, domainSlot, focusClaim, focusProblem, productName, br
 function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, shape, accountState, userPrompt, brandKnowledge, voiceProfile, genes, portfolioPlan, learnedDirectives, questions, liveSignals, archetypeLine, brandContextNotes, ngTopics, decision, editorialContext, focusClaim, domainSlot, focusProblem, bridge, focusPlaybook, isolateLpContext, sourceDossier, masterPlan }) {
   const form = accountShapeLine(accountState, shape, isEn);
   const instruction = customerInstruction(userPrompt, isEn, decision);
-  const grounded = knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot, isolateLpContext === true);
+  const grounded = knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot, isolateLpContext === true, masterPlan && masterPlan.topicRing || '');
   const learned = learnedLine(learnedDirectives, isEn);
   const questionLine = Array.isArray(questions) && questions.length
     ? (isEn
@@ -569,7 +570,7 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
   const bodyLimit = Math.max(20, Number(accountState.maxChars) - (promo ? 5 : 0));
   const safeTarget = bodyLimit <= 140 ? bodyLimit - 24 : Math.min(bodyLimit - 20, 380);
   const minTarget = count > 1 ? (isEn ? 85 : 60) : (bodyLimit > 300 ? 150 : (isEn ? 100 : 85));
-  const grounded = knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot, isolateLpContext === true);
+  const grounded = knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot, isolateLpContext === true, masterPlan && masterPlan.topicRing || '');
   const learned = learnedLine(learnedDirectives, isEn);
   const notes = String(brandContextNotes || '').slice(0, 800);
   const blocked = String(Array.isArray(ngTopics) ? ngTopics.join('、') : (ngTopics || '')).slice(0, 400);
