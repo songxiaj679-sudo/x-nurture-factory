@@ -42,7 +42,8 @@ test('writer uses the x-api-key header and caches only the system prompt', async
     assert.equal(result.provider, 'anthropic');
     assert.equal(sent.headers['x-api-key'], 'test-anthropic-key');
     assert.equal(sent.headers.Authorization, undefined);
-    assert.equal(sent.body.tool_choice.type, 'auto');
+    assert.equal(sent.body.tool_choice.type, 'tool');
+    assert.equal(sent.body.tool_choice.name, 'draft_json');
     assert.equal(sent.body.tools[0].name, 'draft_json');
     assert.equal(sent.body.system[0].cache_control.type, 'ephemeral');
     assert.equal(sent.body.messages[0].cache_control, undefined);

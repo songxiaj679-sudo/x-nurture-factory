@@ -2,6 +2,16 @@
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const writerToolChoiceUnsupported = new Set();
+
+function resetWriterToolChoiceCache() {
+  writerToolChoiceUnsupported.clear();
+}
+
+function rejectsForcedToolChoice(error) {
+  const message = String(error && error.message || '');
+  return /\b400\b/.test(message) && /tool_choice/i.test(message) && /not supported/i.test(message);
+}
 
 function pushAudit(audit, entry) {
   if (Array.isArray(audit)) audit.push({ cost: null, cachedTokens: null, ...entry });
@@ -120,7 +130,7 @@ async function completeWriter({
   const system = cacheSystemPrompt && systemPrompt
     ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }]
     : (systemPrompt || undefined);
-  try {
+  const requestWriter = async toolChoice => {
     const data = await postJson(ANTHROPIC_URL, {
       fetchImpl,
       timeoutMs,
@@ -134,21 +144,38 @@ async function completeWriter({
         max_tokens: Math.max(3200, Number(maxTokens) || 3200),
         system,
         tools: [{ name: schemaName, description: toolDescription || 'Return the structured draft JSON.', input_schema: inputSchema }],
-        tool_choice: { type: 'auto' },
+        tool_choice: toolChoice,
         messages: [{ role: 'user', content: prompt }]
       }
     });
     const tool = (data.content || []).find(block => block && block.type === 'tool_use');
-    if (!tool || !tool.input) throw new Error('anthropic_tool_use_missing');
-    const cachedTokens = data.usage && (data.usage.cache_read_input_tokens || data.usage.cache_creation_input_tokens) || null;
-    const text = JSON.stringify(tool.input);
-    pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: true, reason: '', cachedTokens });
-    return { ok: true, provider: 'anthropic', model, text, parsed: tool.input, cachedTokens };
+    if (tool && tool.input) {
+      return { text: JSON.stringify(tool.input), parsed: tool.input, cachedTokens: data.usage && (data.usage.cache_read_input_tokens || data.usage.cache_creation_input_tokens) || null };
+    }
+    const prose = (data.content || []).filter(block => block && block.type === 'text').map(block => block.text || '').join('\n').trim();
+    if (prose && prose.includes('{')) return { text: prose, parsed: null, cachedTokens: data.usage && (data.usage.cache_read_input_tokens || data.usage.cache_creation_input_tokens) || null };
+    throw new Error('anthropic_tool_use_missing');
+  };
+  try {
+    let written;
+    if (writerToolChoiceUnsupported.has(model)) {
+      written = await requestWriter({ type: 'auto' });
+    } else {
+      try {
+        written = await requestWriter({ type: 'tool', name: schemaName });
+      } catch (choiceError) {
+        if (!rejectsForcedToolChoice(choiceError)) throw choiceError;
+        writerToolChoiceUnsupported.add(model);
+        written = await requestWriter({ type: 'auto' });
+      }
+    }
+    pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: true, reason: '', cachedTokens: written.cachedTokens });
+    return { ok: true, provider: 'anthropic', model, text: written.text, parsed: written.parsed, cachedTokens: written.cachedTokens };
   } catch (error) {
     console.warn(`[LLM Router] anthropic writer failed: ${String(error.message || '').slice(0, 180)}`);
     pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: false, reason: error.message, cachedTokens: null });
     if (!retryable(error) && !/tool_use_missing/i.test(error.message || '')) throw error;
-    const grok = await grokText({ prompt, systemPrompt, timeoutMs: Math.min(timeoutMs, 20000), reasoningEffort: 'low', tier });
+    const grok = await grokText({ prompt, systemPrompt, timeoutMs, reasoningEffort: 'low', tier });
     pushAudit(qualityAudit, { role: 'writer', provider: 'xai', model: grok.modelName, ms: Date.now() - started, ok: true, reason: 'anthropic_fallback', cachedTokens: null });
     return { ok: true, provider: 'xai', model: grok.modelName, text: grok.text, parsed: null, cachedTokens: null };
   }
@@ -242,4 +269,4 @@ async function completeCritic({
   return { ok: false, unparseable: true, provider: last && last.provider || '', model: last && last.model || '', parsed: null, reason: 'critic_unparseable' };
 }
 
-module.exports = { completeWriter, completeCritic, usableScores, criticJsonSchema };
+module.exports = { completeWriter, completeCritic, usableScores, criticJsonSchema, resetWriterToolChoiceCache };
