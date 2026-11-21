@@ -3108,8 +3108,11 @@ function registerHybridSaasRoutes(app, options = {}) {
       if (candidate.status !== 'pending_approval' && candidate.status !== 'held') {
         return res.status(409).json({ ok: false, error: say('承認待ちの候補だけ送信できます。', 'Only a waiting candidate can be sent.') });
       }
-      const { detectOptOut, replyAllowedNow, planReplyCap, replySentToday } = require('./auto_reply_policy');
-      const { passesOutboundSafety, savedOutboundBudget } = require('./outbound_reply_queue');
+      const { detectOptOut } = require('./auto_reply_policy');
+      const { deliverOutboundReply, passesOutboundSafety, savedOutboundBudget } = require('./outbound_reply_queue');
+      const replyLang = candidate.replyLang === 'en' ? 'en' : 'ja';
+      const budget = savedOutboundBudget(candidate, replyLang);
+      const rows = Array.isArray(candidate.draftTweets) && candidate.draftTweets.length ? candidate.draftTweets.slice(0, 2) : [candidate.draftText];
       const authorId = String(candidate.authorId || '');
       if (detectOptOut(candidate.sourceText)) {
         if (authorId) await userRef.collection('blocked_reply_authors').doc(authorId).set({ authorId, blockedAt: new Date(), reason: 'opt_out' }, { merge: true });
@@ -3120,42 +3123,40 @@ function registerHybridSaasRoutes(app, options = {}) {
       const creds = decryptCredentials(user.xOfficialCredentials);
       creds.saasUserId = loaded.sessionUser.userId;
       const selfTwitterId = String(user.twitterId || (/^\d+$/.test(String(creds.userId || '')) ? creds.userId : '') || creds.id || '');
-      const daily = replySentToday(user);
-      const decision = replyAllowedNow({
+      if (!officialApiOperationAllowed(user, creds)) return res.status(403).json({ ok: false, error: say('このアカウントでは公式API送信が許可されていません。', 'Official posting is not enabled for this account.') });
+      for (const text of rows) {
+        const safety = passesOutboundSafety(text, { ...user, accountSubscription: budget.accountSubscription, outboundMaxChars: budget.maxChars }, replyLang);
+        if (!safety.ok) return res.status(400).json({ ok: false, error: say('この返信は安全確認を通らないため送信できません。', 'This reply did not pass the safety checks.') });
+      }
+      const result = await deliverOutboundReply({
+        candidate,
+        user,
+        tweetId: req.params.tweetId,
         authorId,
         selfTwitterId,
         blocked: blocked.exists,
-        lastReplyAt: user.autoReplyLastByAuthor && user.autoReplyLastByAuthor[authorId],
-        sentToday: daily.sentToday,
-        dailyCap: planReplyCap(user),
-        cooldownHours: user.autoReplySettings && user.autoReplySettings.cooldownHoursPerAuthor
+        postTweet: (text, inReplyTo) => (inReplyTo === req.params.tweetId
+          ? postOfficialTweet(creds, text, [], req.params.tweetId)
+          : postOfficialTweet(creds, text, [], inReplyTo))
       });
-      if (!decision.ok) {
-        const status = decision.reason === 'opt_out' ? 403 : decision.reason === 'self_or_empty' ? 409 : 429;
-        return res.status(status).json({ ok: false, code: decision.reason, error: say('この返信は今は送信できません。', 'This reply cannot be sent right now.') });
+      if (result.userPatch) {
+        await userRef.set({
+          autoReplySentDate: result.userPatch.autoReplySentDate,
+          autoReplySentCount: result.userPatch.autoReplySentCount,
+          autoReplyLastByAuthor: { ...(user.autoReplyLastByAuthor || {}), [authorId]: result.userPatch.repliedAt }
+        }, { merge: true });
       }
-      const text = candidate.draftText;
-      const replyLang = candidate.replyLang === 'en' ? 'en' : 'ja';
-      const budget = savedOutboundBudget(candidate, replyLang);
-      const safety = passesOutboundSafety(text, {
-        ...user,
-        accountSubscription: budget.accountSubscription,
-        outboundMaxChars: budget.maxChars
-      }, replyLang);
-      if (!safety.ok) {
-        return res.status(400).json({ ok: false, error: say('この返信は安全確認を通らないため送信できません。', 'This reply did not pass the safety checks.') });
+      if (result.candidatePatch) {
+        await ref.set({ ...result.candidatePatch, updatedAt: result.candidatePatch.repliedAt || new Date().toISOString() }, { merge: true });
       }
-      if (!officialApiOperationAllowed(user, creds)) return res.status(403).json({ ok: false, error: say('このアカウントでは公式API送信が許可されていません。', 'Official posting is not enabled for this account.') });
-      const sent = await postOfficialTweet(creds, text, [], req.params.tweetId);
-      if (!sent || sent.ok === false) return res.status(502).json({ ok: false, error: sent && sent.error || say('返信を送信できませんでした。', 'The reply could not be sent.') });
-      const repliedAt = new Date().toISOString();
-      await userRef.set({
-        autoReplySentDate: daily.sentDate,
-        autoReplySentCount: daily.sentToday + 1,
-        autoReplyLastByAuthor: { ...(user.autoReplyLastByAuthor || {}), [authorId]: repliedAt }
-      }, { merge: true });
-      await ref.set({ status: 'approved_sent', repliedTweetId: sent.tweetId || sent.id || null, repliedAt, updatedAt: repliedAt }, { merge: true });
-      return res.json({ ok: true, status: 'approved_sent', replyTweetId: sent.tweetId || sent.id || null });
+      if (!result.body || result.body.ok !== true) {
+        const code = result.body && result.body.code;
+        const error = code === 'unsafe'
+          ? say('この返信は安全確認を通らないため送信できません。', 'This reply did not pass the safety checks.')
+          : say('この返信は今は送信できません。', 'This reply cannot be sent right now.');
+        return res.status(result.http || 400).json({ ok: false, code, error });
+      }
+      return res.json(result.body);
     } catch (_err) {
       const uiEn = resolveUiLang(req) === 'en';
       return res.status(500).json({ ok: false, error: uiEn ? 'Could not send the outbound reply.' : '外向け返信の送信に失敗しました。' });

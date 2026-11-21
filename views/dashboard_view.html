@@ -4880,7 +4880,11 @@
       box.innerHTML = rows.map(item => {
         const id = item.tweetId || item.id;
         const status = item.status === 'held' ? (isEn ? 'Held' : '保留中') : (isEn ? 'Waiting' : '承認待ち');
-        return `<div class="p-3 mb-2 rounded-xl border border-slate-200"><div class="font-bold text-slate-700">@${escHtml(item.username || '')} · ${escHtml(item.matchedRing || '')} · ${escHtml(item.matchedTopic || '')} · ${status}</div><div class="mt-1 text-slate-500">${escHtml(item.sourceText || '')}</div><div class="mt-2 text-slate-800">${escHtml(item.draftText || '')}</div><div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="decideOutboundReply('${id}','approve')">${isEn ? 'Approve and send' : '承認して送信'}</button><button type="button" onclick="decideOutboundReply('${id}','hold')">${isEn ? 'Hold' : '保留'}</button><button type="button" onclick="decideOutboundReply('${id}','reject')">${isEn ? 'Reject' : '却下'}</button></div></div>`;
+        const parts = Array.isArray(item.draftTweets) && item.draftTweets.length === 2 ? item.draftTweets : null;
+        const body = parts
+          ? `<div class="mt-2 text-xs font-bold text-blue-700">${isEn ? '2-part reply (uses 2 daily slots)' : '2段リプライ（日次2枠）'}</div><div class="mt-2 text-slate-800"><div class="text-xs text-slate-500">${isEn ? 'Part 1 (Reply)' : '1段目（返信）'}</div>${escHtml(parts[0] || '')}</div><div class="mt-2 text-slate-800"><div class="text-xs text-slate-500">${isEn ? 'Part 2 (Follow-up)' : '2段目（補足リプライ）'}</div>${escHtml(parts[1] || '')}</div>`
+          : `<div class="mt-2 text-slate-800">${escHtml(item.draftText || '')}</div>`;
+        return `<div class="p-3 mb-2 rounded-xl border border-slate-200"><div class="font-bold text-slate-700">@${escHtml(item.username || '')} · ${escHtml(item.matchedRing || '')} · ${escHtml(item.matchedTopic || '')} · ${status}</div><div class="mt-1 text-slate-500">${escHtml(item.sourceText || '')}</div>${body}<div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="decideOutboundReply('${id}','approve')">${isEn ? 'Approve and send' : '承認して送信'}</button><button type="button" onclick="decideOutboundReply('${id}','hold')">${isEn ? 'Hold' : '保留'}</button><button type="button" onclick="decideOutboundReply('${id}','reject')">${isEn ? 'Reject' : '却下'}</button></div></div>`;
       }).join('');
     }
 
