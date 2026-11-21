@@ -5,6 +5,7 @@ const { DAILY_PAGE_CAP } = require('./site_crawler');
 
 const BLOCKED_PATH = /\/(login|signin|signup|register|auth|oauth|terms|privacy|legal|tokushoho|policy)(\/|$|\?)/i;
 const SOCIAL_HOST = /(^|\.)((?:x|twitter|facebook|instagram|tiktok|youtube)\.com|youtu\.be|t\.co)$/i;
+const DOC_HOST = /(^|\.)((?:docs|developer|developers)\.(?:x|twitter)\.com)$/i;
 
 function normalizeSourceUrl(value) {
   const raw = String(value || '').trim();
@@ -49,7 +50,7 @@ function safeArticleUrl(raw, ownUrls, assertUrl) {
   if (!['http:', 'https:'].includes(url.protocol)) return '';
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host === '127.0.0.1' || host === '::1' || host.startsWith('10.') || host.startsWith('192.168.') || host.startsWith('169.254.')) return '';
-  if (SOCIAL_HOST.test(host) || BLOCKED_PATH.test(url.pathname)) return '';
+  if ((SOCIAL_HOST.test(host) && !DOC_HOST.test(host)) || BLOCKED_PATH.test(url.pathname)) return '';
   if (ownUrls.some(item => item && item === normalized)) return '';
   if (typeof assertUrl === 'function') {
     try {
@@ -59,6 +60,24 @@ function safeArticleUrl(raw, ownUrls, assertUrl) {
     }
   }
   return normalized;
+}
+
+function isSecondaryRoundup(item) {
+  const label = `${item && item.sourceName || ''} ${item && item.title || ''} ${item && item.url || ''}`;
+  return /初心者向け|完全ガイド|コツ\s*\d+\s*選|\d+\s*選|基本設計|まとめ記事|SEO解説|入門ガイド|保存版|beginner(?:'s)? guide|ultimate guide|complete guide|\b\d+\s+tips\b/i.test(label);
+}
+
+function isPrimarySource(item) {
+  if (!item || isSecondaryRoundup(item)) return false;
+  let host = '';
+  const raw = String(item.url || '');
+  try { host = new URL(raw).hostname.replace(/^\[|\]$/g, '').toLowerCase(); } catch (_err) { host = ''; }
+  const name = String(item.sourceName || '');
+  if (/(^|\.)(docs|developer|developers|spec)\./i.test(host)) return true;
+  if (/(^|\.)((?:github|gitlab|arxiv|doi|rfc-editor)\.(?:com|org))$/i.test(host)) return true;
+  if (/(?:^|\.)(?:gov|go\.jp|gov\.uk)$/i.test(host)) return true;
+  if (/\/(?:docs|spec|specs|specification|whitepaper|guideline|guidelines|rfc|release-notes|releases|statistics|papers?)\b/i.test(raw)) return true;
+  return /公式仕様|公式ドキュメント|ガイドライン|白書|統計|論文|リリースノート|調査報告/.test(name);
 }
 
 function urlsFromSearch(text) {
@@ -84,8 +103,8 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
   const problems = Array.isArray(knowledge.domainProblems) ? knowledge.domainProblems.slice(0, 4) : [];
   const brief = [knowledge.icpSummary, ...problems].filter(Boolean).join('\n').slice(0, 800);
   const prompt = lang === 'en'
-    ? `Shift one step away from the product. Find at most 2 primary articles about specialist knowledge, failure patterns, judgment criteria, or an industry trend the target reader needs for their own work or daily life. Use only icpSummary and domainProblems. Do not search by productName or implementation terms. Exclude competitor tool comparisons, setup manuals, pricing pages, product reviews, affiliate roundups, and diaries about building, developing, or automating the tool itself. Return JSON {"items":[{"url":"","sourceName":""}]} only. No social network, login, or terms pages.\n${brief}`
-    : `読者の本業の課題へ一段ずらす。icpSummary と domainProblems だけを主軸にする。productName や実装用語では検索しない。狙うのは、ターゲット読者が本業や生活で成果を出すために知っておく専門知識・失敗パターン・判断基準・業界トレンドの一次記事か実務解説。読者課題として、専門的な仕組みと実践ノウハウを優先する。同業のツール比較、競合ツールの操作マニュアル、料金比較、導入手順、製品レビュー、アフィリエイトまとめに加え、ツール自体の自作・開発・自動化スクリプト実装記は除外する。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
+    ? `Shift one step away from the product. From icpSummary and domainProblems only, choose one concrete question this field still answers with a rumor. Do not search by productName or implementation terms. Find at most 3 primary sources a specialist would cite, preferably on different domains: an official specification, a public statistic, an industry guideline, a paper, a public repository, or a release note. Exclude competitor tool comparisons, setup manuals, pricing pages, product reviews, affiliate roundups, diaries about building the tool, and beginner SEO explainers such as "7 tips" or "the complete guide". If no primary source exists, return {"items":[]}. Return JSON {"items":[{"url":"","sourceName":""}]} only. No social network, login, or terms pages.\n${brief}`
+    : `読者の本業の課題へ一段ずらす。icpSummary と domainProblems だけを主軸にする。productName や実装用語では検索しない。読者課題として、この分野の人が仕組みを知らないまま噂や思い込みで困っている具体的な疑問を1つだけ自律的に選ぶ。その答えがある一次原典だけを最大3件、可能なら別のドメインから選ぶ。公式仕様、公的統計、業界ガイドライン、論文、公開コード、リリースノート、調査報告。同業のツール比較、競合ツールの操作マニュアル、料金比較、導入手順、製品レビュー、アフィリエイトまとめに加え、ツール自体の自作・開発・自動化スクリプト実装記は除外する。初心者向けまとめ・SEO解説ブログ（コツ7選、完全ガイド、基本設計の解説）も除外する。一次原典が無いときは {"items":[]} を返す。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
   const result = await ask({
     search: true,
     xSearch: false,
@@ -96,19 +115,31 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
       : 'JSONだけ返す。読者の本業課題の記事を選ぶ。商材ツールの自作・操作記事と料金比較は選ばない。',
     prompt
   });
-  const chosen = [];
+  const pool = [];
   for (const item of urlsFromSearch(result && result.text)) {
-    if (chosen.length >= 2) break;
     const url = safeArticleUrl(item.url, ownUrls, null);
-    if (!url || chosen.some(row => row.url === url)) continue;
+    if (!url || pool.some(row => row.url === url) || !isPrimarySource({ ...item, url })) continue;
     try {
       if (assertUrl) await assertUrl(new URL(url));
       else await require('./url_fetch_guard').assertPublicHttpUrl(url);
     } catch (_err) {
       continue;
     }
-    chosen.push({ url, sourceName: stripUrls(item.sourceName).slice(0, 80) });
+    let host = '';
+    try { host = new URL(url).hostname.toLowerCase(); } catch (_err) { host = ''; }
+    pool.push({ url, host, sourceName: stripUrls(item.sourceName).slice(0, 80) });
   }
+  const chosen = [];
+  const seenHost = new Set();
+  pool.forEach(row => {
+    if (chosen.length >= 3 || seenHost.has(row.host)) return;
+    seenHost.add(row.host);
+    chosen.push({ url: row.url, sourceName: row.sourceName });
+  });
+  pool.forEach(row => {
+    if (chosen.length >= 3 || chosen.some(item => item.url === row.url)) return;
+    chosen.push({ url: row.url, sourceName: row.sourceName });
+  });
   return chosen;
 }
 
@@ -152,8 +183,8 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const ask = completeJson || require('./grok_client').completeJson;
   const prompt = lang === 'en'
-    ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth. coreFact is one fact, not a checklist. actionableTakeaway is one action, not a list. Extract the specialist mechanism and a judgment the reader can use, not a tool manual or a price comparison. commonMyth is the shop-floor assumption this article overturns, at most 120 characters. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
-    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。coreFact は核の1事実だけ。actionableTakeaway は読者が使う1点だけ。複数項目の一覧やチェックリストにしない。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。commonMyth は、その記事が覆している現場の思い込みを120字以内で書く。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
+    ? `From this article only, return JSON with sourceName, title, readerQuestion, coreFact, whyItMatters, mechanism, plainTranslation, commonMyth. readerQuestion is the one concrete question a non-specialist is stuck on. coreFact is one fact from the source, not a checklist. mechanism is the specialist point underneath that fact. plainTranslation says that mechanism in everyday words so a non-specialist can see how it works. Do not turn plainTranslation into a task or a checklist. commonMyth is the rumor this source contradicts, at most 120 characters. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
+    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, readerQuestion, coreFact, whyItMatters, mechanism, plainTranslation, commonMyth。ツールの使い方や料金比較ではなく、専門的な仕組みを訳す。readerQuestion は、専門知識がない人が噂のまま困っている具体的な疑問を1文で書く。coreFact は核の1事実だけ。mechanism は原典が示している裏側の仕組み。plainTranslation は、その仕組みを専門知識がない人でも「そういう仕組みだったのか」と読める日常の言葉へ訳す。作業命令やチェックリストにしない。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。commonMyth は、その記事が覆している現場の思い込みを120字以内で書く。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
   const scored = await ask({
     tier: 'fast',
     timeoutMs: 20000,
@@ -170,16 +201,18 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
     sourceUrl,
     title: field(parsed.title, 120),
     outputLang: lang,
+    readerQuestion: field(parsed.readerQuestion, 160),
     coreFact: field(parsed.coreFact, 220),
     whyItMatters: field(parsed.whyItMatters, 180),
     mechanism: field(parsed.mechanism, 220),
+    plainTranslation: field(parsed.plainTranslation, 220),
     actionableTakeaway: field(parsed.actionableTakeaway, 180),
     commonMyth: field(parsed.commonMyth, 120),
     fetchedAt: (now instanceof Date ? now : new Date()).toISOString(),
     usedCount: 0,
     lastUsedAt: null
   };
-  if (!card.coreFact || !card.mechanism || !card.actionableTakeaway) return null;
+  if (!card.coreFact || !card.mechanism || (!card.plainTranslation && !card.actionableTakeaway)) return null;
   return card;
 }
 
@@ -392,9 +425,27 @@ function oneDossierPoint(value) {
 }
 
 function formatTopicSourceAsDossier(card, isEn, maxChars = 700) {
+  const translation = oneDossierPoint(card && card.plainTranslation);
+  const legacy = oneDossierPoint(card && card.actionableTakeaway);
   const lines = isEn
-    ? [`Source: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`, `Fact: ${oneDossierPoint(card && card.coreFact)}`, `Next: ${oneDossierPoint(card && card.actionableTakeaway)}`]
-    : [`出典: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`, `事実: ${oneDossierPoint(card && card.coreFact)}`, `一手: ${oneDossierPoint(card && card.actionableTakeaway)}`];
+    ? [
+      'Use the source name in the post and end on the plain-words line. Do not end on a check or a fix list.',
+      `Source: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`,
+      `Question: ${oneDossierPoint(card && card.readerQuestion)}`,
+      `Fact: ${oneDossierPoint(card && card.coreFact)}`,
+      `Mechanism: ${oneDossierPoint(card && card.mechanism)}`,
+      translation ? `In plain words: ${translation}` : `Point: ${legacy}`,
+      `Rumor: ${oneDossierPoint(card && card.commonMyth)}`
+    ]
+    : [
+      '扱い: 出典名を本文に残し、訳で終える。確認手順や直しどころでは終えない。',
+      `出典: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`,
+      `疑問: ${oneDossierPoint(card && card.readerQuestion)}`,
+      `事実: ${oneDossierPoint(card && card.coreFact)}`,
+      `仕組み: ${oneDossierPoint(card && card.mechanism)}`,
+      translation ? `訳: ${translation}` : `要点: ${legacy}`,
+      `思い込み: ${oneDossierPoint(card && card.commonMyth)}`
+    ];
   return lines.filter(line => !/[:：]\s*$/.test(line)).join('\n').slice(0, maxChars).trim();
 }
 
@@ -403,6 +454,8 @@ module.exports = {
   pickTopicSourceForPost,
   markTopicSourceUsed,
   formatTopicSourceAsDossier,
+  selectArticleUrls,
+  isPrimarySource,
   safeArticleUrl,
   keepGroundedNumbers,
   sourceIdFor,

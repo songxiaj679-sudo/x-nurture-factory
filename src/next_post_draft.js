@@ -480,6 +480,8 @@ function tensionFactCorpus({ seed = null, topicSource = null, brandKnowledge = n
     topicSource && topicSource.coreFact,
     topicSource && topicSource.whyItMatters,
     topicSource && topicSource.mechanism,
+    topicSource && topicSource.readerQuestion,
+    topicSource && topicSource.plainTranslation,
     topicSource && topicSource.actionableTakeaway,
     topicSource && topicSource.commonMyth,
     stance && stance.rejectedNorm,
@@ -506,7 +508,7 @@ function sanitizeBriefTension(brief, { seed = null, topicSource = null, brandKno
   if (!seed || !seed.text || !tension) return dropped;
   if (base.tensionReversesInput !== true || base.passesBrandSwap !== true) return dropped;
   if (tensionInventsNumber(tension, tensionFactCorpus({ seed, topicSource, brandKnowledge, ownerSpark, userDoc }))) return dropped;
-  const near = [topicSource && topicSource.coreFact, topicSource && topicSource.actionableTakeaway]
+  const near = [topicSource && topicSource.coreFact, topicSource && topicSource.plainTranslation, topicSource && topicSource.actionableTakeaway]
     .map(text => charLimit(text, 220))
     .filter(Boolean)
     .some(text => hookLineSimilarity(tension, text) >= 0.45);
@@ -968,8 +970,8 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
   const reactionLine = masterPlan && masterPlan.topicRing === 'ring3_product_bridge'
     ? ''
     : (isEn
-      ? 'Do not close with a checklist or with "do not start until". Do not hail the reader or stack fragments and questions. Say one observation in natural sentences. When you use a number, keep the subject and the premise already in the source. Do not invent a denominator. Do not ask for a like, a comment, or a bookmark.'
-      : '確認手順やチェックリストを並べて「〜するまで始めません」で締めない。「〇〇へ。」の呼びかけや、体言止めと疑問文の連打もしない。自然な日本語の文章として、1つの気づきをまっすぐ語る。数字を使うときは、元ネタにある対象と前提を省かず初見に伝わる形で書く。元ネタにない分母は作らない。いいねやコメントの依頼は書かない。');
+      ? 'Do not close with a checklist, a pre-post check, or "look at likes, comments, and shares and decide what to fix." End on why the mechanism works, in everyday words. When you mention a study or a source, keep the source name and who measured what. Do not write "a study" or "the team" with no subject. When you use a number, keep the subject and the premise already in the source. Do not invent a denominator. Do not ask for a like, a comment, or a bookmark.'
+      : '確認手順やチェックリストを並べて「〜するまで始めません」で締めない。投稿前に何を見るか、いいね・コメント・シェアのどれが弱いかを見て直しどころを決める、では終えない。結びは、なぜそういう仕組みかを、1つの気づきをまっすぐ語るところまで。「〇〇へ。」の呼びかけや、体言止めと疑問文の連打もしない。出典や調査に触れるときは、メモの出典名と、誰が何を調べたかを省かない。「ただ研究を読むと」「チームでは」のように、何の研究か誰の話かを消さない。数字を使うときは、元ネタにある対象と前提を省かず初見に伝わる形で書く。元ネタにない分母は作らない。いいねやコメントの依頼は書かない。');
   const notManual = promo
     ? ''
     : (isEn
@@ -1004,7 +1006,7 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
   const officialVoice = voiceProfile && voiceProfile.accountRole === 'official_brand'
     ? (isEn
       ? 'This is an official brand account. Do not write a personal diary line such as "I keep running X". Speak as the team or the product.'
-      : '公式ブランドのため、「私が〜」「私は〜」「私がX運用を続ける中で」は禁止。主語はチーム・開発側・プロダクトにする。')
+      : '公式ブランドのため、「私が〜」「私は〜」「私がX運用を続ける中で」は禁止。主語はチーム・開発側・プロダクトにする。「チーム」とだけ書いて、誰の話か分からない主語にはしない。')
     : '';
   const stopEarly = bodyLimit > 300
     ? (isEn

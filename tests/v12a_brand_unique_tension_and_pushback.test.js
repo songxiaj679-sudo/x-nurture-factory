@@ -18,7 +18,7 @@ const {
 
 const article = '# 入口\n紙の確認は14日ごとに一度で足りる。現場では毎回見れば足りると思われている。';
 const ownPage = 'https://customer.example/home';
-const articlePage = 'https://trade-journal.example/how-often';
+const articlePage = 'https://docs.trade-journal.example/spec/how-often';
 
 function withStub(modulePath, exports) {
   const filename = require.resolve(modulePath);
@@ -53,7 +53,7 @@ test('an old topic card still works, and commonMyth stays out of the 700 charact
     dryRun: true,
     outputLang: 'ja',
     brandKnowledge: { category: '店', domainProblems: ['紙が古い'], icpSummary: '店主', oneLineMechanism: '入口を先に見る', sourceUrl: ownPage },
-    completeText: async () => ({ text: JSON.stringify({ items: [{ url: articlePage, sourceName: '現場ノート' }] }) }),
+    completeText: async () => ({ text: JSON.stringify({ items: [{ url: articlePage, sourceName: '公式仕様' }] }) }),
     completeJson: async () => ({ parsed: {
       sourceName: '現場ノート',
       coreFact: '紙の確認は14日ごと。',
@@ -73,7 +73,8 @@ test('an old topic card still works, and commonMyth stays out of the 700 charact
   assert.match(note, /14日/);
   assert.equal(note.includes('commonMyth'), false);
   const fresh = formatTopicSourceAsDossier(card, false, 700);
-  assert.equal(fresh.includes('毎回見れば足りる'), false);
+  assert.match(fresh, /毎回見れば足りる/);
+  assert.equal(fresh.includes('一手'), false);
   assert.equal(fresh.length <= 700, true);
 });
 

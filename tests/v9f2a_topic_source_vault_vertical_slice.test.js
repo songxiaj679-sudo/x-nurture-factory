@@ -7,7 +7,7 @@ const { briefPrompt, candidatePrompt } = require('../src/next_post_draft');
 
 const article = '# 入口\n紙の確認は14日ごとに一度で足りる。出典は現場ノート。';
 const ownPage = 'https://customer.example/home';
-const articlePage = 'https://trade-journal.example/how-often';
+const articlePage = 'https://docs.trade-journal.example/spec/how-often';
 const termsPage = 'https://trade-journal.example/terms';
 
 function searchText() {

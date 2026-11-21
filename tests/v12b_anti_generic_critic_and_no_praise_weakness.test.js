@@ -55,8 +55,9 @@ test('a winning hook removes the brief opening, and a catalog note keeps one fac
     actionableTakeaway: '次の確認日だけ入口に書く。'
   }, false, 700);
   assert.match(note, /14日/);
+  assert.match(note, /仕組みの説明/);
+  assert.equal(note.includes('一手'), false);
   assert.equal(note.includes('ターゲット'), false);
-  assert.equal(note.includes('仕組みの説明'), false);
 });
 
 test('the candidate prompt drops the repeated knowledge block and the hook duel bans invented times', () => {

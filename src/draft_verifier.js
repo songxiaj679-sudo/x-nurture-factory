@@ -62,6 +62,8 @@ function allowedNumbers(context) {
     topic.coreFact,
     topic.whyItMatters,
     topic.mechanism,
+    topic.readerQuestion,
+    topic.plainTranslation,
     topic.actionableTakeaway,
     topic.commonMyth
   ].filter(Boolean).join('\n');
