@@ -50,11 +50,34 @@ function nextPlanSlot({ plan, takenSlots = [], now = new Date(), slotAt }) {
   return { timeSlot: slots[0], dayOffset: 1 };
 }
 
+function nextTomorrowFirstSlot(now = new Date(), timeZone = 'Asia/Tokyo', plan) {
+  const slots = slotsForPlan(plan);
+  if (!slots.length) return null;
+  const zone = timeZone || 'Asia/Tokyo';
+  const today = localDateKey(now, zone);
+  let cursor = new Date(now.getTime());
+  let tomorrow = today;
+  for (let step = 0; step < 40 && tomorrow === today; step += 1) {
+    cursor = new Date(cursor.getTime() + 60 * 60 * 1000);
+    tomorrow = localDateKey(cursor, zone);
+  }
+  if (tomorrow === today) return null;
+  return { timeSlot: slots[0], dayOffset: 1, localDate: tomorrow };
+}
+
+function reserveAfterDailyCap({ next, pendingCount = 0, plan, now = new Date(), timeZone = 'Asia/Tokyo' } = {}) {
+  if (Number(pendingCount) > 0) return null;
+  if (next) return { timeSlot: next.timeSlot, dayOffset: next.dayOffset || 0 };
+  return nextTomorrowFirstSlot(now, timeZone, plan);
+}
+
 module.exports = {
   PLAN_SLOTS,
   resolvePlan,
   isPaidAccount,
   slotsForPlan,
   localDateKey,
-  nextPlanSlot
+  nextPlanSlot,
+  nextTomorrowFirstSlot,
+  reserveAfterDailyCap
 };

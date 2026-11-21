@@ -801,6 +801,11 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
     ? 'Phone layout. Put a blank line right after line 1, and another blank line every two or three sentences. A short list may use 1. 2. or quotes. Do not stack emoji. Do not use a disclosure mark in the body.'
     : '適度な空行を入れる。1行目の直後に空行を置き、2〜3文ごとに空行を入れる。控えめな装飾として「」か・か1. 2. を使ってよい。絵文字は連打しない。本文に▼は使わない。';
   const explainer = spokenExplainer(isEn, topicSource, sourceDossier, masterPlan);
+  const reactionLine = masterPlan && masterPlan.topicRing === 'ring3_product_bridge'
+    ? ''
+    : (isEn
+      ? 'Close on one boundary the reader can check, or one step they can repeat. Do not ask for a like, a comment, or a bookmark.'
+      : '結びは、判断の境界か、読み手がそのまま試せる確認を1つ言い切る。いいねやコメントの依頼は書かない。');
   const notManual = promo
     ? ''
     : (isEn
@@ -870,6 +875,7 @@ ${freshClaim}
 ${phoneLayout}
 ${explainer}
 ${notManual}
+${reactionLine}
 ${officialVoice}
 ${notes ? `Customer notes: ${notes}` : ''}
 ${blocked ? `Forbidden: ${blocked}` : ''}
@@ -900,6 +906,7 @@ ${freshClaim}
 ${phoneLayout}
 ${explainer}
 ${notManual}
+${reactionLine}
 ${officialVoice}
 ${notes ? `実務メモ: ${notes}` : ''}
 ${blocked ? `禁止: ${blocked}` : ''}

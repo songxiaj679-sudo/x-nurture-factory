@@ -3108,6 +3108,9 @@ function registerHybridSaasRoutes(app, options = {}) {
       if (candidate.status !== 'pending_approval' && candidate.status !== 'held') {
         return res.status(409).json({ ok: false, error: say('承認待ちの候補だけ送信できます。', 'Only a waiting candidate can be sent.') });
       }
+      if (String(process.env.X_OUTBOUND_REPLY_SEND_ENABLED || '').toLowerCase() === 'false') {
+        return res.status(403).json({ ok: false, error: 'outbound_reply_send_paused' });
+      }
       const { detectOptOut } = require('./auto_reply_policy');
       const { deliverOutboundReply, passesOutboundSafety, savedOutboundBudget } = require('./outbound_reply_queue');
       const replyLang = candidate.replyLang === 'en' ? 'en' : 'ja';

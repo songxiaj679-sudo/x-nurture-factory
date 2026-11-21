@@ -28,7 +28,42 @@ function customerBadge(brandKnowledge, book, isEn) {
   return isEn ? 'KEY CHECK' : '実務メモ';
 }
 
+function cleanCardLine(value, max) {
+  return clipCard(String(value || '').replace(/https?:\/\/\S+/gi, '').replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, ''), max);
+}
+
+function planMythVsRealityCard({ editorialStance, coreFact, contrasts, lang } = {}) {
+  const isEn = String(lang || '').toLowerCase().startsWith('en');
+  const myth = cleanCardLine(editorialStance && editorialStance.rejectedNorm, isEn ? 140 : 90);
+  const reality = cleanCardLine((editorialStance && editorialStance.coreBelief) || coreFact, isEn ? 140 : 90);
+  const rows = (Array.isArray(contrasts) ? contrasts : []).map(row => cleanCardLine(row, isEn ? 80 : 48)).filter(Boolean).slice(0, 3);
+  const eligible = Boolean(myth && reality);
+  return {
+    eligible,
+    template: 'myth_vs_reality_card',
+    lang: isEn ? 'en' : 'ja',
+    badge: isEn ? 'MYTH / REALITY' : '思い込みと現場',
+    title: cleanCardLine(coreFact, isEn ? 60 : 34) || (isEn ? 'One field check' : '現場の判断'),
+    leftLabel: isEn ? 'Myth' : '思い込み',
+    leftText: myth,
+    rightLabel: isEn ? 'Reality' : '現場',
+    rightText: reality,
+    contrasts: rows,
+    footerCheck: rows[0] || reality,
+    lines: [myth, reality, ...rows].filter(Boolean).slice(0, 4).map(text => ({ text })),
+    reason: !eligible ? 'missing_contrast' : (process.env.X_MEDIA_WRITE_ENABLED === 'true' ? 'ready' : 'media_write_not_enabled')
+  };
+}
+
 function planVisualCard({ format, portfolioRole, focusPlaybook, brandKnowledge, lang, archetype, focusTopic, isolateLpContext } = {}) {
+  if (archetype === 'myth_vs_reality') {
+    return planMythVsRealityCard({
+      editorialStance: brandKnowledge && brandKnowledge.editorialStance,
+      coreFact: focusTopic && (focusTopic.topic || focusTopic.reality) || '',
+      contrasts: focusTopic && (focusTopic.contrasts || []),
+      lang
+    });
+  }
   const isEn = String(lang || '').toLowerCase().startsWith('en');
   const cardSlot = portfolioRole === 'utility_save' || portfolioRole === 'profile_asset_bridge';
   const book = focusPlaybook && focusPlaybook.topic && focusPlaybook.checkCriteria ? focusPlaybook : null;
@@ -226,9 +261,29 @@ function checklistMarkup(plan) {
   };
 }
 
+function mythMarkup(plan) {
+  const contrasts = Array.isArray(plan && plan.contrasts) ? plan.contrasts.slice(0, 3) : [];
+  const split = cardMarkup({ ...plan, template: 'editorial_split' });
+  const column = split.props.children[1].props.children;
+  if (contrasts.length) {
+    column.splice(2, 0, {
+      type: 'div',
+      props: {
+        style: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 },
+        children: contrasts.map(text => ({
+          type: 'div',
+          props: { style: { color: '#334155', fontSize: 22, lineHeight: 1.3 }, children: String(text || '') }
+        }))
+      }
+    });
+  }
+  return split;
+}
+
 function cardMarkup(plan) {
   if (plan && plan.template === 'before_after_card') return beforeAfterMarkup(plan);
   if (plan && plan.template === 'checklist_3step_card') return checklistMarkup(plan);
+  if (plan && plan.template === 'myth_vs_reality_card') return mythMarkup(plan);
   const isEn = String(plan && plan.lang || '').toLowerCase().startsWith('en');
   const title = String(plan && plan.title || '');
   const left = String(plan && plan.leftText || '');
@@ -290,4 +345,4 @@ function escapeXml(value) {
   return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[char]));
 }
 
-module.exports = { planVisualCard, renderGroundedCard, renderVisualCardPng, cardMarkup };
+module.exports = { planVisualCard, planMythVsRealityCard, renderGroundedCard, renderVisualCardPng, cardMarkup };

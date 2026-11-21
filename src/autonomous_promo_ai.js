@@ -29,7 +29,7 @@ const { extractBrandKnowledge, BANNED_LEGACY } = require('./lp_knowledge_extract
 const { resolveAccountVoiceProfile } = require('./account_voice_profiler');
 const { planSlotPortfolio, weekdayInZone } = require('./slot_portfolio_planner');
 const { officialApiOperationAllowed } = require('./operated_accounts');
-const { resolvePlan, isPaidAccount, localDateKey, nextPlanSlot } = require('./plan_post_budget');
+const { resolvePlan, isPaidAccount, localDateKey, nextPlanSlot, reserveAfterDailyCap } = require('./plan_post_budget');
 const { buildWeeklyGrowthReport } = require('./weekly_growth_report');
 const { decideEarlyAction } = require('./metrics_harvest_engine');
 const { buildFrozenOutcome, classifyTraceCalibration, summarizeCriticCalibration, computeCalibratedAxisWeights } = require('./critic_calibration');
@@ -3636,12 +3636,19 @@ async function ensureNextPost(userId, options = {}) {
         return dateAtTimeInZone(new Date(), zone, hour, minute, dayOffset);
       }
     });
-    if (!next) return { ok: false, reason: 'daily_cap' };
+    const chosen = next || reserveAfterDailyCap({
+      next: null,
+      pendingCount: pendingSnap.size,
+      plan,
+      now: new Date(),
+      timeZone: zone
+    });
+    if (!chosen) return { ok: false, reason: 'daily_cap' };
     try {
       const result = await prepareNextPost(userId, {
         lang: user.aiTargetLang || 'ja',
-        timeSlot: next.timeSlot,
-        dayOffset: next.dayOffset
+        timeSlot: chosen.timeSlot,
+        dayOffset: chosen.dayOffset
       });
       await userDoc.ref.set({
         ensureNextPostFailures: 0,
