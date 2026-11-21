@@ -81,21 +81,19 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
   const ask = completeText || require('./grok_client').completeText;
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const knowledge = brandKnowledge || {};
-  const brief = [knowledge.category, knowledge.icpSummary, knowledge.oneLineMechanism, ...(Array.isArray(knowledge.domainProblems) ? knowledge.domainProblems.slice(0, 3) : [])]
-    .filter(Boolean)
-    .join('\n')
-    .slice(0, 800);
+  const problems = Array.isArray(knowledge.domainProblems) ? knowledge.domainProblems.slice(0, 4) : [];
+  const brief = [knowledge.icpSummary, ...problems].filter(Boolean).join('\n').slice(0, 800);
   const prompt = lang === 'en'
-    ? `Find at most 2 primary articles about a problem, a specialist mechanism, a cause of failure, or a practical judgment this reader's daily work actually faces. Use icpSummary and domainProblems. Return JSON {"items":[{"url":"","sourceName":""}]} only. Exclude competitor tool comparisons, setup manuals, pricing pages, product reviews, and affiliate roundups. No social network, login, or terms pages.\n${brief}`
-    : `読者課題の一次記事を最大2件返す。icpSummary と domainProblems が示す読者が、日々の仕事や生活で直面する課題・専門的な仕組み・失敗原因・実践ノウハウを解説した調査記事か実務解説に限る。同業のツール比較、競合ツールの操作マニュアル、料金比較、導入手順、製品レビュー、アフィリエイトまとめは除外する。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
+    ? `Shift one step away from the product. Find at most 2 primary articles about specialist knowledge, failure patterns, judgment criteria, or an industry trend the target reader needs for their own work or daily life. Use only icpSummary and domainProblems. Do not search by productName or implementation terms. Exclude competitor tool comparisons, setup manuals, pricing pages, product reviews, affiliate roundups, and diaries about building, developing, or automating the tool itself. Return JSON {"items":[{"url":"","sourceName":""}]} only. No social network, login, or terms pages.\n${brief}`
+    : `読者の本業の課題へ一段ずらす。icpSummary と domainProblems だけを主軸にする。productName や実装用語では検索しない。狙うのは、ターゲット読者が本業や生活で成果を出すために知っておく専門知識・失敗パターン・判断基準・業界トレンドの一次記事か実務解説。読者課題として、専門的な仕組みと実践ノウハウを優先する。同業のツール比較、競合ツールの操作マニュアル、料金比較、導入手順、製品レビュー、アフィリエイトまとめに加え、ツール自体の自作・開発・自動化スクリプト実装記は除外する。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
   const result = await ask({
     search: true,
     xSearch: false,
     tier: 'fast',
     timeoutMs: 20000,
     systemPrompt: lang === 'en'
-      ? 'Return JSON only. Pick a reader-problem article, not a competing product manual or a pricing comparison.'
-      : 'JSONだけ返す。読者の課題を解説する記事を選び、同業・競合ツールの操作記事や料金比較は選ばない。',
+      ? 'Return JSON only. Pick the reader\'s own work problem, not a tool build log, a setup manual, or a pricing comparison.'
+      : 'JSONだけ返す。読者の本業課題の記事を選ぶ。商材ツールの自作・操作記事と料金比較は選ばない。',
     prompt
   });
   const chosen = [];
@@ -155,7 +153,7 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
   const ask = completeJson || require('./grok_client').completeJson;
   const prompt = lang === 'en'
     ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway. Extract the specialist mechanism and a judgment the reader can use, not a tool manual or a price comparison. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
-    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
+    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
   const scored = await ask({
     tier: 'fast',
     timeoutMs: 20000,
@@ -275,6 +273,116 @@ async function markTopicSourceUsed(db, userId, sourceId, now = new Date()) {
   }, { merge: true });
 }
 
+const WEEKLY_ARTICLE_CAP = { free: 1, starter: 2, pro: 3, business: 3 };
+const MIN_GAP_MS = {
+  free: 7 * 24 * 60 * 60 * 1000,
+  starter: 3.5 * 24 * 60 * 60 * 1000,
+  pro: 2.3 * 24 * 60 * 60 * 1000,
+  business: 2.3 * 24 * 60 * 60 * 1000
+};
+const UNUSED_CARD_CAP = 6;
+const SWEEP_CUSTOMER_CAP = 3;
+
+function topicPlan(user) {
+  return require('./tenant_ai_budget').monthlyLimitsForUser(user || {}).plan;
+}
+
+function topicVaultEligibility({ user, cards = [], now = new Date(), budgetAllowed = true } = {}) {
+  if (!user || user.autopilotPaused === true || user.isActive === false) return { ok: false, reason: 'inactive' };
+  const status = String(user.planStatus || '').toLowerCase();
+  const stripe = String(user.stripeSubscriptionStatus || '').toLowerCase();
+  if (status === 'cancelled' || status === 'canceled' || stripe === 'canceled') return { ok: false, reason: 'cancelled' };
+  const brand = user.brandKnowledge;
+  const hasUrl = Boolean(String(user.targetUrl || (brand && brand.sourceUrl) || '').trim());
+  if (!hasUrl || !brand || typeof brand !== 'object') return { ok: false, reason: 'missing_brand' };
+  const unused = cards.filter(card => Number(card && card.usedCount) === 0).length;
+  if (unused >= UNUSED_CARD_CAP) return { ok: false, reason: 'unused_full' };
+  if (budgetAllowed === false) return { ok: false, reason: 'budget' };
+  const plan = topicPlan(user);
+  const cap = WEEKLY_ARTICLE_CAP[plan] || WEEKLY_ARTICLE_CAP.free;
+  const gap = MIN_GAP_MS[plan] || MIN_GAP_MS.free;
+  const weekAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+  const recent = cards.filter(card => {
+    const at = Date.parse(card && card.fetchedAt || '');
+    return Number.isFinite(at) && at >= weekAgo;
+  });
+  if (recent.length >= cap) return { ok: false, reason: 'weekly_cap' };
+  const last = cards.reduce((max, card) => {
+    const at = Date.parse(card && card.fetchedAt || '');
+    return Number.isFinite(at) && at > max ? at : max;
+  }, 0);
+  if (last && now.getTime() - last < gap) return { ok: false, reason: 'interval' };
+  return { ok: true, reason: 'ready', plan, weeklyCap: cap, minGapMs: gap };
+}
+
+async function runTopicSourceVaultSweep(db, options = {}) {
+  const now = options.now instanceof Date ? options.now : new Date();
+  const cap = Number.isInteger(options.customerCap) ? options.customerCap : SWEEP_CUSTOMER_CAP;
+  const listed = options.listUsers
+    ? await options.listUsers()
+    : await db.collection('saas_users').orderBy('__name__').limit(40).get();
+  const docs = listed && listed.docs ? listed.docs : [];
+  let scanned = 0;
+  let collected = 0;
+  let skipped = 0;
+  for (const doc of docs) {
+    if (collected >= cap) break;
+    scanned += 1;
+    const user = typeof doc.data === 'function' ? (doc.data() || {}) : (doc.data || {});
+    const userId = doc.id;
+    let cards = [];
+    try {
+      cards = options.loadCards
+        ? await options.loadCards(userId)
+        : await loadTopicCards(db, userId);
+    } catch (_err) {
+      cards = [];
+    }
+    let budgetAllowed = true;
+    try {
+      if (options.budgetAllowed) budgetAllowed = await options.budgetAllowed(userId, user);
+      else {
+        const gate = await require('./tenant_ai_budget').checkTenantAiBudget({ db, userId, user, kind: 'crawl', count: 1, now });
+        budgetAllowed = !(gate && gate.allowed === false);
+      }
+    } catch (_err) {
+      budgetAllowed = true;
+    }
+    const decision = topicVaultEligibility({ user, cards, now, budgetAllowed });
+    if (!decision.ok) {
+      skipped += 1;
+      continue;
+    }
+    const lang = String(user.aiTargetLang || '').toLowerCase().startsWith('en') ? 'en' : 'ja';
+    const collect = options.collect || collectTopicSourceForUser;
+    try {
+      const card = await collect({
+        db,
+        userId,
+        user,
+        brandKnowledge: user.brandKnowledge,
+        outputLang: lang,
+        dryRun: false,
+        now
+      });
+      if (card) collected += 1;
+      else skipped += 1;
+    } catch (_err) {
+      skipped += 1;
+    }
+  }
+  console.log(`[Topic Vault] scanned=${scanned} collected=${collected} skipped=${skipped}`);
+  return { scanned, collected, skipped };
+}
+
+async function loadTopicCards(db, userId) {
+  if (!db || !userId) return [];
+  const snap = await db.collection('saas_users').doc(userId).collection('topic_sources').limit(40).get();
+  const cards = [];
+  snap.forEach(doc => cards.push(doc.data() || {}));
+  return cards;
+}
+
 function formatTopicSourceAsDossier(card, isEn, maxChars = 700) {
   const clean = value => stripUrls(value);
   const lines = isEn
@@ -290,5 +398,9 @@ module.exports = {
   formatTopicSourceAsDossier,
   safeArticleUrl,
   keepGroundedNumbers,
-  sourceIdFor
+  sourceIdFor,
+  topicVaultEligibility,
+  runTopicSourceVaultSweep,
+  WEEKLY_ARTICLE_CAP,
+  MIN_GAP_MS
 };

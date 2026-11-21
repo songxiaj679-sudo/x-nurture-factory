@@ -1442,6 +1442,17 @@ function startAutopilotJobRunner() {
     console.error('[autoReplenishAllActiveQueues Error]:', err.message);
   }), 15 * 1000);
 
+  let topicVaultRunning = false;
+  const topicVaultTick = () => {
+    if (topicVaultRunning) return;
+    topicVaultRunning = true;
+    require('./topic_source_vault').runTopicSourceVaultSweep(db)
+      .catch(err => console.error('[Topic Vault]:', String(err && err.message || err).slice(0, 120)))
+      .finally(() => { topicVaultRunning = false; });
+  };
+  setTimeout(topicVaultTick, 5 * 60 * 1000);
+  setInterval(topicVaultTick, 3 * 60 * 60 * 1000);
+
   let metricsRunning = false;
   setInterval(() => {
     if (metricsRunning) return;
