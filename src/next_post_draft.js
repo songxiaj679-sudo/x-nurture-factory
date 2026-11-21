@@ -122,6 +122,30 @@ function clip(value, max) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
+function readerVisibleFact(page) {
+  const description = clip(page && page.description, 140);
+  if (description) return description;
+  const headings = Array.isArray(page && page.headings) ? page.headings : [];
+  for (const heading of headings) {
+    const text = clip(typeof heading === 'string' ? heading : (heading && (heading.text || heading.title)), 140);
+    if (text) return text;
+  }
+  return '';
+}
+
+function pageBriefLine({ isEn, page, hypothesisText, isolateLpContext, masterPlan }) {
+  if (isolateLpContext === true) return '';
+  if (masterPlan && masterPlan.topicRing === 'ring3_product_bridge') {
+    const fact = readerVisibleFact(page);
+    return isEn
+      ? `One fact the reader can check on the page: ${fact}`
+      : `読者が画面で確かめられる事実は1文だけ: ${fact}`;
+  }
+  return isEn
+    ? `Page notes, not an outline: ${hypothesisText}\nPage: ${JSON.stringify(page)}`
+    : `ページのメモであり、本文の目次ではない: ${hypothesisText}\nページ: ${JSON.stringify(page)}`;
+}
+
 function fallbackBrief(page, isEn) {
   const offer = clip(page.title || page.description || page.body, 180);
   return {
@@ -411,7 +435,7 @@ ${freshClaim}
 ${noQuestion}
 ${stateLine}
 Time slot: ${timeSlot}
-${isolateLpContext === true ? '' : `Page notes, not an outline: ${hypothesisText}\nPage: ${JSON.stringify(page)}`}
+${pageBriefLine({ isEn: true, page, hypothesisText, isolateLpContext, masterPlan })}
 Earlier posts: ${JSON.stringify(recent)}
 Return JSON only: {"offer":"","reader":"","scene":"","voice":"","thisPost":"","doNot":"","readerPayoff":"","hookAngle":"","everydayAssumption":"","underlyingMechanism":""}`
     : `あなたはVELOXです。このURLと、このアカウントの個性から、投稿の指示だけを作ってください。本文は書かないでください。
@@ -432,7 +456,7 @@ ${noQuestion}
 ${form}
 ${stateLine}
 時間帯: ${timeSlot}
-${isolateLpContext === true ? '' : `ページのメモであり、本文の目次ではない: ${hypothesisText}\nページ: ${JSON.stringify(page)}`}
+${pageBriefLine({ isEn: false, page, hypothesisText, isolateLpContext, masterPlan })}
 過去の投稿: ${JSON.stringify(recent)}
 JSONだけ返す。{"offer":"","reader":"","scene":"","voice":"","thisPost":"","doNot":"","readerPayoff":"","hookAngle":"","everydayAssumption":"","underlyingMechanism":""}`;
 }
@@ -576,6 +600,9 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
     : (isEn
       ? 'This post is NOT a product how-to manual. Give the reader one concrete point worth saving, without awkward "input your URL into our tool" instructions.'
       : 'この枠はツールの使い方説明書ではありません。「URLを入力して…」といった操作案内ではなく、その読者が保存したくなる具体を書くこと。');
+  const spokenPair = isEn
+    ? 'One example pair. Copy the pace, not the shop. Stiff: "Checklist: Hours are current. Cancellation cutoff is stated. Contact info is visible." Natural: "Nothing wastes a trip faster than showing up to a locked door, so put any schedule change where people see it before they leave."'
+    : '見本は1組だけ。店の中身は写さない。硬い例: 「確認項目は以下の通りです。営業時間が最新であること／予約変更の締切が明記されていること／連絡先が分かること」自然な例: 「『開いてると思って来たのに閉まってた』が一番もったいないので、休みの変更だけは入口より先に目に入る場所へ置きます。」';
   const replySplit = (accountState && accountState.delivery) === 'parent_self_reply' || (genes && genes.delivery) === 'parent_self_reply'
     ? (isEn
       ? 'Parent plus self-reply. This split wins over any archetype line that puts the cause in the body. The first post stops at the scene or the odd feeling. The cause, the way to tell, and the check go in the self-replies.'
@@ -601,9 +628,10 @@ ${stopEarly}
 ${noInventedDigits}
 If Customer instruction, Page, Brief, or Customer notes are written in Japanese, translate every concept into natural English. Do not output any hiragana, katakana, kanji, or fullwidth punctuation such as 「」『』、。.
 Match voice.accountRole and voice.register strictly. Do NOT invent unverified numbers, clock times, percentages, or fake "yesterday/today" incidents, do not copy sampleHooks openings, and do not add "bookmark/save this" filler.
-a shows the approach that misses for this reader. b opens from the everyday assumption and turns toward what fits, without fake times or invented metrics. c states one concrete point worth saving in 2 natural, complete sentences matching the target length—never write a tiny slogan fragment such as "The rule is...", and never write a setup manual telling readers to feed a URL into the tool when this post is not an explicit promotion. When an archetype is set, all three candidates are different takes of THAT archetype, not three copies of "many people assume, but". Do not print the words everydayAssumption or underlyingMechanism. Do not open with an academic label. Do not close with an exam question or a slogan. End on a sentence you would say out loud. A question, if any, is only the last sentence and does not press the reader. Do not write a paper-style ending.
+a shows the approach that misses for this reader. b opens from the everyday assumption and turns toward what fits, without fake times or invented metrics. c states one concrete point worth saving in 2 natural, complete sentences matching the target length—never write a tiny slogan fragment such as "The rule is...", and never write a setup manual telling readers to feed a URL into the tool when this post is not an explicit promotion. When an archetype is set, all three candidates are different takes of THAT archetype, not three copies of "many people assume, but". Do not print the words everydayAssumption or underlyingMechanism. Do not open with an academic label. Do not write a paper-style ending.
 ${archetypeLine || ''}
 ${replySplit}
+${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `Qualitative public context, never a quote or a stat: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 Do not include a URL.${promo ? ' Do not add the disclosure. The program adds it.' : ''}
 ${grounded}
@@ -624,9 +652,10 @@ Brief: ${JSON.stringify(brief)}`
 ${stopEarly}
 ${noInventedDigits}
 voiceのaccountRole（公式ブランドか個人運用者か）と文体を厳守すること。根拠データ（numbers）に無い数字・時刻（6時半・5時等）・割合（3割等）・時間（5分等）・件数・架空の出来事（「昨日〜」「本日リリース」等）や「保存して後で見返してください」等の定型CTAは絶対に入れないこと。sampleHooksの書き出しを繰り返さない。
-aはその話題でうまくいきにくい見方を平易に置く。bは日常の思い込みから入り、読者に合う見方へ切り返す（架空の日時や数字は使わない）。cは保存したくなる具体を1点で言い切る。型が指定されているときは、3案ともその型の別案にし、「という見方があります」から「ただ」へ落ちる同じ構文を繰り返さない。everydayAssumption や underlyingMechanism という内部語、学問名の前置きは本文に出さない。解説の先生や締めの標語にはしない。無理に問いかけで締めず、口に出す言い切りで終える。問いを置くなら最後の1文だけで、詰め寄る質問にはしない。論文調の締めは禁止。
+aはその話題でうまくいきにくい見方を平易に置く。bは日常の思い込みから入り、読者に合う見方へ切り返す（架空の日時や数字は使わない）。cは保存したくなる具体を1点で言い切る。型が指定されているときは、3案ともその型の別案にし、「という見方があります」から「ただ」へ落ちる同じ構文を繰り返さない。everydayAssumption や underlyingMechanism という内部語、学問名の前置きは本文に出さない。
 ${archetypeLine || ''}
 ${replySplit}
+${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `公開の話題。引用も数値も作らない: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 URLは入れない。${promo ? '【PR】表記はプログラムが付ける。' : ''}
 ${grounded}
@@ -1031,4 +1060,4 @@ async function draftNextPostText(params) {
   return drafted.tweets;
 }
 
-module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision };
+module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision };
