@@ -129,8 +129,38 @@ function summarizeCriticCalibration(traces) {
   };
 }
 
+function computeCalibratedAxisWeights(calibration) {
+  if (!calibration || calibration.status !== 'ok' || Number(calibration.sampleCount) < 5) return null;
+  const correlations = calibration.axisCorrelations || {};
+  const values = AXIS_KEYS.map(key => Number(correlations[key]));
+  if (values.some(value => !Number.isFinite(value)) || values.every(value => value === 0)) return null;
+  let weights = values.map(value => 1 + Math.max(-0.25, Math.min(0.25, value * 0.25)));
+  const scale = 4 / weights.reduce((sum, value) => sum + value, 0);
+  weights = weights.map(value => value * scale);
+  for (let pass = 0; pass < 4; pass += 1) {
+    let overflow = 0;
+    const open = [];
+    weights = weights.map((value, index) => {
+      const clamped = Math.max(0.75, Math.min(1.25, value));
+      overflow += value - clamped;
+      if (clamped > 0.75 && clamped < 1.25) open.push(index);
+      return clamped;
+    });
+    if (Math.abs(overflow) < 0.0001 || !open.length) break;
+    const share = overflow / open.length;
+    open.forEach(index => { weights[index] += share; });
+  }
+  const rounded = weights.map(value => Math.round(value * 1000) / 1000);
+  const drift = Math.round((4 - rounded.reduce((sum, value) => sum + value, 0)) * 1000) / 1000;
+  rounded[rounded.length - 1] = Math.round((rounded[rounded.length - 1] + drift) * 1000) / 1000;
+  const result = {};
+  AXIS_KEYS.forEach((key, index) => { result[key] = rounded[index]; });
+  return result;
+}
+
 module.exports = {
   buildFrozenOutcome,
   classifyTraceCalibration,
-  summarizeCriticCalibration
+  summarizeCriticCalibration,
+  computeCalibratedAxisWeights
 };

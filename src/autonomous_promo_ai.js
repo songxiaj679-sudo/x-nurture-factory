@@ -32,7 +32,8 @@ const { officialApiOperationAllowed } = require('./operated_accounts');
 const { resolvePlan, isPaidAccount, localDateKey, nextPlanSlot } = require('./plan_post_budget');
 const { buildWeeklyGrowthReport } = require('./weekly_growth_report');
 const { decideEarlyAction } = require('./metrics_harvest_engine');
-const { buildFrozenOutcome, classifyTraceCalibration } = require('./critic_calibration');
+const { buildFrozenOutcome, classifyTraceCalibration, summarizeCriticCalibration, computeCalibratedAxisWeights } = require('./critic_calibration');
+const { evaluatePromptEvolution, chooseEvolutionAssignment } = require('./prompt_evolution');
 const { selectWeeklyWildcard, freshHook, evaluateWildcardPromotions, WILDCARD_IDS } = require('./wildcard_evolution');
 const { fetchSituationalContext, filterRadarHints, industryQuery, radarLooksInternal } = require('./context_radar');
 const { detectAlgorithmRecovery } = require('./recovery_mode');
@@ -439,6 +440,12 @@ async function retargetNextPendingJob(userId) {
             portfolioPlan: safePlan
           });
           const isolated = masterPlan.isolateLpContext === true;
+          const evolutionVersion = chooseEvolutionAssignment({
+            evolution: user.promptEvolution,
+            jobs: posts,
+            topicRing: masterPlan.topicRing,
+            isWildcard: genes.isWildcard === true
+          });
           const drafted = await draftNextPostWithMeta({
             audienceKnowledge: audienceCraft.audienceKnowledge,
             archetype: masterPlan.archetype || audienceCraft.archetype,
@@ -465,6 +472,9 @@ async function retargetNextPendingJob(userId) {
             targetUrl: hasPage && targetMatch ? targetMatch[0] : '',
             recentPosts: rememberedPostTexts(posts, accountState.lang),
             genes,
+            criticAxisWeights: user.criticAxisWeights || null,
+            promptEvolution: user.promptEvolution || null,
+            evolutionVersion,
             retargetContext: action === 'deepen_winner'
               ? (accountState.lang === 'en'
                 ? 'The previous post got a response, so continue the same point.'
@@ -2874,11 +2884,17 @@ async function syncPromotedArms(database, userId, jobId, existing, outcome24h, c
   else rows.push(patch);
   const userRef = database.collection('saas_users').doc(userId);
   const userSnap = await userRef.get();
-  const current = userSnap && userSnap.exists ? ((userSnap.data() || {}).promotedDynamicArms || []) : [];
+  const userData = userSnap && userSnap.exists ? (userSnap.data() || {}) : {};
+  const current = userData.promotedDynamicArms || [];
   const next = evaluateWildcardPromotions(rows, current);
-  if (JSON.stringify(next) !== JSON.stringify(current.filter(id => WILDCARD_IDS.includes(id)))) {
-    await userRef.set({ promotedDynamicArms: next }, { merge: true });
-  }
+  const summary = summarizeCriticCalibration(rows);
+  const weights = computeCalibratedAxisWeights(summary);
+  const evolved = evaluatePromptEvolution(rows, userData.promptEvolution || null, summary);
+  const userPatch = {};
+  if (JSON.stringify(next) !== JSON.stringify(current.filter(id => WILDCARD_IDS.includes(id)))) userPatch.promotedDynamicArms = next;
+  if (weights) userPatch.criticAxisWeights = weights;
+  if (evolved.changed && evolved.promptEvolution) userPatch.promptEvolution = evolved.promptEvolution;
+  if (Object.keys(userPatch).length) await userRef.set(userPatch, { merge: true });
 }
 
 async function resolveAudienceCraft({ userId, user, brandKnowledge, posts, lang, radar, budgetDegraded }) {
@@ -3265,6 +3281,12 @@ async function prepareNextPost(userId, options = {}) {
   if (wildcard) {
     mapElitesCellId = [draftGenes.angle, draftGenes.hookType, draftGenes.format, voiceProfile && voiceProfile.stagePosture].filter(Boolean).join('|').slice(0, 120);
   }
+  const evolutionVersion = chooseEvolutionAssignment({
+    evolution: user.promptEvolution,
+    jobs: posts,
+    topicRing: masterPlan.topicRing,
+    isWildcard: draftGenes.isWildcard === true
+  });
   let drafted;
   if (budgetDegraded && focusPlaybook && budgetApi) {
     const degradedText = budgetApi.degradedPostText(focusPlaybook, {
@@ -3287,7 +3309,8 @@ async function prepareNextPost(userId, options = {}) {
       initialCriticScore: null,
       finalCriticScore: null,
       repairCount: 0,
-      budgetDegraded: true
+      budgetDegraded: true,
+      evolutionVersion
     };
   } else drafted = await draftNextPostWithMeta({
     audienceKnowledge: audienceCraft.audienceKnowledge,
@@ -3312,6 +3335,9 @@ async function prepareNextPost(userId, options = {}) {
     targetUrl,
     recentPosts: rememberedPostTexts(posts, accountState.lang),
     genes: draftGenes,
+    criticAxisWeights: user.criticAxisWeights || null,
+    promptEvolution: user.promptEvolution || null,
+    evolutionVersion,
     contextSignals: questions.length ? { questions, signals: contextSignals } : contextSignals,
     retargetContext,
     learnedDirectives,
@@ -3389,6 +3415,7 @@ async function prepareNextPost(userId, options = {}) {
     delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single',
     isWildcard: draftGenes.isWildcard === true,
     wildcardRecipe: draftGenes.wildcardRecipe || null,
+    evolutionVersion: drafted.evolutionVersion || 'baseline',
     criticDegraded: drafted.criticDegraded === true,
     criticAxes: drafted.criticAxes || null,
     budgetDegraded,
@@ -3488,6 +3515,7 @@ async function prepareNextPost(userId, options = {}) {
     delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single',
     isWildcard: draftGenes.isWildcard === true,
     wildcardRecipe: draftGenes.wildcardRecipe || null,
+    evolutionVersion: drafted.evolutionVersion || 'baseline',
     selectedHookAngle: drafted.selectedHookAngle || null,
     hookDuelUsed: drafted.hookDuelUsed === true,
     visualCardTemplate: visualCard.template || '',

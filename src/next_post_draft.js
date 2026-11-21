@@ -8,6 +8,7 @@ const { runDeterministicAudit, computeMaxSimilarity } = require('./draft_verifie
 const { resolveEditorialStance } = require('./lp_knowledge_extractor');
 const { containsJapaneseScript } = require('./measured_pair');
 const { decideEditorialPlan, editorialDirective, recordSharedRejectionSignal } = require('./editorial_lexicon_engine');
+const { evolutionPatchFor } = require('./prompt_evolution');
 
 function recordAudit(audit, entry) {
   if (Array.isArray(audit)) audit.push(entry);
@@ -254,7 +255,19 @@ function criticScoreShape() {
   return '{"scores":[{"id":"a","scrollStopHook":0,"saveUtility":0,"strangerClarity":0,"craftAndTruth":0,"score":0,"weakness":""}]}';
 }
 
-function judgeCriticRow(row, { repaired = false } = {}) {
+function usableAxisWeights(weights) {
+  const keys = ['scrollStopHook', 'saveUtility', 'strangerClarity', 'craftAndTruth'];
+  if (!weights || typeof weights !== 'object') return null;
+  const clean = {};
+  for (const key of keys) {
+    const value = Number(weights[key]);
+    if (!Number.isFinite(value) || value <= 0) return null;
+    clean[key] = value;
+  }
+  return clean;
+}
+
+function judgeCriticRow(row, { repaired = false, axisWeights = null } = {}) {
   const score = Number(row && row.score);
   if (!row || !Number.isFinite(score)) return { accept: false, degraded: false, reason: 'critic_unparseable', row: null };
   const axis = key => (row[key] == null || row[key] === '' ? null : Number(row[key]));
@@ -267,14 +280,20 @@ function judgeCriticRow(row, { repaired = false } = {}) {
     strangerClarity: Number.isFinite(axis('strangerClarity')) ? axis('strangerClarity') : null,
     craftAndTruth: Number.isFinite(axis('craftAndTruth')) ? axis('craftAndTruth') : null
   };
+  const weights = usableAxisWeights(axisWeights);
+  const axesReady = Boolean(weights) && ['scrollStopHook', 'saveUtility', 'strangerClarity', 'craftAndTruth'].every(key => Number.isFinite(clean[key]));
+  const judged = axesReady
+    ? Math.min(100, Math.round(clean.scrollStopHook * weights.scrollStopHook + clean.saveUtility * weights.saveUtility + clean.strangerClarity * weights.strangerClarity + clean.craftAndTruth * weights.craftAndTruth))
+    : score;
+  if (axesReady) clean.calibratedScore = judged;
   const floorsFail = (clean.strangerClarity != null && clean.strangerClarity < 14) || (clean.scrollStopHook != null && clean.scrollStopHook < 12);
   const failingAxis = [['strangerClarity', clean.strangerClarity], ['scrollStopHook', clean.scrollStopHook], ['saveUtility', clean.saveUtility], ['craftAndTruth', clean.craftAndTruth]]
     .filter(([, value]) => value != null)
     .sort((a, b) => a[1] - b[1])[0];
-  if (floorsFail || score < 60 || (score < 72 && !repaired)) {
-    return { accept: false, degraded: false, reason: `critic_below_72:${score}`, axis: failingAxis ? failingAxis[0] : '', row: clean };
+  if (floorsFail || judged < 60 || (judged < 72 && !repaired)) {
+    return { accept: false, degraded: false, reason: `critic_below_72:${judged}`, axis: failingAxis ? failingAxis[0] : '', row: clean };
   }
-  if (score >= 72) return { accept: true, degraded: false, reason: '', axis: failingAxis ? failingAxis[0] : '', row: clean };
+  if (judged >= 72) return { accept: true, degraded: false, reason: '', axis: failingAxis ? failingAxis[0] : '', row: clean };
   return { accept: true, degraded: true, reason: '', axis: failingAxis ? failingAxis[0] : '', row: clean };
 }
 
@@ -660,14 +679,57 @@ function filterAdversarialHooks(payload, { recentTexts = [], isEn = false } = {}
   return kept;
 }
 
+function normalizeHookLine(text) {
+  return String(text || '')
+    .replace(/^[\s「『"'“”‘’・\-*]+/u, '')
+    .replace(/(?:でしょう|でした|ません|ます|です|である|だ|ない)[。！!？?\s]*$/u, '')
+    .replace(/[。！!？?\s]+$/u, '')
+    .trim();
+}
+
+function hookLineSimilarity(left, right) {
+  const grams = value => {
+    const set = new Set();
+    const chars = Array.from(value);
+    for (let index = 0; index < chars.length - 1; index += 1) set.add(chars[index] + chars[index + 1]);
+    return set;
+  };
+  const first = grams(left);
+  const second = grams(right);
+  if (!first.size || !second.size) return 0;
+  let shared = 0;
+  for (const item of first) if (second.has(item)) shared += 1;
+  return shared / (first.size + second.size - shared);
+}
+
 function hookAngleForChoice(chosen, hooks) {
   const line = String(chosen && chosen.tweets && chosen.tweets[0] || '').split('\n').map(part => part.trim()).find(Boolean) || '';
-  if (!line) return null;
+  const normalizedLine = normalizeHookLine(line);
+  if (!normalizedLine) return null;
   const hit = (Array.isArray(hooks) ? hooks : []).find(hook => {
     const text = String(hook && hook.text || '');
-    return text && (line.startsWith(text.slice(0, 12)) || text.startsWith(line.slice(0, 12)));
+    const normalized = normalizeHookLine(text);
+    if (!normalized) return false;
+    if (line === text || normalizedLine === normalized) return true;
+    const prefix = Array.from(normalized).slice(0, 12).join('');
+    const other = Array.from(normalizedLine).slice(0, 12).join('');
+    if (prefix && prefix === other) return true;
+    return hookLineSimilarity(normalizedLine, normalized) >= 0.7;
   });
   return hit ? hit.angle : null;
+}
+
+function pinOpening(tweets, hook, maxChars) {
+  if (!hook || !Array.isArray(tweets) || !tweets.length) return tweets;
+  if (hookAngleForChoice({ tweets }, [{ angle: 'kept', text: hook }])) return tweets;
+  const lines = String(tweets[0] || '').split('\n');
+  const index = lines.findIndex(line => line.trim());
+  if (index < 0) return tweets;
+  const nextLines = lines.slice();
+  nextLines[index] = hook;
+  const next = [nextLines.join('\n'), ...tweets.slice(1)];
+  if (Array.from(next.join('')).length > (Number(maxChars) || 900)) return tweets;
+  return next;
 }
 
 async function generateAdversarialHooks({ complete, payload, recentTexts, isEn, allowed = true } = {}) {
@@ -703,11 +765,11 @@ function winningHookLine(hooks, isEn) {
   if (!rows.length) return '';
   const lines = rows.map((hook, index) => `${index + 1}. ${hook.text}`).join('\n');
   return isEn
-    ? `Winning first lines. Candidate a opens with line 1. Candidate b opens with line 2 when it exists, otherwise line 1. Candidate c uses a different opening. Keep spoken English and a blank line after line 1.\n${lines}`
-    : `勝ちフック。候補aは1の文を1行目にする。候補bは2があればその文を、無ければ1を1行目にする。候補cは別の書き出しにする。口語と、1行目のあとの空行を守る。\n${lines}`;
+    ? `Winning first lines. Candidate 1 keeps line 1 verbatim as its first line. Candidate 2 keeps line 2 verbatim as its first line. Only a polite or plain ending may change. Candidate 3 uses a different opening. Keep spoken English and a blank line after line 1.\n${lines}`
+    : `勝ちフック。候補1は勝ちフック1を1行目として言い換えずにそのまま置く。候補2は勝ちフック2を1行目として言い換えずにそのまま置く。語尾の敬体か常体を合わせるだけは許す。候補3は別切り口で競わせる。1行目のあとに空行を置く。\n${lines}`;
 }
 
-function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowledge, voiceProfile, genes, portfolioPlan, episodeContext, learnedDirectives, brandContextNotes, ngTopics, decision, editorialContext, focusClaim, domainSlot, focusProblem, bridge, focusPlaybook, liveSignals, archetypeLine, isolateLpContext, sourceDossier, masterPlan, readabilityLine, readerLine = '', topicSource = null, winningHooks = [] }) {
+function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowledge, voiceProfile, genes, portfolioPlan, episodeContext, learnedDirectives, brandContextNotes, ngTopics, decision, editorialContext, focusClaim, domainSlot, focusProblem, bridge, focusPlaybook, liveSignals, archetypeLine, isolateLpContext, sourceDossier, masterPlan, readabilityLine, readerLine = '', topicSource = null, winningHooks = [], evolutionPatch = null }) {
   const count = promo ? 1 : shape.count;
   const bodyLimit = Math.max(20, Number(accountState.maxChars) - (promo ? 5 : 0));
   const safeTarget = bodyLimit <= 140 ? bodyLimit - 24 : Math.min(bodyLimit - 20, 380);
@@ -754,6 +816,11 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
   const wildLine = require('./wildcard_evolution').recipeLine((genes && (genes.wildcardRecipe || genes.angle)) || '', isEn);
   const povLine = stanceLine(brandKnowledge, masterPlan, genes, isEn);
   const hookLine = winningHookLine(winningHooks, isEn);
+  const evolvedLine = evolutionPatch && (evolutionPatch.doMore || evolutionPatch.avoidMore)
+    ? (isEn
+      ? `Account patch. Safety rules stay first. Do more: ${evolutionPatch.doMore || ''}. Avoid: ${evolutionPatch.avoidMore || ''}.`
+      : `このアカウントの短い方針。安全線が優先する。伸ばす: ${evolutionPatch.doMore || ''}。避ける: ${evolutionPatch.avoidMore || ''}。`)
+    : '';
   const preferCount = Number(genes && genes.targetSegmentCount);
   const preferLine = preferCount === 3
     ? (isEn ? ' This time prefer a 3-part post. If the third part has no standalone role, keep two parts. Do not spill leftover text.' : ' 今回は3段構成を優先する。3段目に独立した役割がないなら2段に収める。はみ出し分割は禁止。')
@@ -789,6 +856,7 @@ ${replySplit}
 ${wildLine}
 ${povLine}
 ${hookLine}
+${evolvedLine}
 ${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `Qualitative public context, never a quote or a stat: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 Do not include a URL.${promo ? ' Do not add the disclosure. The program adds it.' : ''}
@@ -818,6 +886,7 @@ ${replySplit}
 ${wildLine}
 ${povLine}
 ${hookLine}
+${evolvedLine}
 ${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `公開の話題。引用も数値も作らない: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 URLは入れない。${promo ? '【PR】表記はプログラムが付ける。' : ''}
@@ -882,10 +951,14 @@ async function draftNextPostWithMeta({
   skipCriticScore = false,
   timeoutMs = 180000,
   onStage = null,
-  editorialContext = null
+  editorialContext = null,
+  criticAxisWeights = null,
+  promptEvolution = null,
+  evolutionVersion = 'baseline'
 }) {
   accountState = { ...(accountState || {}), delivery: (genes && genes.delivery) || (accountState && accountState.delivery) || '' };
   const isEn = String(lang).toLowerCase().startsWith('en');
+  const evolutionPatch = evolutionPatchFor(promptEvolution, evolutionVersion);
   const isolateLpContext = Boolean(masterPlan && masterPlan.isolateLpContext);
   const stateLine = formatAccountState(accountState, isEn ? 'en' : 'ja');
   const page = isolateLpContext ? { title: '', description: '', headings: [], body: '' } : pageForPrompt(pageSummary);
@@ -1008,7 +1081,11 @@ async function draftNextPostWithMeta({
     const rows = Array.isArray(parsed.candidates) ? parsed.candidates : [{ id: 'a', tweets: parsed.tweets || [parsed.text] }];
     const ready = rows.map(row => ({ id: row.id || 'a', tweets: cleanTweets(row.tweets) })).filter(row => row.tweets.length);
     if (!ready.length) console.warn(`[NextPostDraft] candidate payload had no tweets. keys=${Object.keys(parsed || {}).slice(0, 8).join(',')}`);
-    return ready;
+    return ready.map((candidate, index) => {
+      const hook = index === 0 ? winningHooks[0] : index === 1 ? winningHooks[1] : null;
+      if (!hook) return candidate;
+      return { ...candidate, tweets: pinOpening(candidate.tweets, hook.text, accountState && accountState.maxChars) };
+    });
   };
   let winningHooks = [];
   let rejectedHooks = [];
@@ -1065,7 +1142,7 @@ async function draftNextPostWithMeta({
   try {
     emitStage('draft_candidates');
     const candidateBudget = stageBudget(deadlineAt, tier === 'fast' ? 18000 : 60000, timeoutMs);
-    candidates = readCandidates(await billedDraft(candidatePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, focusClaim: isolateLpContext ? null : focusClaim, liveSignals, archetypeLine, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide, winningHooks }), {
+    candidates = readCandidates(await billedDraft(candidatePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, focusClaim: isolateLpContext ? null : focusClaim, liveSignals, archetypeLine, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide, winningHooks, evolutionPatch }), {
       tier,
       timeoutMs: candidateBudget || Math.min(timeoutMs, 35000),
       retryTimeoutMs: Math.min(timeoutMs, 15000),
@@ -1118,7 +1195,7 @@ async function draftNextPostWithMeta({
           qualityAudit
         }
       ));
-      const decisionRow = pickCriticDecision(scored.scores, { repaired: false });
+      const decisionRow = pickCriticDecision(scored.scores, { repaired: false, axisWeights: criticAxisWeights });
       const best = decisionRow.row;
       if (best && Number.isFinite(Number(best.score))) {
         initialCriticScore = Number(best.score);
@@ -1178,7 +1255,7 @@ async function draftNextPostWithMeta({
     ].filter(Boolean).join('\n');
     try {
       const repaired = parseJson(await billedDraft(
-        `${candidatePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, focusClaim: isolateLpContext ? null : focusClaim, liveSignals, archetypeLine, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide, winningHooks })}\n${repairHint}`,
+        `${candidatePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, focusClaim: isolateLpContext ? null : focusClaim, liveSignals, archetypeLine, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide, winningHooks, evolutionPatch })}\n${repairHint}`,
         {
           tier: tier === 'fast' ? 'fast' : tier,
           timeoutMs: stageBudget(deadlineAt, 35000, timeoutMs) || Math.min(timeoutMs, 35000),
@@ -1208,7 +1285,7 @@ async function draftNextPostWithMeta({
               qualityAudit
             }
           ));
-          const repairDecision = pickCriticDecision(repairScore.scores, { repaired: true });
+          const repairDecision = pickCriticDecision(repairScore.scores, { repaired: true, axisWeights: criticAxisWeights });
           const repairBest = repairDecision.row;
           repairCount = 1;
           if (repairBest && Number.isFinite(Number(repairBest.score))) finalCriticScore = Number(repairBest.score);
@@ -1280,7 +1357,9 @@ async function draftNextPostWithMeta({
     delivery: accountState && accountState.delivery === 'parent_self_reply' && guarded.tweets.length > 1 ? 'parent_self_reply' : 'single',
     selectedHookAngle: hookAngleForChoice(chosen, winningHooks),
     hookDuelUsed,
-    hookDuel: { kept: winningHooks, rejected: rejectedHooks.slice(0, 2) }
+    hookDuel: { kept: winningHooks, rejected: rejectedHooks.slice(0, 2) },
+    evolutionVersion: evolutionVersion || 'baseline',
+    calibratedScore: criticAxes && Number.isFinite(Number(criticAxes.calibratedScore)) ? Number(criticAxes.calibratedScore) : null
   };
 }
 
