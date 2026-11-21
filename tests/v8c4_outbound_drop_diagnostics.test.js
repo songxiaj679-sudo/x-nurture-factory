@@ -92,7 +92,7 @@ test('safety drops log compliance codes without the reply text', async () => {
   }));
   assert.equal(linked.result, null);
   assert.equal(linked.lines.length, 1);
-  assert.equal(linked.lines[0], '[Outbound Drop] stage=safety reasons=unsafe repaired=0');
+  assert.equal(linked.lines[0], '[Outbound Drop] stage=safety reasons=unsafe:url repaired=0');
   assertPrivate(linked.lines[0]);
 });
 

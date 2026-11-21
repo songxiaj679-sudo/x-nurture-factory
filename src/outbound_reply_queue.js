@@ -172,6 +172,18 @@ function logCriticDrop(decision, row, repaired) {
   console.log(`[Outbound Drop] stage=critic action=${action} score=${axisToken(scored, 'score')} hook=${axisToken(scored, 'scrollStopHook')} save=${axisToken(scored, 'saveUtility')} clear=${axisToken(scored, 'strangerClarity')} craft=${axisToken(scored, 'craftAndTruth')} degraded=${decision && decision.criticDegraded ? 1 : 0} repaired=${repaired ? 1 : 0}`);
 }
 
+function outboundUnsafeCode(text, ngTopics) {
+  const body = String(text || '').trim();
+  if (!body) return 'unsafe:empty';
+  if (body.length < 8) return 'unsafe:too_short';
+  if (body.length > 280) return 'unsafe:too_long';
+  if (/https?:\/\//i.test(body)) return 'unsafe:url';
+  if (/いかがでしたでしょうか|保存必須|必ず成果|guarantee/i.test(body)) return 'unsafe:bait';
+  const blocked = Array.isArray(ngTopics) ? ngTopics : String(ngTopics || '').split(/[\n,、]/);
+  if (blocked.some(topic => topic && body.includes(String(topic).trim()))) return 'unsafe:ng_topic';
+  return 'unsafe';
+}
+
 function passesOutboundSafety(text, user, lang) {
   const { replyPassesSafety } = require('./auto_reply_policy');
   const { inspectPostCompliance } = require('./post_policy_guard');
@@ -179,7 +191,7 @@ function passesOutboundSafety(text, user, lang) {
   const { sanitizePostOrReplyText } = require('./official_api_client');
   const clean = sanitizePostOrReplyText(String(text || ''));
   const product = String(user && user.brandKnowledge && user.brandKnowledge.productName || '').trim();
-  if (!clean || !replyPassesSafety(clean, user && user.ngTopics)) return emptySafety(clean, ['unsafe']);
+  if (!clean || !replyPassesSafety(clean, user && user.ngTopics)) return emptySafety(clean, [outboundUnsafeCode(clean, user && user.ngTopics)]);
   if (product.length >= 2 && clean.toLowerCase().includes(product.toLowerCase())) return emptySafety(clean, ['product_name']);
   if (/登録ページ|saved page|registered page|https?:\/\//i.test(clean)) return emptySafety(clean, ['lp_meta_leak']);
   const compliance = inspectPostCompliance([clean], { lang, isPromotion: false });
