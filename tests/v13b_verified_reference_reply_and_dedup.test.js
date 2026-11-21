@@ -114,5 +114,6 @@ test('the note and the writer prompt never receive the source url', () => {
     shape: { count: 1 }
   });
   assert.equal(prompt.includes(url), false);
-  assert.match(prompt, /一般論に薄めず/);
+  assert.equal(prompt.includes('一般論に薄めず'), false);
+  assert.match(prompt, /子ども向けに言い換えず/);
 });

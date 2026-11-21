@@ -76,8 +76,8 @@ function isPrimarySource(item) {
   if (/(^|\.)(docs|developer|developers|spec)\./i.test(host)) return true;
   if (/(^|\.)((?:github|gitlab|arxiv|doi|rfc-editor)\.(?:com|org))$/i.test(host)) return true;
   if (/(?:^|\.)(?:gov|go\.jp|gov\.uk)$/i.test(host)) return true;
-  if (/\/(?:docs|spec|specs|specification|whitepaper|guideline|guidelines|rfc|release-notes|releases|statistics|papers?)\b/i.test(raw)) return true;
-  return /公式仕様|公式ドキュメント|ガイドライン|白書|統計|論文|リリースノート|調査報告/.test(name);
+  if (/\/(?:docs|spec|specs|specification|whitepaper|guideline|guidelines|rfc|release-notes|releases|statistics)\b/i.test(raw)) return true;
+  return /公式(?:ブログ|発表|ドキュメント|仕様)|公的|ガイドライン|白書|統計|リリースノート|調査(?:報告|レポート|結果|データ)|一次(?:データ|検証|情報)/.test(name);
 }
 
 function urlsFromSearch(text) {
@@ -103,8 +103,8 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
   const problems = Array.isArray(knowledge.domainProblems) ? knowledge.domainProblems.slice(0, 4) : [];
   const brief = [knowledge.icpSummary, ...problems].filter(Boolean).join('\n').slice(0, 800);
   const prompt = lang === 'en'
-    ? `Shift one step away from the product. From icpSummary and domainProblems only, choose one concrete question this field still answers with a rumor. Do not search by productName or implementation terms. Find at most 3 primary sources a specialist would cite, preferably on different domains: an official specification, a public statistic, an industry guideline, a paper, a public repository, or a release note. Exclude competitor tool comparisons, setup manuals, pricing pages, product reviews, affiliate roundups, diaries about building the tool, and beginner SEO explainers such as "7 tips" or "the complete guide". If no primary source exists, return {"items":[]}. Return JSON {"items":[{"url":"","sourceName":""}]} only. No social network, login, or terms pages.\n${brief}`
-    : `読者の本業の課題へ一段ずらす。icpSummary と domainProblems だけを主軸にする。productName や実装用語では検索しない。読者課題として、この分野の人が仕組みを知らないまま噂や思い込みで困っている具体的な疑問を1つだけ自律的に選ぶ。その答えがある一次原典だけを最大3件、可能なら別のドメインから選ぶ。公式仕様、公的統計、業界ガイドライン、論文、公開コード、リリースノート、調査報告。同業のツール比較、競合ツールの操作マニュアル、料金比較、導入手順、製品レビュー、アフィリエイトまとめに加え、ツール自体の自作・開発・自動化スクリプト実装記は除外する。初心者向けまとめ・SEO解説ブログ（コツ7選、完全ガイド、基本設計の解説）も除外する。一次原典が無いときは {"items":[]} を返す。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
+    ? `Shift one step away from the product. From icpSummary and domainProblems only, choose one concrete question this field still answers with a rumor. Do not search by productName or implementation terms. Return 3 to 5 primary sources in this field, in any language, one per domain: official docs, an official blog, a dataset, a statistic, a public repository, or a related paper. Do not pick an unrelated paper from another field. Exclude competitor tool comparisons, setup manuals, pricing pages, product reviews, affiliate roundups, diaries about building the tool, and beginner SEO explainers such as "7 tips" or "the complete guide". If no primary source exists, return {"items":[]}. Return JSON {"items":[{"url":"","sourceName":""}]} only. No social network, login, or terms pages.\n${brief}`
+    : `読者の本業の課題へ一段ずらす。icpSummary と domainProblems だけを主軸にする。productName や実装用語では検索しない。読者課題として、この分野の人が仕組みを知らないまま噂や思い込みで困っている具体的な疑問を1つだけ自律的に選ぶ。その答えがある一次原典を、言語を問わず3〜5件、別ドメインから1件ずつ返す。公式ドキュメント、公式ブログ、調査レポート、統計、公開リポジトリ、関連論文。事業領域から外れた無関係な論文は選ばない。同業のツール比較、競合ツールの操作マニュアル、料金比較、導入手順、製品レビュー、アフィリエイトまとめに加え、ツール自体の自作・開発・自動化スクリプト実装記は除外する。初心者向けまとめ・SEO解説ブログ（コツ7選、完全ガイド、基本設計の解説）も除外する。一次原典が無いときは {"items":[]} を返す。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
   const result = await ask({
     search: true,
     xSearch: false,
@@ -134,10 +134,6 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
   pool.forEach(row => {
     if (chosen.length >= 3 || seenHost.has(row.host)) return;
     seenHost.add(row.host);
-    chosen.push({ url: row.url, sourceName: row.sourceName });
-  });
-  pool.forEach(row => {
-    if (chosen.length >= 3 || chosen.some(item => item.url === row.url)) return;
     chosen.push({ url: row.url, sourceName: row.sourceName });
   });
   return chosen;
@@ -183,8 +179,8 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const ask = completeJson || require('./grok_client').completeJson;
   const prompt = lang === 'en'
-    ? `From this article only, return JSON with sourceName, title, readerQuestion, coreFact, whyItMatters, mechanism, plainTranslation, commonMyth. readerQuestion is the one concrete question a non-specialist is stuck on. coreFact is one fact from the source, not a checklist. mechanism is the specialist point underneath that fact. plainTranslation says that mechanism in everyday words so a non-specialist can see how it works. Do not turn plainTranslation into a task or a checklist. commonMyth is the rumor this source contradicts, at most 120 characters. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
-    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, readerQuestion, coreFact, whyItMatters, mechanism, plainTranslation, commonMyth。ツールの使い方や料金比較ではなく、専門的な仕組みを訳す。readerQuestion は、専門知識がない人が噂のまま困っている具体的な疑問を1文で書く。coreFact は核の1事実だけ。mechanism は原典が示している裏側の仕組み。plainTranslation は、その仕組みを専門知識がない人でも「そういう仕組みだったのか」と読める日常の言葉へ訳す。作業命令やチェックリストにしない。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。commonMyth は、その記事が覆している現場の思い込みを120字以内で書く。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
+    ? `From this article only, return JSON with sourceName, title, readerQuestion, coreFact, whyItMatters, mechanism, plainTranslation, commonMyth. readerQuestion is the one concrete question a non-specialist is stuck on. coreFact is the finding that answers that question. mechanism is why it happens, not the measurement steps. plainTranslation says that finding in the words a practitioner already uses. Do not turn plainTranslation into a task or a checklist. commonMyth is the rumor this source contradicts, at most 120 characters. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
+    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, readerQuestion, coreFact, whyItMatters, mechanism, plainTranslation, commonMyth。ツールの使い方や料金比較ではなく、専門的な仕組みを訳す。readerQuestion は、専門知識がない人が噂のまま困っている具体的な疑問を1文で書く。coreFact は読者の疑問への発見だけ。mechanism はなぜそうなるかの要点だけ。plainTranslation は、その発見を普段使う語のまま実務家の日本語で書く。作業命令やチェックリストにしない。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。commonMyth は、その記事が覆している現場の思い込みを120字以内で書く。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
   const scored = await ask({
     tier: 'fast',
     timeoutMs: 20000,
@@ -430,7 +426,7 @@ function formatTopicSourceAsDossier(card, isEn, maxChars = 700) {
   const studied = oneDossierPoint(card && card.coreFact);
   const lines = isEn
     ? [
-      'Use the source name in the post and end on the finding as ordinary prose. Do not end on a check or a fix list. Do not explain the same mechanism twice.',
+      'End so a first-time reader does not stop at an unexplained name. Do not end on a check or a fix list. Do not explain the same mechanism twice.',
       `Source: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`,
       `Question: ${oneDossierPoint(card && card.readerQuestion)}`,
       `Studied: ${studied}`,
@@ -439,7 +435,7 @@ function formatTopicSourceAsDossier(card, isEn, maxChars = 700) {
       `Rumor: ${oneDossierPoint(card && card.commonMyth)}`
     ]
     : [
-      '扱い: 出典名を本文に残し、かみ砕いた中身を地の文で終える。確認手順や直しどころでは終えない。同じ仕組みは一度だけ書く。',
+      '扱い: 普段使う語を子ども向けに言い換えず、直訳でもない地の文で終える。確認手順や直しどころでは終えない。同じ仕組みは一度だけ書く。',
       `出典: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`,
       `疑問: ${oneDossierPoint(card && card.readerQuestion)}`,
       `調べたこと: ${studied}`,

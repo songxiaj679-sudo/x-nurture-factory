@@ -13,8 +13,8 @@ test('the Japanese critic stays under 400 characters and names a flaw instead of
   assert.match(ja, /1行目の主語が結びまで続く/);
   assert.match(ja, /自然な口語/);
   assert.match(ja, /空行がなく文字が詰まる/);
-  assert.match(ja, /一度で場面が浮かぶ平易な言葉か/);
-  assert.match(ja, /熟語が続くときは下げる/);
+  assert.match(ja, /手順の羅列や直訳で止まらず/);
+  assert.equal(ja.includes('熟語が続くときは下げる'), false);
   assert.match(ja, /保存したくなる具体/);
   assert.match(ja, /同業でも言える一般メモは綺麗でも72未満/);
   assert.match(ja, /weakness は褒め言葉を書かず、削る弱点を1点だけ書く/);

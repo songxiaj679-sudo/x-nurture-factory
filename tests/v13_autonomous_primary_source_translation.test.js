@@ -9,7 +9,8 @@ test('the search asks for one rumor and keeps only a primary source', async () =
   const source = fs.readFileSync('src/topic_source_vault.js', 'utf8');
   assert.match(source, /噂や思い込みで困っている具体的な疑問を1つだけ自律的に選ぶ/);
   assert.match(source, /初心者向けまとめ・SEO解説ブログ/);
-  assert.match(source, /公式仕様、公的統計、業界ガイドライン、論文、公開コード、リリースノート、調査報告/);
+  assert.match(source, /言語を問わず3〜5件、別ドメインから1件ずつ返す/);
+  assert.match(source, /事業領域から外れた無関係な論文は選ばない/);
   const seen = [];
   const chosen = await selectArticleUrls({
     brandKnowledge: { icpSummary: '店主', domainProblems: ['紙が古い'] },
@@ -128,7 +129,8 @@ test('the writer keeps the source name and does not close on a fix list', () => 
     mechanism: '目立つ場所は、感情が動いた投稿から埋まっていく。',
     plainTranslation: '正確な投稿でも、感情が動く投稿のあとまわしになる。'
   }, false, 700);
-  assert.match(note, /出典名を本文に残し/);
+  assert.match(note, /子ども向けに言い換えず/);
+  assert.equal(note.includes('出典名を本文に残し'), false);
   assert.match(note, /公的な調査/);
   assert.equal(note.includes('一手'), false);
   const prompt = candidatePrompt({

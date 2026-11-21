@@ -9,7 +9,7 @@ test('the writer drops the stiff constraints and keeps the locked lines', () => 
   const ja = systemRules(false);
   assert.equal(ja.includes('短い言い切り'), false);
   assert.equal(ja.includes('熟語で名前を付けない'), false);
-  assert.match(ja, /中学生が一度読んだだけで場面が浮かぶ言葉にする/);
+  assert.match(ja, /子ども向けに言い換えず/);
   assert.match(ja, /英語の直訳のような硬い言い回し/);
   assert.match(ja, /その場で口に出す一文/);
   assert.match(ja, /解説の先生や締めの標語にはしない/);
