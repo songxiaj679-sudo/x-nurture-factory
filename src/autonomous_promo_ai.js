@@ -3488,6 +3488,8 @@ async function prepareNextPost(userId, options = {}) {
     delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single',
     isWildcard: draftGenes.isWildcard === true,
     wildcardRecipe: draftGenes.wildcardRecipe || null,
+    selectedHookAngle: drafted.selectedHookAngle || null,
+    hookDuelUsed: drafted.hookDuelUsed === true,
     visualCardTemplate: visualCard.template || '',
     criticDegraded: drafted.criticDegraded === true,
     criticAxes: drafted.criticAxes || null,

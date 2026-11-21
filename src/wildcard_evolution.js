@@ -6,18 +6,18 @@ const ARM_CAP = 4;
 const WILDCARD_RECIPES = Object.freeze([
   {
     id: 'wc_cross_domain_analogy',
-    ja: '異分野の仕組みを1つだけ借りて、読者の現場の仕組みが一瞬で分かる対比にする。料理、建築、航空、スポーツの判定のどれか1つ。いつもの解説の型と言い回しは外す。自然な口語と空行は守る。',
-    en: 'Borrow one mechanism from cooking, building, flight, or sports officiating. Use it once so the reader sees their own work. Leave the usual explainer shape. Keep spoken English and blank lines.'
+    ja: '異分野の仕組みを1つだけ借りて、読者の現場の仕組みが一瞬で分かる対比にする。料理、建築、航空、スポーツの判定のどれか1つ。いつもの解説の型と言い回しは外す。自然な口語と空行は守る。比喩や対比は2文目までに必ず現場の一動作へ戻し、遠回りな説明を伸ばさない。',
+    en: 'Borrow one mechanism from cooking, building, flight, or sports officiating. Use it once so the reader sees their own work. Leave the usual explainer shape. Keep spoken English and blank lines. Land the analogy back onto one concrete practitioner action by sentence 2; never stretch the metaphor.'
   },
   {
     id: 'wc_sacred_cow_inversion',
-    ja: 'その業界で良い習慣だと思われていることを1つだけ取り上げ、現場で見ると逆になる点を示す。いつもの型と言い回しは外す。自然な口語と空行は守る。',
-    en: 'Take one habit the field treats as obviously good, and show the point where the work runs the other way. Leave the usual shape. Keep spoken English and blank lines.'
+    ja: 'その業界で良い習慣だと思われていることを1つだけ取り上げ、現場で見ると逆になる点を示す。いつもの型と言い回しは外す。自然な口語と空行は守る。比喩や対比は2文目までに必ず現場の一動作へ戻し、遠回りな説明を伸ばさない。',
+    en: 'Take one habit the field treats as obviously good, and show the point where the work runs the other way. Leave the usual shape. Keep spoken English and blank lines. Land the analogy back onto one concrete practitioner action by sentence 2; never stretch the metaphor.'
   },
   {
     id: 'wc_failure_autopsy',
-    ja: '成功談ではなく、真面目にやって静かに失敗した構造を順にほどく。見落としは1点だけ。いつもの型と言い回しは外す。自然な口語と空行は守る。',
-    en: 'Skip the success story. Walk through one careful attempt that failed quietly, and name one missed point. Leave the usual shape. Keep spoken English and blank lines.'
+    ja: '成功談ではなく、真面目にやって静かに失敗した構造を順にほどく。見落としは1点だけ。いつもの型と言い回しは外す。自然な口語と空行は守る。比喩や対比は2文目までに必ず現場の一動作へ戻し、遠回りな説明を伸ばさない。',
+    en: 'Skip the success story. Walk through one careful attempt that failed quietly, and name one missed point. Leave the usual shape. Keep spoken English and blank lines. Land the analogy back onto one concrete practitioner action by sentence 2; never stretch the metaphor.'
   },
   {
     id: 'wc_reverse_metric_lens',
