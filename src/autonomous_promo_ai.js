@@ -32,6 +32,7 @@ const { officialApiOperationAllowed } = require('./operated_accounts');
 const { resolvePlan, isPaidAccount, localDateKey, nextPlanSlot } = require('./plan_post_budget');
 const { buildWeeklyGrowthReport } = require('./weekly_growth_report');
 const { decideEarlyAction } = require('./metrics_harvest_engine');
+const { buildFrozenOutcome, classifyTraceCalibration } = require('./critic_calibration');
 const { fetchSituationalContext, filterRadarHints, industryQuery, radarLooksInternal } = require('./context_radar');
 const { detectAlgorithmRecovery } = require('./recovery_mode');
 const { applySlotJitter } = require('./post_timing');
@@ -2413,7 +2414,20 @@ async function _harvestTweetMetricsAndEvolveKnowledgeCore(userId, options = {}) 
         }
 
         // 24時間スナップショットを確定した投稿のみエピソード記憶に登録（計測時点の厳格統一）
-        rememberFrozenOutcome(matchedJob && (matchedJob.id || matchedJob.jobId), effectiveSnapshot);
+        const frozenId = matchedJob && (matchedJob.id || matchedJob.jobId);
+        const peers = postedJobsSnap.docs.map(doc => {
+          const data = doc.data() || {};
+          return {
+            id: doc.id,
+            jobId: doc.id,
+            postedAt: data.postedAt || data.createdAt || null,
+            metrics24hSnapshot: String(doc.id) === String(frozenId) ? effectiveSnapshot : (data.metrics24hSnapshot || null)
+          };
+        });
+        if (frozenId && !peers.some(row => String(row.jobId) === String(frozenId))) {
+          peers.push({ id: frozenId, jobId: frozenId, postedAt, metrics24hSnapshot: effectiveSnapshot });
+        }
+        rememberFrozenOutcome(frozenId, effectiveSnapshot, { posts: peers });
         if (t.text && effectiveSnapshot && effectiveSnapshot.isFrozen && !normalized.isMissing && (effectiveSnapshot.impressions || 0) > 0 && postIsLearnable({ text: t.text })) {
           const episodeId = `tweet_${tId}`;
           const episode = createEpisodeFromPost({
@@ -2831,20 +2845,18 @@ function postIsLearnable(post) {
   return !audit.reasons.some(reason => reason === 'ai_slop' || String(reason).startsWith('ungrounded_number') || String(reason).startsWith('compliance:'));
 }
 
-function rememberFrozenOutcome(jobId, snapshot) {
-  if (!jobId || !snapshot || snapshot.isFrozen !== true) return;
-  const impressions = Number(snapshot.impressions) || 0;
-  const bookmarks = Number(snapshot.bookmarks) || 0;
-  db.collection('generation_traces').doc(String(jobId)).set({
-    outcome24h: {
-      impressions,
-      bookmarks,
-      bookmarkRate: impressions > 0 ? bookmarks / impressions : 0,
-      likes: Number(snapshot.likes) || 0,
-      replies: Number(snapshot.replies) || 0,
-      frozenAt: new Date().toISOString()
-    }
-  }, { merge: true }).catch(() => {});
+function rememberFrozenOutcome(jobId, snapshot, context = {}) {
+  if (!jobId || !snapshot || snapshot.isFrozen !== true) return Promise.resolve(null);
+  const database = context.db || db;
+  const outcome24h = buildFrozenOutcome(snapshot, context.posts || [], jobId);
+  const ref = database.collection('generation_traces').doc(String(jobId));
+  return ref.get().then(snap => {
+    const existing = snap && snap.exists ? (snap.data() || {}) : {};
+    const calibration = classifyTraceCalibration(existing, outcome24h.residualReward);
+    const payload = { outcome24h };
+    if (calibration) payload.calibration = calibration;
+    return ref.set(payload, { merge: true }).then(() => payload);
+  }).catch(() => null);
 }
 
 async function resolveAudienceCraft({ userId, user, brandKnowledge, posts, lang, radar, budgetDegraded }) {
@@ -3597,6 +3609,7 @@ module.exports = {
   prepareNextPost,
   pageHasSubstance,
   postIsLearnable,
+  rememberFrozenOutcome,
   ensureNextPost,
   consentGranted,
   sortPostedJobsNewestFirst,
