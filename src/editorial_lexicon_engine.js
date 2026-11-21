@@ -151,7 +151,7 @@ function decideEditorialPlan(input = {}) {
   if (isEn) registerLock = 'concise_en';
   else if (counts.polite > counts.plain && counts.polite > 0) registerLock = 'polite_ja';
   else if (counts.plain > counts.polite && counts.plain > 0) registerLock = 'plain_ja';
-  else if (voice.accountRole === 'official_brand' || /polite|敬体|です/.test(String(voice.register || ''))) registerLock = 'polite_ja';
+  else if (voice.accountRole === 'official_brand' || /polite|敬体|です|professional_operational/.test(String(voice.register || ''))) registerLock = 'polite_ja';
 
   const registerInstruction = registerLock === 'concise_en'
     ? 'Use one concise English register for the whole post.'
