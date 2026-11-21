@@ -34,7 +34,7 @@ test('ring 3 drops the term list and the other rings keep it', () => {
     masterPlan: { topicRing: 'ring3_product_bridge' }
   });
   assert.equal(writer.includes('TERMTOKEN99'), false);
-  assert.match(writer, /MECHANISM68/);
+  assert.equal(writer.includes('MECHANISM68'), false);
   const isolated = briefPrompt({
     isEn: false,
     page: { description: '', headings: [] },

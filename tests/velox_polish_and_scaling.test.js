@@ -90,6 +90,9 @@ test('english draft repairs japanese_in_english into an english-only post', asyn
       if (callCount === 2) {
         return { modelName: 'grok-mock', text: JSON.stringify({ candidates: [{ id: 'a', tweets: [japanese] }, { id: 'b', tweets: [`「${japanese}」`] }] }) };
       }
+      if (String(prompt || '').includes('Score each')) {
+        return { modelName: 'grok-repair-critic-mock', text: JSON.stringify({ scores: [{ id: 'a', score: 84, weakness: 'the checkpoint is still generic', scrollStopHook: 20, saveUtility: 21, strangerClarity: 22, craftAndTruth: 21 }] }) };
+      }
       return { modelName: 'grok-repair-mock', text: JSON.stringify({ candidates: [{ id: 'a', tweets: [english] }] }) };
     }
   });
@@ -105,7 +108,7 @@ test('english draft repairs japanese_in_english into an english-only post', asyn
       accountState: { maxChars: 280, postShape: 'single', singleOnly: true }
     });
     assert.deepEqual(tweets, [english]);
-    assert.equal(callCount, 3);
+    assert.equal(callCount, 4);
     assert.match(prompts[1], /hiragana, katakana, kanji/);
     assert.match(prompts[2], /CRITICAL: Previous output contained Japanese characters/);
     assert.match(prompts[0], /日本語の運用方針です/);

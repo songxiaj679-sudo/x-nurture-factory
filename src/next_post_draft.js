@@ -247,8 +247,8 @@ function selectFreshClaimIndex(claims, recentTexts) {
 
 function criticSystemRules(isEn) {
   return isEn
-    ? 'Score X posts from 0 to 100 and return only JSON scores. Keep the keys scrollStopHook, saveUtility, strangerClarity, craftAndTruth, score, and weakness. scrollStopHook: does line 1 make a human want the next line? saveUtility: would the intended reader save one concrete point, such as a distinction, a small adjustment, a check, or a cleared-up mix-up? strangerClarity: can a human scan the plain text in half a second, and does the opening subject stay through the ending? Lower the score when abstract nouns pile up and a teenager would not see the scene. craftAndTruth: does it sound like a person in that field, with no invented stats? Score below 60 when the draft jumps into an unexplained product rule, or when the closing line contradicts the example. Penalize brochure pitches, ungrounded numbers, mixed register, and empty platitudes below 60. A score of 72 needs one concrete point that reader would save. Do not write a replacement post.'
-    : 'X投稿を0から100で採点し、JSONのscoresだけを返す。キーは scrollStopHook、saveUtility、strangerClarity、craftAndTruth、score、weakness のまま。scrollStopHook は1行目が続きを読みたくさせるか。saveUtility は保存したくなる具体があるか。strangerClarity は専門的な話が自然な口語で一読で伝わるか。一度で場面が浮かぶ平易な言葉か。熟語が続くときは下げる。1行目の主語が結びまで続く。空行がなく文字が詰まる文章、硬い解説調、格言の締めは下げる。craftAndTruth は作った数字が無いか。説明書調と中身のない一般論は60未満。72以上には保存したくなる具体が要る。投稿本文は書かない。';
+    ? 'Score X posts from 0 to 100 and return only JSON scores. Keep the keys scrollStopHook, saveUtility, strangerClarity, craftAndTruth, score, and weakness. scrollStopHook: does line 1 make a human want the next line? saveUtility: would the intended reader save one concrete point, such as a distinction, a small adjustment, a check, or a cleared-up mix-up? strangerClarity: can a human scan the plain text in half a second, and does the opening subject stay through the ending? Lower the score when abstract nouns pile up and a teenager would not see the scene. craftAndTruth: does it sound like a person in that field, with no invented stats? Score below 60 when the draft jumps into an unexplained product rule, or when the closing line contradicts the example. Penalize brochure pitches, ungrounded numbers, mixed register, and empty platitudes below 60. A score of 72 needs one concrete point that reader would save. Brand-swappable generic advice that still works under another company name scores below 72. weakness must name one concrete flaw or one generic line, never praise. Do not write a replacement post.'
+    : 'X投稿を0から100で採点し、JSONのscoresだけを返す。キーは scrollStopHook、saveUtility、strangerClarity、craftAndTruth、score、weakness のまま。scrollStopHook は1行目が続きを読みたくさせるか。saveUtility は保存したくなる具体があるか。strangerClarity は自然な口語で一読で伝わるか。一度で場面が浮かぶ平易な言葉か。熟語が続くときは下げる。1行目の主語が結びまで続く。空行がなく文字が詰まる文章は下げる。同業でも言える一般メモは綺麗でも72未満。weakness は褒め言葉を書かず、削る弱点を1点だけ書く。craftAndTruth は作った数字が無いか。説明書調と中身のない一般論は60未満。投稿本文は書かない。';
 }
 
 function criticScoreShape() {
@@ -557,6 +557,9 @@ function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, 
       ? 'Do not choose a question hook or reflective question ending unless the plan explicitly asks for genuine_tension.'
       : 'hookAngle や結びの型に疑問形・問いかけは選ばないこと。')
     : '';
+  const noClock = isEn
+    ? 'Do not invent a time of day or an elapsed time, such as evening or 30 minutes, unless that detail is already in the notes.'
+    : '入力に無い時間帯や経過時間（夕方、夜、30分など）の場面は作らない。';
   const collision = tensionSeed && tensionSeed.text
     ? (isEn
       ? `Collision partner (${tensionSeed.source}): ${tensionSeed.text}. tension is one sentence of at most 130 characters where this partner runs against the source fact and this brand's stance. Set tensionReversesInput and passesBrandSwap true only when the sentence reverses the partner and would fail if another company in the same field said it. A paraphrase of the article conclusion is false for both. When the objection or the article already states a number or a concrete fact, use that fact as the core. Do not invent a number.`
@@ -581,6 +584,7 @@ ${decided}
 ${freshClaim}
 ${noQuestion}
 ${collision}
+${noClock}
 ${stateLine}
 Time slot: ${timeSlot}
 ${pageBriefLine({ isEn: true, page, hypothesisText, isolateLpContext, masterPlan, brandKnowledge })}
@@ -603,6 +607,7 @@ ${decided}
 ${freshClaim}
 ${noQuestion}
 ${collision}
+${noClock}
 ${form}
 ${stateLine}
 時間帯: ${timeSlot}
@@ -839,9 +844,12 @@ async function generateAdversarialHooks({ complete, payload, recentTexts, isEn, 
 function hookDuelPrompt({ isEn, stance, recentTexts }) {
   const recent = (Array.isArray(recentTexts) ? recentTexts : []).slice(0, 4).map(text => String(text || '').split('\n')[0].slice(0, 40));
   const belief = stance && (stance.rejectedNorm || stance.coreBelief) ? `${stance.rejectedNorm || ''} / ${stance.coreBelief || ''}` : '';
+  const noClock = isEn
+    ? 'Do not invent a time of day, such as morning, evening, or night, or an elapsed time, unless that detail is already in the notes.'
+    : '入力に無い時間帯（朝、夕方、夜など）や経過時間は作らない。';
   return isEn
-    ? `Return JSON {"hooks":[{"angle":"blunt_practitioner","text":"","verdict":"keep","reason":""}]}. Write exactly four first lines, one for blunt_practitioner, contrarian_flip, scene_friction, and unexpected_analogy. Each line is 30 to 75 characters. contrarian_flip uses this stance when present: ${belief}. Rank them as a busy stranger scrolling fast. Reject an honor-student memo, an abstract opening, or a delayed point with verdict reject and a short reason. Keep at most the lines that would stop the scroll. Recent openings to avoid: ${JSON.stringify(recent)}`
-    : `JSONで返す。{"hooks":[{"angle":"blunt_practitioner","text":"","verdict":"keep","reason":""}]}。1行目を4本、blunt_practitioner、contrarian_flip、scene_friction、unexpected_analogy を1本ずつ。各15〜38字。contrarian_flip は次の立場があれば使う: ${belief}。速い初見読者として並べ、優等生メモ調、抽象語始まり、結論の先延ばしは verdict を reject にして短い理由を付ける。直近の書き出しは避ける: ${JSON.stringify(recent)}`;
+    ? `Return JSON {"hooks":[{"angle":"blunt_practitioner","text":"","verdict":"keep","reason":""}]}. Write exactly four first lines, one for blunt_practitioner, contrarian_flip, scene_friction, and unexpected_analogy. Each line is 30 to 75 characters. contrarian_flip uses this stance when present: ${belief}. Rank them as a busy stranger scrolling fast. Reject an honor-student memo, an abstract opening, or a delayed point with verdict reject and a short reason. Keep at most the lines that would stop the scroll. ${noClock} Recent openings to avoid: ${JSON.stringify(recent)}`
+    : `JSONで返す。{"hooks":[{"angle":"blunt_practitioner","text":"","verdict":"keep","reason":""}]}。1行目を4本、blunt_practitioner、contrarian_flip、scene_friction、unexpected_analogy を1本ずつ。各15〜38字。contrarian_flip は次の立場があれば使う: ${belief}。速い初見読者として並べ、優等生メモ調、抽象語始まり、結論の先延ばしは verdict を reject にして短い理由を付ける。${noClock} 直近の書き出しは避ける: ${JSON.stringify(recent)}`;
 }
 
 function winningHookLine(hooks, isEn) {
@@ -858,13 +866,16 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
   const bodyLimit = Math.max(20, Number(accountState.maxChars) - (promo ? 5 : 0));
   const safeTarget = bodyLimit <= 140 ? bodyLimit - 24 : Math.min(bodyLimit - 20, 380);
   const minTarget = count > 1 ? (isEn ? 85 : 60) : (bodyLimit > 300 ? 150 : (isEn ? 100 : 85));
-  const grounded = knowledgeLine(brandKnowledge, voiceProfile, genes, portfolioPlan, isEn, domainSlot, isolateLpContext === true, masterPlan && masterPlan.topicRing || '');
-  const learned = learnedLine(learnedDirectives, isEn);
   const notes = String(brandContextNotes || '').slice(0, 800);
   const blocked = String(Array.isArray(ngTopics) ? ngTopics.join('、') : (ngTopics || '')).slice(0, 400);
-  const payoff = brief && brief.readerPayoff ? (isEn ? `The reader must leave with: ${brief.readerPayoff}` : `読者が今日使える持ち帰り: ${brief.readerPayoff}`) : (isEn ? 'Give the reader one concrete point worth saving: a distinction, a small adjustment, a check, or a common mix-up.' : '読者が保存したくなる具体を1つ入れる。見分け方、小さな工夫、確認手順、よくある思い違いのどれか。');
+  const payoff = brief && brief.readerPayoff
+    ? (isEn ? `One takeaway: ${brief.readerPayoff}` : `持ち帰りはこれだけ: ${brief.readerPayoff}`)
+    : '';
+  const shaped = genes && (genes.format === 'structured_breakdown' || genes.format === 'checklist_framework')
+    ? formatGuide(genes, isEn)
+    : '';
   const decided = editorialDirective(decision, editorialContext, isEn);
-  const shaped = formatGuide(genes, isEn);
+  const craftOnce = [payoff, shaped, decided].filter(Boolean).join('\n');
   const playbookLine = isolateLpContext === true
     ? ''
     : (focusPlaybook ? (isEn ? `Use only this playbook. Do not add product prices or feature lists: ${JSON.stringify(focusPlaybook)}` : `使う判断カードはこの1件だけ。料金や機能一覧は足さない: ${JSON.stringify(focusPlaybook)}`) : '');
@@ -955,12 +966,8 @@ ${evolvedLine}
 ${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `Qualitative public context, never a quote or a stat: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 Do not include a URL.${promo ? ' Do not add the disclosure. The program adds it.' : ''}
-${grounded}
-${learned}
 ${readerLine}
-${payoff}
-${shaped}
-${decided}
+${craftOnce}
 ${freshClaim}
 ${phoneLayout}
 ${explainer}
@@ -970,7 +977,7 @@ ${officialVoice}
 ${notes ? `Customer notes: ${notes}` : ''}
 ${blocked ? `Forbidden: ${blocked}` : ''}
 ${episodeContext || ''}
-Brief: ${JSON.stringify(briefForWriter(brief))}`
+Brief: ${JSON.stringify(briefForWriter(brief, { dropOpening: winningHooks.length > 0 }))}`
     : `切り口の違う完成度の高い3案をJSONで返す。{"candidates":[{"id":"a","tweets":[]},{"id":"b","tweets":[]},{"id":"c","tweets":[]}]}
 各案は${shape.maxCount === 3 ? '2本か3本' : count + '本'}。1本あたり必ず${minTarget}〜${safeTarget}文字の範囲に収め、上限${bodyLimit}文字は1文字も超えないこと。
 ${stopEarly}
@@ -987,12 +994,8 @@ ${evolvedLine}
 ${spokenPair}
 ${Array.isArray(liveSignals) && liveSignals.length ? `公開の話題。引用も数値も作らない: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
 URLは入れない。${promo ? '【PR】表記はプログラムが付ける。' : ''}
-${grounded}
-${learned}
 ${readerLine}
-${payoff}
-${shaped}
-${decided}
+${craftOnce}
 ${freshClaim}
 ${phoneLayout}
 ${explainer}
@@ -1002,17 +1005,18 @@ ${officialVoice}
 ${notes ? `実務メモ: ${notes}` : ''}
 ${blocked ? `禁止: ${blocked}` : ''}
 ${episodeContext || ''}
-指示: ${JSON.stringify(briefForWriter(brief))}`;
+指示: ${JSON.stringify(briefForWriter(brief, { dropOpening: winningHooks.length > 0 }))}`;
 }
 
-function briefForWriter(brief) {
-  if (brief && brief.tension) return brief;
-  const copy = { ...(brief || {}) };
-  delete copy.tension;
-  delete copy.tensionReversesInput;
-  delete copy.passesBrandSwap;
-  delete copy.tensionSource;
-  return copy;
+function briefForWriter(brief, { dropOpening = false } = {}) {
+  const source = brief && typeof brief === 'object' ? brief : {};
+  const core = {};
+  const keys = ['tension', 'readerPayoff', 'underlyingMechanism', 'doNot'];
+  if (!dropOpening) keys.push('scene', 'thisPost');
+  for (const key of keys) {
+    if (source[key]) core[key] = source[key];
+  }
+  return core;
 }
 
 function attachPromoReply(tweets, lang, targetUrl) {
@@ -1384,42 +1388,50 @@ async function draftNextPostWithMeta({
         }
       ));
       repairedCandidates = readCandidates(JSON.stringify(repaired));
+      repairCount = 1;
       const retryPool = repairedCandidates.filter(passesDraft);
-      if (criticGated) {
+      if (skipCriticScore) {
+        chosen = retryPool[0] || fallbackAccepted;
+      } else if (retryPool.length && apiCalls < callCap) {
         chosen = null;
-        if (retryPool.length) {
-          const repairScore = parseJson(await billedDraft(
-            `${readerLine}\nScore each repaired candidate from 0 to 100. Accept only a draft with one concrete point the intended reader would save, not a brochure. Lines such as "チームはこれを解明し", "効率的な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" score at most 55. A score of 72 or higher requires that concrete point. strangerClarity below 14 or scrollStopHook below 12 fails. Return JSON ${criticScoreShape()}.\n${JSON.stringify(retryPool)}`,
-            {
-              role: 'critic',
-              tier: tier === 'fast' ? 'fast' : tier,
-              timeoutMs: stageBudget(deadlineAt, 15000, timeoutMs) || Math.min(timeoutMs, 15000),
-              retryTimeoutMs: Math.min(timeoutMs, 10000),
-              systemPrompt: criticSystemRules(isEn),
-              routeState,
-              qualityAudit
-            }
-          ));
-          const repairDecision = pickCriticDecision(repairScore.scores, { repaired: true, axisWeights: criticAxisWeights });
-          const repairBest = repairDecision.row;
-          repairCount = 1;
-          if (repairBest && Number.isFinite(Number(repairBest.score))) finalCriticScore = Number(repairBest.score);
-          if (repairDecision.accept && repairBest) {
-            chosen = retryPool.find(candidate => candidate.id === repairBest.id) || null;
-            criticDegraded = repairDecision.degraded === true;
-            criticAxes = repairBest;
-          } else if (repairBest) {
-            criticSummary = `critic_below_72:${repairBest.score}`;
-            criticAxes = repairBest;
+        const repairScore = parseJson(await billedDraft(
+          `${readerLine}\nScore each repaired candidate from 0 to 100. Accept only a draft with one concrete point the intended reader would save, not a brochure. Lines such as "チームはこれを解明し", "効率的な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" score at most 55. A score of 72 or higher requires that concrete point. strangerClarity below 14 or scrollStopHook below 12 fails. Return JSON ${criticScoreShape()}.\n${JSON.stringify(retryPool)}`,
+          {
+            role: 'critic',
+            tier: tier === 'fast' ? 'fast' : tier,
+            timeoutMs: stageBudget(deadlineAt, 15000, timeoutMs) || Math.min(timeoutMs, 15000),
+            retryTimeoutMs: Math.min(timeoutMs, 10000),
+            systemPrompt: criticSystemRules(isEn),
+            routeState,
+            qualityAudit
           }
+        ));
+        const repairDecision = pickCriticDecision(repairScore.scores, { repaired: true, axisWeights: criticAxisWeights });
+        const repairBest = repairDecision.row;
+        if (repairBest && Number.isFinite(Number(repairBest.score))) finalCriticScore = Number(repairBest.score);
+        if (repairDecision.accept && repairBest) {
+          chosen = retryPool.find(candidate => candidate.id === repairBest.id) || null;
+          criticDegraded = repairDecision.degraded === true;
+          criticAxes = repairBest;
+        } else if (repairBest) {
+          criticSummary = `critic_below_72:${repairBest.score}`;
+          criticAxes = repairBest;
+        } else {
+          criticDegraded = true;
         }
       } else {
-        chosen = retryPool[0] || fallbackAccepted;
+        criticDegraded = true;
+        chosen = null;
       }
     } catch (err) {
       console.warn(`[NextPostDraft] repair failed: ${String(err && err.message || err).slice(0, 180)}`);
       if (err && err.code === 'critic_unparseable') criticSummary = 'critic_unparseable';
-      chosen = criticGated ? null : fallbackAccepted;
+      if (repairCount > 0) {
+        criticDegraded = true;
+        chosen = null;
+      } else {
+        chosen = criticGated ? null : fallbackAccepted;
+      }
     }
   }
   if (!chosen) {
@@ -1485,4 +1497,4 @@ async function draftNextPostText(params) {
   return drafted.tweets;
 }
 
-module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType, detectOverflowSplit, generateAdversarialHooks, filterAdversarialHooks, planHookBudget, hookAngleForChoice, selectPushbackSeed, sanitizeBriefTension, finalizeSelectedHookAngle };
+module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType, detectOverflowSplit, generateAdversarialHooks, filterAdversarialHooks, planHookBudget, hookDuelPrompt, hookAngleForChoice, selectPushbackSeed, sanitizeBriefTension, finalizeSelectedHookAngle };

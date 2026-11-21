@@ -152,8 +152,8 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const ask = completeJson || require('./grok_client').completeJson;
   const prompt = lang === 'en'
-    ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth. Extract the specialist mechanism and a judgment the reader can use, not a tool manual or a price comparison. commonMyth is the shop-floor assumption this article overturns, at most 120 characters. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
-    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。commonMyth は、その記事が覆している現場の思い込みを120字以内で書く。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
+    ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth. coreFact is one fact, not a checklist. actionableTakeaway is one action, not a list. Extract the specialist mechanism and a judgment the reader can use, not a tool manual or a price comparison. commonMyth is the shop-floor assumption this article overturns, at most 120 characters. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
+    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway, commonMyth。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。coreFact は核の1事実だけ。actionableTakeaway は読者が使う1点だけ。複数項目の一覧やチェックリストにしない。coreFact の冒頭は、どの場面の何の仕組みの話かが一読でわかる主語から始める。「この仕組みでは」のような主語のない書き出しにしない。commonMyth は、その記事が覆している現場の思い込みを120字以内で書く。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
   const scored = await ask({
     tier: 'fast',
     timeoutMs: 20000,
@@ -384,11 +384,17 @@ async function loadTopicCards(db, userId) {
   return cards;
 }
 
+function oneDossierPoint(value) {
+  const clean = stripUrls(value);
+  const sentence = clean.split(/\n|。|！|？/).map(part => part.trim()).filter(Boolean)[0] || '';
+  if ((sentence.match(/、|,/g) || []).length >= 3) return sentence.split(/、|,/)[0].trim();
+  return sentence;
+}
+
 function formatTopicSourceAsDossier(card, isEn, maxChars = 700) {
-  const clean = value => stripUrls(value);
   const lines = isEn
-    ? [`Source: ${clean(card && card.sourceName)}`, `Fact: ${clean(card && card.coreFact)}`, `Why: ${clean(card && card.whyItMatters)}`, `Mechanism: ${clean(card && card.mechanism)}`, `Next: ${clean(card && card.actionableTakeaway)}`]
-    : [`出典: ${clean(card && card.sourceName)}`, `事実: ${clean(card && card.coreFact)}`, `関係: ${clean(card && card.whyItMatters)}`, `仕組み: ${clean(card && card.mechanism)}`, `一手: ${clean(card && card.actionableTakeaway)}`];
+    ? [`Source: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`, `Fact: ${oneDossierPoint(card && card.coreFact)}`, `Next: ${oneDossierPoint(card && card.actionableTakeaway)}`]
+    : [`出典: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`, `事実: ${oneDossierPoint(card && card.coreFact)}`, `一手: ${oneDossierPoint(card && card.actionableTakeaway)}`];
   return lines.filter(line => !/[:：]\s*$/.test(line)).join('\n').slice(0, maxChars).trim();
 }
 
