@@ -86,14 +86,16 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
     .join('\n')
     .slice(0, 800);
   const prompt = lang === 'en'
-    ? `Find at most 2 public article URLs that explain this field for a general reader. Return JSON {"items":[{"url":"","sourceName":""}]} only. No social network, login, or terms pages.\n${brief}`
-    : `この分野の一般読者に役立つ一次記事か実務解説のURLを最大2件返す。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
+    ? `Find at most 2 primary articles about a problem, a specialist mechanism, a cause of failure, or a practical judgment this reader's daily work actually faces. Use icpSummary and domainProblems. Return JSON {"items":[{"url":"","sourceName":""}]} only. Exclude competitor tool comparisons, setup manuals, pricing pages, product reviews, and affiliate roundups. No social network, login, or terms pages.\n${brief}`
+    : `読者課題の一次記事を最大2件返す。icpSummary と domainProblems が示す読者が、日々の仕事や生活で直面する課題・専門的な仕組み・失敗原因・実践ノウハウを解説した調査記事か実務解説に限る。同業のツール比較、競合ツールの操作マニュアル、料金比較、導入手順、製品レビュー、アフィリエイトまとめは除外する。JSON {"items":[{"url":"","sourceName":""}]} だけ。SNS、ログイン、規約は入れない。\n${brief}`;
   const result = await ask({
     search: true,
     xSearch: false,
     tier: 'fast',
     timeoutMs: 20000,
-    systemPrompt: 'Return JSON only. Each URL must be an https article page.',
+    systemPrompt: lang === 'en'
+      ? 'Return JSON only. Pick a reader-problem article, not a competing product manual or a pricing comparison.'
+      : 'JSONだけ返す。読者の課題を解説する記事を選び、同業・競合ツールの操作記事や料金比較は選ばない。',
     prompt
   });
   const chosen = [];
@@ -152,8 +154,8 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const ask = completeJson || require('./grok_client').completeJson;
   const prompt = lang === 'en'
-    ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL. Explain the mechanism in plain words.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
-    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。仕組みは平易な言葉で分解する。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
+    ? `From this article only, return JSON with sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway. Extract the specialist mechanism and a judgment the reader can use, not a tool manual or a price comparison. Keep a number only when it appears in the article. Do not invent a quotation or a number. Do not include a URL.\nSource name: ${sourceName}\nArticle:\n${markdown.slice(0, 6000)}`
+    : `この記事に書いてあることだけからJSONを返す。項目は sourceName, title, coreFact, whyItMatters, mechanism, actionableTakeaway。ツールの使い方や料金比較ではなく、専門的な仕組みと読者がすぐ使える判断基準を抽出する。数字は記事にあるものだけ残す。引用と数字を作らない。URLは入れない。\n出典名: ${sourceName}\n記事:\n${markdown.slice(0, 6000)}`;
   const scored = await ask({
     tier: 'fast',
     timeoutMs: 20000,
