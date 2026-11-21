@@ -731,10 +731,19 @@ async function executeAutopilotJob(jobId, options = {}) {
           console.warn(`[VisualCard] ${cardErr.message}`);
         }
       }
+      const referencePlan = require('./topic_source_vault').planVerifiedReference({
+        tweets: activeTweets,
+        verifiedReferenceUrl: job.verifiedReferenceUrl,
+        singleOnly: Boolean(job.accountStateSnapshot && job.accountStateSnapshot.searchVisible === false),
+        lang: userLang,
+        maxChars: job.accountStateSnapshot && job.accountStateSnapshot.maxChars
+      });
+      let referenceReplyStatus = referencePlan.status;
       if (Array.isArray(activeTweets) && activeTweets.length > 1) {
         submittedThread = true;
-        console.log(`  🧵 [スレッド自動連動投稿] (${userLang.toUpperCase()}) 全${activeTweets.length}段階のツリーを公式APIで送信中...`);
-        postRes = await postOfficialThread(creds, activeTweets, mediaIds);
+        const outbound = referencePlan.action === 'append' ? referencePlan.tweets : activeTweets;
+        console.log(`  🧵 [スレッド自動連動投稿] (${userLang.toUpperCase()}) 全${outbound.length}段階のツリーを公式APIで送信中...`);
+        postRes = await postOfficialThread(creds, outbound, mediaIds);
       } else {
         postRes = await postOfficialTweet(creds, activeText, mediaIds);
       }
@@ -768,9 +777,18 @@ async function executeAutopilotJob(jobId, options = {}) {
         return { ok: false, code: failure.errorCode, error: errMsg };
       }
 
+      if (referencePlan.action === 'reply' && postRes && postRes.tweetId) {
+        try {
+          const replyRes = await postOfficialTweet(creds, referencePlan.replyText, [], postRes.tweetId);
+          referenceReplyStatus = replyRes && replyRes.ok ? 'sent' : 'failed';
+        } catch (_replyErr) {
+          referenceReplyStatus = 'failed';
+        }
+      }
       const visualCardAttached = mediaIds.length > 0;
       await jobRef.update({
         status: 'posted',
+        referenceReplyStatus,
         visualCard: job.visualCard || null,
         visualCardAttached,
         tweetId: postRes.tweetId,

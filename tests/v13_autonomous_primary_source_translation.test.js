@@ -105,7 +105,8 @@ test('a translation card stands without a task, and an old card still reads', as
   assert.equal(card.actionableTakeaway, '');
   assert.match(card.plainTranslation, /入口の紙/);
   const note = formatTopicSourceAsDossier(card, false, 700);
-  assert.match(note, /訳:/);
+  assert.match(note, /入口の紙/);
+  assert.equal(note.includes('訳:'), false);
   assert.equal(note.includes('一手'), false);
   const legacy = formatTopicSourceAsDossier({
     sourceName: '現場ノート',

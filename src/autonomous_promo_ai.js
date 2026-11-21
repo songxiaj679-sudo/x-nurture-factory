@@ -531,6 +531,7 @@ async function retargetNextPendingJob(userId) {
             tensionSource: drafted.tensionSource || null,
             ownerSparkUsed: drafted.ownerSparkUsed === true,
             ownerSparkId: drafted.ownerSparkId || null,
+            verifiedReferenceUrl: null,
             allowPromoUrl: safePlan.allowPromoUrl,
             recoveryMode,
             visualCard: planVisualCard({
@@ -3432,6 +3433,12 @@ async function prepareNextPost(userId, options = {}) {
     topicRing: masterPlan.topicRing || '',
     selectedTopicDomain: masterPlan.selectedTopicDomain || '',
     sourceType: drafted.sourceType || 'brand_only',
+    verifiedReferenceUrl: require('./topic_source_vault').verifiedReferenceUrlForJob({
+      sourceType: drafted.sourceType || 'brand_only',
+      ownerSparkUsed: drafted.ownerSparkUsed === true,
+      topicRing: masterPlan.topicRing || '',
+      sourceUrl: topicSource && topicSource.sourceUrl
+    }),
     segmentCount: drafted.segmentCount || (Array.isArray(tweets) ? tweets.length : 1),
     delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single',
     isWildcard: draftGenes.isWildcard === true,

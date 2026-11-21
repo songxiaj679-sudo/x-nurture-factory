@@ -970,8 +970,8 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
   const reactionLine = masterPlan && masterPlan.topicRing === 'ring3_product_bridge'
     ? ''
     : (isEn
-      ? 'Do not close with a checklist, a pre-post check, or "look at likes, comments, and shares and decide what to fix." End on why the mechanism works, in everyday words. When you mention a study or a source, keep the source name and who measured what. Do not write "a study" or "the team" with no subject. When you use a number, keep the subject and the premise already in the source. Do not invent a denominator. Do not ask for a like, a comment, or a bookmark.'
-      : '確認手順やチェックリストを並べて「〜するまで始めません」で締めない。投稿前に何を見るか、いいね・コメント・シェアのどれが弱いかを見て直しどころを決める、では終えない。結びは、なぜそういう仕組みかを、1つの気づきをまっすぐ語るところまで。「〇〇へ。」の呼びかけや、体言止めと疑問文の連打もしない。出典や調査に触れるときは、メモの出典名と、誰が何を調べたかを省かない。「ただ研究を読むと」「チームでは」のように、何の研究か誰の話かを消さない。数字を使うときは、元ネタにある対象と前提を省かず初見に伝わる形で書く。元ネタにない分母は作らない。いいねやコメントの依頼は書かない。');
+      ? 'Do not close with a checklist, a pre-post check, or "look at likes, comments, and shares and decide what to fix." End on why the mechanism works, in everyday words. When you mention a study or a source, keep the source name and who measured what. Do not write "a study" or "the team" with no subject. When you use a number, keep the subject and the premise already in the source. Do not invent a denominator. Keep the studied condition in prose. Do not ask for a like, a comment, or a bookmark.'
+      : '確認手順やチェックリストを並べて「〜するまで始めません」で締めない。投稿前に何を見るか、いいね・コメント・シェアのどれが弱いかを見て直しどころを決める、では終えない。結びは、なぜそういう仕組みかを、1つの気づきをまっすぐ語るところまで。「〇〇へ。」の呼びかけや、体言止めと疑問文の連打もしない。出典や調査に触れるときは、メモの出典名と、誰が何を調べたかを省かない。「ただ研究を読むと」「チームでは」のように、何の研究か誰の話かを消さない。数字を使うときは、元ネタにある対象と前提を省かず初見に伝わる形で書く。元ネタにない分母は作らない。調べた条件を一般論に薄めず、一度だけ地の文で書く。いいねやコメントの依頼は書かない。');
   const notManual = promo
     ? ''
     : (isEn

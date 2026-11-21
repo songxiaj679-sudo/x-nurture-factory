@@ -427,26 +427,61 @@ function oneDossierPoint(value) {
 function formatTopicSourceAsDossier(card, isEn, maxChars = 700) {
   const translation = oneDossierPoint(card && card.plainTranslation);
   const legacy = oneDossierPoint(card && card.actionableTakeaway);
+  const studied = oneDossierPoint(card && card.coreFact);
   const lines = isEn
     ? [
-      'Use the source name in the post and end on the plain-words line. Do not end on a check or a fix list.',
+      'Use the source name in the post and end on the finding as ordinary prose. Do not end on a check or a fix list. Do not explain the same mechanism twice.',
       `Source: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`,
       `Question: ${oneDossierPoint(card && card.readerQuestion)}`,
-      `Fact: ${oneDossierPoint(card && card.coreFact)}`,
-      `Mechanism: ${oneDossierPoint(card && card.mechanism)}`,
-      translation ? `In plain words: ${translation}` : `Point: ${legacy}`,
+      `Studied: ${studied}`,
+      translation ? '' : `Mechanism: ${oneDossierPoint(card && card.mechanism)}`,
+      translation || `Point: ${legacy}`,
       `Rumor: ${oneDossierPoint(card && card.commonMyth)}`
     ]
     : [
-      '扱い: 出典名を本文に残し、訳で終える。確認手順や直しどころでは終えない。',
+      '扱い: 出典名を本文に残し、かみ砕いた中身を地の文で終える。確認手順や直しどころでは終えない。同じ仕組みは一度だけ書く。',
       `出典: ${oneDossierPoint(card && card.sourceName) || stripUrls(card && card.sourceName)}`,
       `疑問: ${oneDossierPoint(card && card.readerQuestion)}`,
-      `事実: ${oneDossierPoint(card && card.coreFact)}`,
-      `仕組み: ${oneDossierPoint(card && card.mechanism)}`,
-      translation ? `訳: ${translation}` : `要点: ${legacy}`,
+      `調べたこと: ${studied}`,
+      translation ? '' : `仕組み: ${oneDossierPoint(card && card.mechanism)}`,
+      translation || `要点: ${legacy}`,
       `思い込み: ${oneDossierPoint(card && card.commonMyth)}`
     ];
-  return lines.filter(line => !/[:：]\s*$/.test(line)).join('\n').slice(0, maxChars).trim();
+  return lines.filter(line => line && !/[:：]\s*$/.test(line)).join('\n').slice(0, maxChars).trim();
+}
+
+function verifiedReferenceUrlForJob({ sourceType, ownerSparkUsed, topicRing, sourceUrl } = {}) {
+  if (sourceType !== 'topic_source') return null;
+  if (ownerSparkUsed === true) return null;
+  if (String(topicRing || '') === 'ring3_product_bridge') return null;
+  const url = safeArticleUrl(sourceUrl, [], null);
+  return url || null;
+}
+
+function referenceLine(lang, url) {
+  return `${String(lang || '').toLowerCase().startsWith('en') ? 'Source: ' : '参考: '}${url}`;
+}
+
+function planVerifiedReference({ tweets, verifiedReferenceUrl, singleOnly, lang, maxChars } = {}) {
+  const rows = (Array.isArray(tweets) ? tweets : []).map(text => String(text || '')).filter(text => text.trim());
+  const url = verifiedReferenceUrlForJob({
+    sourceType: 'topic_source',
+    ownerSparkUsed: false,
+    topicRing: '',
+    sourceUrl: verifiedReferenceUrl
+  });
+  if (singleOnly === true || !url) return { action: 'skipped', status: 'skipped', tweets: rows, replyText: '' };
+  const line = referenceLine(lang, url);
+  const prefix = line.slice(0, line.length - url.length);
+  if (rows.length <= 1) return { action: 'reply', status: 'sent', tweets: rows, replyText: line };
+  const capped = rows.slice(0, 3);
+  const last = capped[capped.length - 1];
+  const limit = Number(maxChars) || (String(lang || '').toLowerCase().startsWith('en') ? 270 : 140);
+  if (last.length + 1 + prefix.length + 23 > limit) {
+    return { action: 'skipped_length', status: 'skipped_length', tweets: capped, replyText: '' };
+  }
+  capped[capped.length - 1] = `${last}\n${line}`;
+  return { action: 'append', status: 'sent', tweets: capped, replyText: '' };
 }
 
 module.exports = {
@@ -457,6 +492,8 @@ module.exports = {
   selectArticleUrls,
   isPrimarySource,
   safeArticleUrl,
+  verifiedReferenceUrlForJob,
+  planVerifiedReference,
   keepGroundedNumbers,
   sourceIdFor,
   topicVaultEligibility,
