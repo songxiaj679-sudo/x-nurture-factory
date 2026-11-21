@@ -24,7 +24,8 @@ test('the Japanese writer rules are slimmer and still keep the safety floor', ()
   assert.match(ja, /URLは作らない/);
   assert.match(ja, /個人日記の一人称は禁止/);
   assert.match(ja, /敬体と常体を混ぜない/);
-  assert.match(ja, /写してよいのは間の取り方だけ/);
+  assert.match(ja, /英語の直訳のような硬い言い回し/);
+  assert.equal(ja.includes('挽き目'), false);
   assert.match(systemRules(true), /Use words a teenager would say out loud/);
 });
 

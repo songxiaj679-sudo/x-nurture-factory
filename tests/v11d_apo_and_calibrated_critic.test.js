@@ -110,6 +110,8 @@ test('a polite ending still keeps the hook angle, and a different sentence does 
     winningHooks: hooks,
     evolutionPatch: { doMore: '具体の一動作を先に置く。', avoidMore: '前置きで結論を遅らせない。' }
   });
-  assert.match(prompt, /言い換えずにそのまま置く/);
+  assert.match(prompt, /同じ話題と同じ文体/);
+  assert.equal(prompt.includes('言い換えずにそのまま置く'), false);
+  assert.equal(prompt.includes(hooks[0].text), false);
   assert.match(prompt, /具体の一動作を先に置く/);
 });

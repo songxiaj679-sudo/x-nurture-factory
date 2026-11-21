@@ -227,7 +227,7 @@ test('a craft-exemplar leak is rejected and the stage budget stays inside the de
   delete require.cache[draftPath];
   try {
     const { draftNextPostText, systemRules } = require('../src/next_post_draft');
-    assert.match(systemRules(false), /写してよいのは間の取り方だけ/);
+    assert.match(systemRules(false), /英語の直訳のような硬い言い回し/);
     await assert.rejects(() => draftNextPostText({
       lang: 'ja',
       timeoutMs: 6000,

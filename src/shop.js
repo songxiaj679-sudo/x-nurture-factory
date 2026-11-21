@@ -2872,6 +2872,10 @@ app.get('/dashboard', async (req, res) => {
     const safeScheduleTimeZone = escHtmlSrv(user.scheduleTimeZone || '');
     const safeBrandContextNotes = escHtmlSrv(user.brandContextNotes || '');
     const safeNgTopics = escHtmlSrv(user.ngTopics || '');
+    const stanceOverride = user.editorialStanceOverride && typeof user.editorialStanceOverride === 'object' ? user.editorialStanceOverride : {};
+    const safeStanceRejected = escHtmlSrv(stanceOverride.rejectedNorm || '');
+    const safeStanceBelief = escHtmlSrv(stanceOverride.coreBelief || '');
+    const ownerSparkUnused = (Array.isArray(user.ownerSparks) ? user.ownerSparks : []).filter(item => item && item.text && !item.usedAt).length;
     const autoReplySettings = (user.autoReplySettings && typeof user.autoReplySettings === 'object') ? user.autoReplySettings : {};
     const autoReplyEnabled = Boolean(autoReplySettings.enabled === true);
     const autoReplyMode = autoReplySettings.mode === 'auto_mentions' ? 'auto_mentions' : 'approval_queue';
@@ -2911,6 +2915,9 @@ app.get('/dashboard', async (req, res) => {
       .replace(/{{CONFIGURED_USER_PROMPT}}/g, safeUserPrompt)
       .replace(/{{CONFIGURED_BRAND_CONTEXT_NOTES}}/g, safeBrandContextNotes)
       .replace(/{{CONFIGURED_NG_TOPICS}}/g, safeNgTopics)
+      .replace(/{{OWNER_SPARK_UNUSED}}/g, String(ownerSparkUnused))
+      .replace(/{{STANCE_REJECTED}}/g, safeStanceRejected)
+      .replace(/{{STANCE_BELIEF}}/g, safeStanceBelief)
       .replace(/{{CONFIGURED_AI_LANG}}/g, safeAiLang)
       .replace(/{{SCHEDULE_TIME_ZONE}}/g, safeScheduleTimeZone)
       .replace(/{{AUTO_REPLY_ENABLED}}/g, autoReplyEnabled ? 'true' : 'false')

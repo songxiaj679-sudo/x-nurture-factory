@@ -24,7 +24,7 @@ const { containsJapaneseScript } = require('./measured_pair');
 const { extractPageHypotheses, hypothesisForPlaybook, chooseHypothesis, formatHypothesis, pageVersionHash, chooseGenesForPost, chooseSourceMaterial, selectPlaybookByPerformance } = require('./bandit_optimization_engine');
 const { sanitizePostOrReplyText, decryptCredentials, fetchMyAccountState } = require('./official_api_client');
 const { describeAccountState, formatAccountState } = require('./customer_post_state');
-const { draftNextPostText, draftNextPostWithMeta, selectFocusPlaybook } = require('./next_post_draft');
+const { draftNextPostText, draftNextPostWithMeta, selectFocusPlaybook, pickOwnerSpark, markOwnerSparkUsed } = require('./next_post_draft');
 const { extractBrandKnowledge, BANNED_LEGACY } = require('./lp_knowledge_extractor');
 const { resolveAccountVoiceProfile } = require('./account_voice_profiler');
 const { planSlotPortfolio, weekdayInZone } = require('./slot_portfolio_planner');
@@ -336,6 +336,8 @@ async function retargetNextPendingJob(userId) {
       hypothesisProof: choice.hypothesis.proof,
       updatedAt: new Date()
     };
+    let sparkToMark = null;
+    let sparkRows = [];
     if (!next.earlyBodyRewriteAt) {
       try {
         const userDoc = await db.collection('saas_users').doc(userId).get();
@@ -446,6 +448,7 @@ async function retargetNextPendingJob(userId) {
             topicRing: masterPlan.topicRing,
             isWildcard: genes.isWildcard === true
           });
+          const ownerSpark = pickOwnerSpark(user.ownerSparks, masterPlan);
           const drafted = await draftNextPostWithMeta({
             audienceKnowledge: audienceCraft.audienceKnowledge,
             archetype: masterPlan.archetype || audienceCraft.archetype,
@@ -484,8 +487,12 @@ async function retargetNextPendingJob(userId) {
                 : '直前の投稿は伸びなかったので、別の論点にする。'),
             contextSignals: (questions.length || pushback) ? { questions, signals: user.contextRadarCache && user.contextRadarCache.signals, pushback } : (user.contextRadarCache && user.contextRadarCache.signals),
             qualityAudit,
-            editorialContext
+            editorialContext,
+            ownerSpark,
+            editorialStanceOverride: user.editorialStanceOverride || null
           });
+          sparkToMark = drafted.ownerSparkId || null;
+          sparkRows = Array.isArray(user.ownerSparks) ? user.ownerSparks : [];
           const tweets = drafted.tweets;
           const isEn = accountState.lang === 'en';
           Object.assign(hypothesisUpdate, {
@@ -522,6 +529,8 @@ async function retargetNextPendingJob(userId) {
             criticDegraded: drafted.criticDegraded === true,
             tensionUsed: drafted.tensionUsed === true,
             tensionSource: drafted.tensionSource || null,
+            ownerSparkUsed: drafted.ownerSparkUsed === true,
+            ownerSparkId: drafted.ownerSparkId || null,
             allowPromoUrl: safePlan.allowPromoUrl,
             recoveryMode,
             visualCard: planVisualCard({
@@ -555,6 +564,13 @@ async function retargetNextPendingJob(userId) {
       if (err.message !== 'pending_not_safe_to_rewrite') throw err;
       console.warn(`[Next Post Rewrite] 投稿直前のため本文は変更しません`);
       return { action, skipped: true };
+    }
+    if (sparkToMark) {
+      try {
+        await db.collection('saas_users').doc(userId).set({
+          ownerSparks: markOwnerSparkUsed(sparkRows, sparkToMark, new Date())
+        }, { merge: true });
+      } catch (_sparkErr) {}
     }
   }
   await cancelOtherPendingJobs(userId, next.targetUrl, next.pageVersion, next.id);
@@ -3290,6 +3306,7 @@ async function prepareNextPost(userId, options = {}) {
     isWildcard: draftGenes.isWildcard === true
   });
   let drafted;
+  const ownerSpark = pickOwnerSpark(user.ownerSparks, masterPlan);
   if (budgetDegraded && focusPlaybook && budgetApi) {
     const degradedText = budgetApi.degradedPostText(focusPlaybook, {
       maxChars: accountState && accountState.maxChars,
@@ -3349,7 +3366,9 @@ async function prepareNextPost(userId, options = {}) {
     qualityAudit,
     editorialContext,
     focusPlaybook: masterPlan.isolateLpContext ? null : focusPlaybook,
-    onStage
+    onStage,
+    ownerSpark,
+    editorialStanceOverride: user.editorialStanceOverride || null
   });
   if (!budgetDegraded) {
     try {
@@ -3420,6 +3439,8 @@ async function prepareNextPost(userId, options = {}) {
     evolutionVersion: drafted.evolutionVersion || 'baseline',
     tensionUsed: drafted.tensionUsed === true,
     tensionSource: drafted.tensionSource || null,
+    ownerSparkUsed: drafted.ownerSparkUsed === true,
+    ownerSparkId: drafted.ownerSparkId || null,
     criticDegraded: drafted.criticDegraded === true,
     criticAxes: drafted.criticAxes || null,
     budgetDegraded,
@@ -3523,6 +3544,8 @@ async function prepareNextPost(userId, options = {}) {
     selectedHookAngle: drafted.selectedHookAngle || null,
     tensionUsed: drafted.tensionUsed === true,
     tensionSource: drafted.tensionSource || null,
+    ownerSparkUsed: drafted.ownerSparkUsed === true,
+    ownerSparkId: drafted.ownerSparkId || null,
     hookDuelUsed: drafted.hookDuelUsed === true,
     visualCardTemplate: visualCard.template || '',
     criticDegraded: drafted.criticDegraded === true,
@@ -3540,6 +3563,13 @@ async function prepareNextPost(userId, options = {}) {
     outcome24h: null,
     qualityAudit: audits
   };
+  if (drafted.ownerSparkId) {
+    try {
+      await db.collection('saas_users').doc(userId).set({
+        ownerSparks: markOwnerSparkUsed(user.ownerSparks, drafted.ownerSparkId, new Date())
+      }, { merge: true });
+    } catch (_sparkErr) {}
+  }
   db.collection('generation_traces').doc(jobId).set(trace, { merge: true }).catch(error => {
     console.warn(`[Telemetry] ${error.message}`);
   });

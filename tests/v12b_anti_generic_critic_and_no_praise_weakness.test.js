@@ -70,8 +70,9 @@ test('the candidate prompt drops the repeated knowledge block and the hook duel 
     genes: { format: 'narrative_insight' },
     decision: { cognitiveMove: 'contrast', endingMove: 'boundary', registerLock: 'plain_ja', registerInstruction: '常体で終える。' }
   });
-  assert.match(prompt, /営業時間が最新であること/);
-  assert.match(prompt, /入口の前から一度だけ見る/);
+  assert.match(prompt, /同じ話題と同じ文体/);
+  assert.equal(prompt.includes('営業時間が最新であること'), false);
+  assert.equal(prompt.includes('入口の前から一度だけ見る'), false);
   assert.match(prompt, /持ち帰りはこれだけ: 直す場所を1つにする/);
   assert.match(prompt, /編集判断/);
   assert.equal(prompt.includes('KNOWLEDGEJSON99'), false);

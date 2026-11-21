@@ -53,10 +53,23 @@ function allowedNumbers(context) {
   const notePattern = /(?:¥|￥|\$)?\d[\d,]*(?:\.\d+)?\s*(?:%|％|倍|円|日|時間|人|件)?/g;
   const promptNumbers = String(context.userPrompt || '').match(notePattern) || [];
   const contextNoteNumbers = String(context.brandContextNotes || '').match(notePattern) || [];
+  const topic = context.topicSource || {};
+  const groundedText = [
+    context.ownerSpark && context.ownerSpark.text,
+    context.audiencePushback,
+    context.pushback,
+    topic.title,
+    topic.coreFact,
+    topic.whyItMatters,
+    topic.mechanism,
+    topic.actionableTakeaway,
+    topic.commonMyth
+  ].filter(Boolean).join('\n');
+  const groundedNumbers = groundedText.match(notePattern) || [];
   const state = context.accountState || {};
   if (Number.isSafeInteger(state.followers)) values.push(String(state.followers));
   if (Number.isSafeInteger(state.following)) values.push(String(state.following));
-  return [...values, ...promptNumbers, ...contextNoteNumbers].map(item => String(item).normalize('NFKC'));
+  return [...values, ...promptNumbers, ...contextNoteNumbers, ...groundedNumbers].map(item => String(item).normalize('NFKC'));
 }
 
 function digitCores(token) {
@@ -133,7 +146,13 @@ function runDeterministicAudit(candidate, context = {}) {
     reasons.push(...compliance.issues.map(issue => `compliance:${issue.code}`));
   }
   if (lang === 'en' && tweets.some(text => containsJapaneseScript(text))) reasons.push('japanese_in_english');
-  if (tweets.some(text => SLOP.test(text))) reasons.push('ai_slop');
+  const quoted = [context.ownerSpark && context.ownerSpark.text, context.audiencePushback, context.pushback].filter(Boolean).join('\n');
+  const slopPattern = new RegExp(SLOP.source, 'gi');
+  const unquotedSlop = text => {
+    const hits = String(text || '').match(slopPattern) || [];
+    return hits.some(hit => !quoted.includes(hit));
+  };
+  if (tweets.some(unquotedSlop)) reasons.push('ai_slop');
   if (lang === 'en' && tweets.some(text => BROKEN_EN.test(String(text || '').trim()))) reasons.push('ai_slop');
   if (hasInternalSentenceRepetition(tweets, lang)) reasons.push('duplicate_sentence_in_post');
   const similarity = computeMaxSimilarity(tweets.join('\n'), context.recentTexts || [], lang);

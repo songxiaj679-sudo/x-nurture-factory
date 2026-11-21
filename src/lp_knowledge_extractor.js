@@ -426,7 +426,16 @@ function cleanEditorialStance(raw, support) {
   return stance;
 }
 
-function resolveEditorialStance(brandKnowledge) {
+function resolveEditorialStance(brandKnowledge, userDoc) {
+  const override = userDoc && userDoc.editorialStanceOverride;
+  if (override && (override.rejectedNorm || override.coreBelief)) {
+    return {
+      rejectedNorm: clipCleanText(sanitizeExternalText(override.rejectedNorm), 120),
+      coreBelief: clipCleanText(sanitizeExternalText(override.coreBelief), 120),
+      neverSays: '',
+      source: 'override'
+    };
+  }
   const stored = brandKnowledge && brandKnowledge.editorialStance;
   if (stored && (stored.rejectedNorm || stored.coreBelief || stored.neverSays)) {
     return {

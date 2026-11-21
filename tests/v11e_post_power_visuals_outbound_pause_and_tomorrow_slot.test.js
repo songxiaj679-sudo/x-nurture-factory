@@ -78,7 +78,7 @@ test('tomorrow is reserved only after the day is full and the queue is empty', (
     genes: { delivery: 'single' },
     masterPlan: { topicRing: 'ring1_craft' }
   });
-  assert.match(craft, /判断の境界/);
+  assert.match(craft, /1つの気づきをまっすぐ語る/);
   const bridge = candidatePrompt({
     isEn: false,
     brief: {},

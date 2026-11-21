@@ -106,7 +106,8 @@ test('the hook duel keeps two fresh lines and skips when the call budget is tigh
     winningHooks: duel.hooks
   });
   assert.match(ring1, /疑う思い込み/);
-  assert.match(ring1, /紙が古い日は/);
+  assert.match(ring1, /同じ話題と同じ文体/);
+  assert.equal(ring1.includes('紙が古い日は'), false);
   const ring3 = candidatePrompt({
     isEn: false,
     brief: {},

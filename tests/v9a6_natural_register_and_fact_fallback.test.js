@@ -10,7 +10,7 @@ test('the writer drops the stiff constraints and keeps the locked lines', () => 
   assert.equal(ja.includes('短い言い切り'), false);
   assert.equal(ja.includes('熟語で名前を付けない'), false);
   assert.match(ja, /中学生が一度読んだだけで場面が浮かぶ言葉にする/);
-  assert.match(ja, /写してよいのは間の取り方だけ/);
+  assert.match(ja, /英語の直訳のような硬い言い回し/);
   assert.match(ja, /その場で口に出す一文/);
   assert.match(ja, /解説の先生や締めの標語にはしない/);
   assert.match(ja, /詰め寄る質問にはしない/);
@@ -21,14 +21,15 @@ test('the writer drops the stiff constraints and keeps the locked lines', () => 
   assert.match(critic, /1行目の主語が結びまで続く/);
 });
 
-test('polite and plain registers each receive one finished example', () => {
+test('the shop checklist example stays out of both registers', () => {
   const base = { isEn: false, accountState: { maxChars: 280 }, shape: { count: 1 }, brief: {} };
   const polite = candidatePrompt({ ...base, decision: { registerLock: 'polite_ja' } });
   const plain = candidatePrompt({ ...base, decision: { registerLock: 'plain_ja' } });
-  assert.match(polite, /見ておくと安心です/);
-  assert.equal(polite.includes('営業時間が最新であること'), false);
-  assert.match(plain, /入口の前から一度だけ見る/);
-  assert.match(plain, /営業時間が最新であること/);
+  assert.match(polite, /同じ話題と同じ文体/);
+  assert.match(plain, /同じ話題と同じ文体/);
+  assert.equal(polite.includes('見ておくと安心です'), false);
+  assert.equal(plain.includes('入口の前から一度だけ見る'), false);
+  assert.equal(plain.includes('営業時間が最新であること'), false);
 });
 
 test('an empty page falls back to one stored mechanism line', () => {

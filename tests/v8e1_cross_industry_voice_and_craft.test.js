@@ -8,7 +8,7 @@ test('writer and critic rules stay industry-neutral inside the existing limits',
   const { systemRules, criticSystemRules } = require('../src/next_post_draft');
   const rules = systemRules(false);
   const critic = criticSystemRules(false);
-  assert.match(rules, /写してよいのは間の取り方だけ/);
+  assert.match(rules, /英語の直訳のような硬い言い回し/);
   assert.equal(rules.includes('実務家・開発者'), false);
   assert.equal(critic.length < 400, true);
   assert.equal(critic.includes('accountRole'), false);

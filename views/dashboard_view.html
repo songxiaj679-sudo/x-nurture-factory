@@ -626,6 +626,21 @@
               <p class="text-[11px] text-slate-500 mt-1">ページの文章だけでは伝わりにくい現場の背景・想定読者・具体例を2〜3行足すと、投稿の具体性が上がります。</p>
             </div>
             <div>
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <label class="block text-xs font-bold text-slate-700" data-i18n="owner_spark_label" for="inpOwnerSpark">現場の一次体験・本音メモ（1行追加）</label>
+                <span class="text-[11px] font-bold text-slate-500 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200"><span id="ownerSparkUnused">{{OWNER_SPARK_UNUSED}}</span> <span data-i18n="owner_spark_unused">件が未使用</span></span>
+              </div>
+              <input id="inpOwnerSpark" type="text" maxlength="220" data-i18n-ph="owner_spark_ph" placeholder="自社で起きた失敗と、そのときの実測だけを1行" class="inp-light text-xs">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5" data-i18n="stance_reject_label" for="inpStanceRejected">あえて否定する業界の常識（任意）</label>
+              <input id="inpStanceRejected" type="text" maxlength="120" value="{{STANCE_REJECTED}}" data-i18n-ph="stance_reject_ph" placeholder="例：投稿を増やすほど反応は増える" class="inp-light text-xs">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5" data-i18n="stance_belief_label" for="inpStanceBelief">譲れない判断基準（任意）</label>
+              <input id="inpStanceBelief" type="text" maxlength="120" value="{{STANCE_BELIEF}}" data-i18n-ph="stance_belief_ph" placeholder="例：残す一文を先に決めてから文面を直す" class="inp-light text-xs">
+            </div>
+            <div>
               <label class="block text-xs font-bold text-slate-700 mb-1.5">書きたくない表現</label>
               <textarea id="inpNgTopics" rows="2" placeholder="他社名、価格、使わない言い回し" class="inp-light text-xs leading-relaxed">{{CONFIGURED_NG_TOPICS}}</textarea>
             </div>
@@ -1315,6 +1330,13 @@
         advanced_badge: "通常はそのままでOK ▼",
         adv_brand_title: "AI執筆の微調整・実務メモ・NG表現",
         adv_brand_sub: "現場ならではの補足情報や、投稿に含めたくない言葉を登録できます。",
+        owner_spark_label: "現場の一次体験・本音メモ（1行追加）",
+        owner_spark_unused: "件が未使用",
+        owner_spark_ph: "自社で起きた失敗と、そのときの実測だけを1行",
+        stance_reject_label: "あえて否定する業界の常識（任意）",
+        stance_reject_ph: "例：投稿を増やすほど反応は増える",
+        stance_belief_label: "譲れない判断基準（任意）",
+        stance_belief_ph: "例：残す一文を先に決めてから文面を直す",
         btn_auto_setup: "✨ プロフィールから方針をおまかせ作成",
         profile_guide_title: "✨ Xプロフィール推奨設定（お客様ご自身で行う設定）",
         profile_guide_name: "表示名: 何の人か一瞬で分かる肩書きにします。",
@@ -1564,6 +1586,13 @@
         advanced_badge: "Optional (defaults are fine) ▼",
         adv_brand_title: "Fine-tune AI Writing, Domain Notes & Filters",
         adv_brand_sub: "Add practical operational context or terms you never want the AI to include.",
+        owner_spark_label: "One first-hand note from the work",
+        owner_spark_unused: "unused",
+        owner_spark_ph: "One real failure and the measured difference",
+        stance_reject_label: "A trade assumption you reject (optional)",
+        stance_reject_ph: "Example: more posts always get more response",
+        stance_belief_label: "A standard you will not drop (optional)",
+        stance_belief_ph: "Example: decide the one line to keep before editing the wording",
         btn_auto_setup: "✨ Auto-draft from X profile",
         profile_guide_title: "✨ Recommended X profile settings (you set these on X)",
         profile_guide_name: "Display name: make the role clear at a glance.",
@@ -4708,11 +4737,16 @@
       const userPrompt = (document.getElementById('inpUserPrompt')?.value || '').trim();
       const brandContextNotes = (document.getElementById('inpBrandContextNotes')?.value || '').trim();
       const ngTopics = (document.getElementById('inpNgTopics')?.value || '').trim();
+      const ownerSparkInput = (document.getElementById('inpOwnerSpark')?.value || '').trim();
+      const editorialStanceOverride = {
+        rejectedNorm: (document.getElementById('inpStanceRejected')?.value || '').trim(),
+        coreBelief: (document.getElementById('inpStanceBelief')?.value || '').trim()
+      };
       const msg = document.getElementById('brandContextMsg');
       const res = await fetch('/api/autopilot/save-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl, userPrompt, brandContextNotes, ngTopics })
+        body: JSON.stringify({ targetUrl, userPrompt, brandContextNotes, ngTopics, ownerSparkInput, editorialStanceOverride })
       });
       const data = await res.json().catch(() => ({}));
       if (msg) {
@@ -4720,6 +4754,12 @@
         msg.textContent = data.ok
           ? (isEn ? 'Domain notes and filters saved.' : '実務メモと避ける表現を保存しました。')
           : (data.error || (isEn ? 'Could not save notes.' : '保存できませんでした。'));
+        if (data.ok) {
+          const unused = document.getElementById('ownerSparkUnused');
+          const sparkInput = document.getElementById('inpOwnerSpark');
+          if (unused && Number.isFinite(Number(data.ownerSparkUnused))) unused.textContent = String(data.ownerSparkUnused);
+          if (sparkInput) sparkInput.value = '';
+        }
       } else {
         alert(data.ok ? (isEn ? 'Domain notes and filters saved.' : '実務メモを保存しました。') : (data.error || (isEn ? 'Could not save notes.' : '保存できませんでした。')));
       }

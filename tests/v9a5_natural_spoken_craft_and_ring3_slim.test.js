@@ -50,17 +50,18 @@ test('ring 3 passes one visible fact and leaves the isolated branch empty', () =
 test('the spoken pair is one industry-neutral example and the locked lines stay', () => {
   const source = fs.readFileSync('src/next_post_draft.js', 'utf8');
   const prompt = source.slice(source.indexOf('function candidatePrompt'), source.indexOf('function attachPromoReply'));
-  assert.match(prompt, /営業時間が最新であること／予約変更の締切が明記されていること／連絡先が分かること/);
-  assert.match(prompt, /開いてると思って来たのに閉まってた/);
-  assert.match(prompt, /Checklist: Hours are current\. Cancellation cutoff is stated\. Contact info is visible\./);
-  assert.match(prompt, /Nothing wastes a trip faster than showing up to a locked door/);
+  assert.match(prompt, /同じ話題と同じ文体/);
+  assert.equal(prompt.includes('営業時間が最新であること'), false);
+  assert.equal(prompt.includes('開いてると思って来たのに閉まってた'), false);
+  assert.equal(prompt.includes('Checklist: Hours are current'), false);
+  assert.equal(prompt.includes('Nothing wastes a trip faster'), false);
   assert.equal(prompt.includes('OAuth'), false);
   assert.match(prompt, /readerLine/);
   assert.match(prompt, /delivery\) === 'parent_self_reply'/);
   assert.match(prompt, /型が本文で原因まで書く指示より優先する/);
   const ja = systemRules(false);
   const en = systemRules(true);
-  assert.match(ja, /写してよいのは間の取り方だけ/);
+  assert.match(ja, /英語の直訳のような硬い言い回し/);
   assert.match(ja, /中学生が一度読んだだけで場面が浮かぶ言葉にする/);
   assert.match(ja, /その場で口に出す一文/);
   assert.match(ja, /解説の先生や締めの標語にはしない/);

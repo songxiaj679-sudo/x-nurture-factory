@@ -13,7 +13,7 @@ test('spoken voice replaces the lecturer close and leaves the critic rules uncha
   assert.match(ja, /その場で口に出す一文/);
   assert.match(ja, /解説の先生や締めの標語にはしない/);
   assert.match(ja, /詰め寄る質問にはしない/);
-  assert.match(ja, /写してよいのは間の取り方だけ/);
+  assert.match(ja, /英語の直訳のような硬い言い回し/);
   assert.match(ja, /中学生が一度読んだだけで場面が浮かぶ言葉にする/);
   assert.match(ja, /主語はチーム・開発側・プロダクトにする/);
   assert.equal(ja.includes('問いかけは最後の1文だけ'), false);

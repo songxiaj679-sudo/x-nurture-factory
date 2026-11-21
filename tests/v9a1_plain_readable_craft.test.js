@@ -9,7 +9,7 @@ test('the writer asks for one visible scene and keeps the pacing rule', () => {
   const ja = systemRules(false);
   const en = systemRules(true);
   assert.match(ja, /中学生が一度読んだだけで場面が浮かぶ言葉にする/);
-  assert.match(ja, /写してよいのは間の取り方だけ/);
+  assert.match(ja, /英語の直訳のような硬い言い回し/);
   assert.match(en, /Use words a teenager would say out loud/);
   const source = fs.readFileSync('src/next_post_draft.js', 'utf8');
   assert.equal(source.includes('具体的な判断や失敗の場面で書く'), false);

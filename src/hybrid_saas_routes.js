@@ -1989,6 +1989,18 @@ function registerHybridSaasRoutes(app, options = {}) {
         if (blocked.length > 400) return res.status(400).json({ ok: false, error: 'NG表現は400文字以内で入力してください。' });
         update.ngTopics = blocked;
       }
+      if (body.ownerSparkInput !== undefined) {
+        const { mergeOwnerSparks } = require('./next_post_draft');
+        update.ownerSparks = mergeOwnerSparks(existingBefore.ownerSparks, body.ownerSparkInput, new Date());
+      }
+      if (body.editorialStanceOverride !== undefined) {
+        const { resolveEditorialStance } = require('./lp_knowledge_extractor');
+        const raw = body.editorialStanceOverride && typeof body.editorialStanceOverride === 'object' ? body.editorialStanceOverride : {};
+        const stance = resolveEditorialStance(null, { editorialStanceOverride: raw });
+        update.editorialStanceOverride = stance && stance.source === 'override'
+          ? { rejectedNorm: stance.rejectedNorm || '', coreBelief: stance.coreBelief || '' }
+          : null;
+      }
 
       await userRef.set(update, { merge: true });
       let appliedStrategy = null;
@@ -2009,6 +2021,9 @@ function registerHybridSaasRoutes(app, options = {}) {
         targetCountry: appliedStrategy?.targetCountry || update.targetCountry || null,
         brandContextNotes: appliedStrategy?.brandContextNotes ?? update.brandContextNotes ?? null,
         ngTopics: update.ngTopics ?? null,
+        ownerSparks: update.ownerSparks || existingBefore.ownerSparks || [],
+        ownerSparkUnused: (update.ownerSparks || existingBefore.ownerSparks || []).filter(item => item && item.text && !item.usedAt).length,
+        editorialStanceOverride: update.editorialStanceOverride !== undefined ? update.editorialStanceOverride : (existingBefore.editorialStanceOverride || null),
         appliedStrategy
       });
     } catch (err) {
