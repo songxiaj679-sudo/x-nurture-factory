@@ -54,33 +54,36 @@ test('writer uses the x-api-key header and caches only the system prompt', async
   }
 });
 
-test('anthropic writer selects a grok low critic and retries an unreadable score once', async () => {
-  const previousEffort = process.env.XAI_REASONING_EFFORT_CRITIC;
-  delete process.env.XAI_REASONING_EFFORT_CRITIC;
+test('anthropic writer selects the OpenAI critic and retries an unreadable score once', async () => {
+  const previous = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'test-openai-key';
   const calls = [];
   const restore = withStub('../src/grok_client', {
     hasXaiKey: () => true,
     extractJson(text) { return JSON.parse(text); },
-    async completeText(options) {
-      calls.push({ model: options.model, reasoningEffort: options.reasoningEffort });
-      return { modelName: options.model, text: calls.length === 1 ? 'not-json' : '{"scores":[{"id":"a","score":81,"weakness":"ok"}]}' };
-    }
+    async completeText() { throw new Error('grok should stay unused'); }
   });
   delete require.cache[require.resolve('../src/llm_router')];
   try {
     const { completeCritic } = require('../src/llm_router');
-    const result = await completeCritic({ prompt: 'score', writerProvider: 'anthropic', timeoutMs: 20000 });
+    const result = await completeCritic({
+      prompt: 'score',
+      writerProvider: 'anthropic',
+      timeoutMs: 20000,
+      fetchImpl: async (_url, options) => {
+        calls.push(JSON.parse(options.body));
+        const content = calls.length === 1 ? '{"nope":true}' : '{"scores":[{"id":"a","score":81,"weakness":"ok"}]}';
+        return { ok: true, async text() { return JSON.stringify({ choices: [{ message: { content } }] }); } };
+      }
+    });
     assert.equal(result.ok, true);
-    assert.equal(result.provider, 'xai');
-    const criticModel = process.env.XAI_MODEL_CRITIC || process.env.XAI_MODEL_FAST || 'grok-4.20-0309-non-reasoning';
-    assert.deepEqual(calls, [
-      { model: criticModel, reasoningEffort: undefined },
-      { model: criticModel, reasoningEffort: undefined }
-    ]);
+    assert.equal(result.provider, 'openai');
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].response_format.json_schema.strict, true);
     assert.equal(result.parsed.scores[0].score, 81);
   } finally {
-    if (previousEffort === undefined) delete process.env.XAI_REASONING_EFFORT_CRITIC;
-    else process.env.XAI_REASONING_EFFORT_CRITIC = previousEffort;
+    if (previous === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previous;
     restore();
     delete require.cache[require.resolve('../src/llm_router')];
   }

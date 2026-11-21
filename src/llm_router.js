@@ -216,21 +216,16 @@ async function completeCritic({
 } = {}) {
   const started = Date.now();
   const attempt = async () => {
-    if (writerProvider === 'xai') {
-      try {
-        return await scoreWithOpenAI({ prompt, systemPrompt, timeoutMs, jsonSchema, schemaName, qualityAudit, fetchImpl });
-      } catch (error) {
-        if (error && error.code === 'NO_OPENAI_KEY') return scoreWithGrok({ prompt, systemPrompt, timeoutMs, qualityAudit });
-        throw error;
-      }
-    }
     try {
-      return await scoreWithGrok({ prompt, systemPrompt, timeoutMs, qualityAudit });
+      return await scoreWithOpenAI({ prompt, systemPrompt, timeoutMs, jsonSchema, schemaName, qualityAudit, fetchImpl });
     } catch (error) {
-      console.warn(`[LLM Router] grok critic failed: ${String(error && error.message || '').slice(0, 180)}`);
-      return scoreWithOpenAI({ prompt, systemPrompt, timeoutMs, jsonSchema, schemaName, qualityAudit, fetchImpl });
+      if (!(error && error.code === 'NO_OPENAI_KEY')) {
+        console.warn(`[LLM Router] openai critic failed: ${String(error && error.message || '').slice(0, 180)}`);
+      }
+      return scoreWithGrok({ prompt, systemPrompt, timeoutMs, qualityAudit });
     }
   };
+  void writerProvider;
   let last = null;
   for (let i = 0; i < 2; i += 1) {
     if (Date.now() - started > timeoutMs && i > 0) break;
