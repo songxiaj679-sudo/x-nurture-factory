@@ -67,6 +67,12 @@ function isSecondaryRoundup(item) {
   return /初心者向け|完全ガイド|コツ\s*\d+\s*選|\d+\s*選|基本設計|まとめ記事|SEO解説|入門ガイド|保存版|beginner(?:'s)? guide|ultimate guide|complete guide|\b\d+\s+tips\b/i.test(label);
 }
 
+function isBarePaperLabel(item) {
+  const name = String(item && item.sourceName || '').trim();
+  const raw = String(item && item.url || '');
+  return /^(?:論文|paper)$/i.test(name) || /\/papers?(?:\/|$)/i.test(raw);
+}
+
 function isPrimarySource(item) {
   if (!item || isSecondaryRoundup(item)) return false;
   let host = '';
@@ -76,8 +82,13 @@ function isPrimarySource(item) {
   if (/(^|\.)(docs|developer|developers|spec)\./i.test(host)) return true;
   if (/(^|\.)((?:github|gitlab|arxiv|doi|rfc-editor)\.(?:com|org))$/i.test(host)) return true;
   if (/(?:^|\.)(?:gov|go\.jp|gov\.uk)$/i.test(host)) return true;
+  if (/(?:^|\.)(?:edu|ac\.jp|ac\.uk|edu\.au)$/i.test(host)) return true;
+  if (/(^|\.)((?:ieee|acm|nature|pnas|springer|wiley|sciencedirect|plos|frontiersin|mdpi|ssrn|jstor|ietf|w3|iso|oecd|worldbank|imf|ncbi)\.(?:org|com)|who\.int|europa\.eu)$/i.test(host)) return true;
   if (/\/(?:docs|spec|specs|specification|whitepaper|guideline|guidelines|rfc|release-notes|releases|statistics)\b/i.test(raw)) return true;
-  return /公式(?:ブログ|発表|ドキュメント|仕様)|公的|ガイドライン|白書|統計|リリースノート|調査(?:報告|レポート|結果|データ)|一次(?:データ|検証|情報)/.test(name);
+  if (/公式(?:ブログ|発表|ドキュメント|仕様)|公的|ガイドライン|白書|統計|リリースノート|調査(?:報告|レポート|結果|データ)|一次(?:データ|検証|情報)/.test(name)) return true;
+  if (/official\s+(?:blog|documentation|docs|specification|announcement|report)|white\s*paper|guidelines?|release\s+notes|statistics|dataset|survey\s+(?:report|data|results)|technical\s+(?:report|documentation|specification)/i.test(name)) return true;
+  if (isBarePaperLabel(item)) return false;
+  return true;
 }
 
 function urlsFromSearch(text) {
@@ -115,8 +126,9 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
       : 'JSONだけ返す。読者の本業課題の記事を選ぶ。商材ツールの自作・操作記事と料金比較は選ばない。',
     prompt
   });
+  const found = urlsFromSearch(result && result.text);
   const pool = [];
-  for (const item of urlsFromSearch(result && result.text)) {
+  for (const item of found) {
     const url = safeArticleUrl(item.url, ownUrls, null);
     if (!url || pool.some(row => row.url === url) || !isPrimarySource({ ...item, url })) continue;
     try {
@@ -136,24 +148,26 @@ async function selectArticleUrls({ brandKnowledge, outputLang, ownUrls, complete
     seenHost.add(row.host);
     chosen.push({ url: row.url, sourceName: row.sourceName });
   });
+  chosen.rawCount = found.length;
   return chosen;
 }
 
 async function scrapeMarkdown(url, fetchImpl) {
   const key = process.env.FIRECRAWL_API_KEY && String(process.env.FIRECRAWL_API_KEY).trim();
-  if (!key) return '';
+  if (!key) return { markdown: '', status: 0 };
   const response = await (fetchImpl || fetch)('https://api.firecrawl.dev/v2/scrape', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
     body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
     signal: AbortSignal.timeout(12000)
   });
+  const status = Number(response && response.status) || (response && response.ok ? 200 : 0);
   const raw = await response.text();
   let parsed = null;
   try { parsed = raw ? JSON.parse(raw) : null; } catch (_err) { parsed = null; }
-  if (!response.ok || !parsed || parsed.success === false) return '';
+  if (!response.ok || !parsed || parsed.success === false) return { markdown: '', status };
   const data = parsed.data && typeof parsed.data === 'object' ? parsed.data : {};
-  return String(data.markdown || '').trim();
+  return { markdown: String(data.markdown || '').trim(), status };
 }
 
 async function crawlAllowed({ db, userId, user, now }) {
@@ -223,8 +237,16 @@ async function collectTopicSourceForUser({
   completeText = null,
   completeJson = null,
   fetchImpl = null,
-  assertUrl = null
+  assertUrl = null,
+  trace = null
 } = {}) {
+  const mark = (reason, extra = {}) => {
+    if (!trace || typeof trace !== 'object') return;
+    trace.reason = reason;
+    trace.raw = Number(extra.raw) || 0;
+    trace.kept = Number(extra.kept) || 0;
+    trace.statuses = Array.isArray(extra.statuses) ? extra.statuses : [];
+  };
   const ownUrls = [brandKnowledge && brandKnowledge.sourceUrl, user && user.targetUrl].map(normalizeSourceUrl).filter(Boolean);
   let selected = [];
   try {
@@ -236,24 +258,40 @@ async function collectTopicSourceForUser({
       assertUrl
     });
   } catch (_err) {
+    mark('search_error');
     return null;
   }
-  if (!selected.length) return null;
-  if (!(await crawlAllowed({ db, userId, user, now }))) return null;
+  const raw = Number(selected && selected.rawCount) || 0;
+  const kept = Array.isArray(selected) ? selected.length : 0;
+  if (!kept) {
+    mark('no_candidates', { raw, kept });
+    return null;
+  }
+  if (!(await crawlAllowed({ db, userId, user, now }))) {
+    mark('budget', { raw, kept });
+    return null;
+  }
   let markdown = '';
   let chosen = null;
+  const statuses = [];
   for (const item of selected) {
+    let scraped = { markdown: '', status: 0 };
     try {
-      markdown = await scrapeMarkdown(item.url, fetchImpl);
+      scraped = await scrapeMarkdown(item.url, fetchImpl);
     } catch (_err) {
-      markdown = '';
+      scraped = { markdown: '', status: 0 };
     }
-    if (markdown) {
+    statuses.push(Number(scraped && scraped.status) || 0);
+    if (scraped && scraped.markdown) {
+      markdown = scraped.markdown;
       chosen = item;
       break;
     }
   }
-  if (!chosen || !markdown) return null;
+  if (!chosen || !markdown) {
+    mark('scrape_empty', { raw, kept, statuses });
+    return null;
+  }
   const card = await buildCard({
     markdown,
     sourceUrl: chosen.url,
@@ -262,8 +300,16 @@ async function collectTopicSourceForUser({
     completeJson,
     now
   });
-  if (!card) return null;
+  if (!card) {
+    mark('card_null', { raw, kept, statuses });
+    return null;
+  }
   card.sourceId = sourceIdFor(chosen.url);
+  if (trace && typeof trace === 'object') {
+    trace.raw = raw;
+    trace.kept = kept;
+    trace.statuses = statuses;
+  }
   if (dryRun || !db || !userId) return card;
   await db.collection('saas_users').doc(userId).collection('topic_sources').doc(card.sourceId).set(card);
   try {
@@ -277,6 +323,21 @@ async function collectTopicSourceForUser({
   return card;
 }
 
+function selectReusableTopicCard(rows, lang = 'ja') {
+  const usable = (Array.isArray(rows) ? rows : []).filter(row => {
+    if (!row || (row.outputLang || 'ja') !== lang || !row.coreFact || !row.mechanism) return false;
+    return Boolean(String(row.plainTranslation || '').trim()) || Number(row.usedCount) === 0;
+  });
+  usable.sort((left, right) => {
+    const fresh = Number(Boolean(String(right.plainTranslation || '').trim())) - Number(Boolean(String(left.plainTranslation || '').trim()));
+    if (fresh) return fresh;
+    const used = (Number(left.usedCount) || 0) - (Number(right.usedCount) || 0);
+    if (used) return used;
+    return String(right.fetchedAt || '').localeCompare(String(left.fetchedAt || ''));
+  });
+  return usable[0] || null;
+}
+
 async function pickTopicSourceForPost(db, userId, { outputLang = 'ja' } = {}) {
   if (!db || !userId) return null;
   const snap = await db.collection('saas_users').doc(userId).collection('topic_sources').limit(20).get();
@@ -284,11 +345,9 @@ async function pickTopicSourceForPost(db, userId, { outputLang = 'ja' } = {}) {
   const rows = [];
   snap.forEach(doc => {
     const data = doc.data() || {};
-    if ((data.outputLang || 'ja') !== lang || !data.coreFact || !data.mechanism) return;
     rows.push({ ...data, sourceId: doc.id });
   });
-  rows.sort((left, right) => (Number(left.usedCount) || 0) - (Number(right.usedCount) || 0) || String(right.fetchedAt || '').localeCompare(String(left.fetchedAt || '')));
-  return rows[0] || null;
+  return selectReusableTopicCard(rows, lang);
 }
 
 async function markTopicSourceUsed(db, userId, sourceId, now = new Date()) {
@@ -311,6 +370,7 @@ const MIN_GAP_MS = {
   business: 2.3 * 24 * 60 * 60 * 1000
 };
 const UNUSED_CARD_CAP = 6;
+const EMPTY_STOCK_GAP_MS = 3 * 60 * 60 * 1000;
 const SWEEP_CUSTOMER_CAP = 3;
 
 function topicPlan(user) {
@@ -330,7 +390,8 @@ function topicVaultEligibility({ user, cards = [], now = new Date(), budgetAllow
   if (budgetAllowed === false) return { ok: false, reason: 'budget' };
   const plan = topicPlan(user);
   const cap = WEEKLY_ARTICLE_CAP[plan] || WEEKLY_ARTICLE_CAP.free;
-  const gap = MIN_GAP_MS[plan] || MIN_GAP_MS.free;
+  const freshUnused = cards.filter(card => String(card && card.plainTranslation || '').trim() && Number(card.usedCount) === 0).length;
+  const gap = freshUnused === 0 ? EMPTY_STOCK_GAP_MS : (MIN_GAP_MS[plan] || MIN_GAP_MS.free);
   const weekAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
   const recent = cards.filter(card => {
     const at = Date.parse(card && card.fetchedAt || '');
@@ -385,6 +446,7 @@ async function runTopicSourceVaultSweep(db, options = {}) {
     }
     const lang = String(user.aiTargetLang || '').toLowerCase().startsWith('en') ? 'en' : 'ja';
     const collect = options.collect || collectTopicSourceForUser;
+    const trace = {};
     try {
       const card = await collect({
         db,
@@ -393,12 +455,18 @@ async function runTopicSourceVaultSweep(db, options = {}) {
         brandKnowledge: user.brandKnowledge,
         outputLang: lang,
         dryRun: false,
-        now
+        now,
+        trace
       });
       if (card) collected += 1;
-      else skipped += 1;
+      else {
+        skipped += 1;
+        const statuses = Array.isArray(trace.statuses) && trace.statuses.length ? trace.statuses.join(',') : '-';
+        console.log(`[Topic Vault Skip] reason=${trace.reason || 'no_candidates'} raw=${Number(trace.raw) || 0} kept=${Number(trace.kept) || 0} statuses=${statuses}`);
+      }
     } catch (_err) {
       skipped += 1;
+      console.log('[Topic Vault Skip] reason=search_error raw=0 kept=0 statuses=-');
     }
   }
   console.log(`[Topic Vault] scanned=${scanned} collected=${collected} skipped=${skipped}`);
@@ -483,6 +551,7 @@ function planVerifiedReference({ tweets, verifiedReferenceUrl, singleOnly, lang,
 module.exports = {
   collectTopicSourceForUser,
   pickTopicSourceForPost,
+  selectReusableTopicCard,
   markTopicSourceUsed,
   formatTopicSourceAsDossier,
   selectArticleUrls,

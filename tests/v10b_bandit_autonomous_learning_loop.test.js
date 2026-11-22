@@ -55,6 +55,6 @@ test('a missing card falls back to the dossier', () => {
   const dossier = { coreFact: '紙が古い' };
   assert.equal(chooseSourceMaterial({ genes: { sourceType: 'topic_source' }, topicSource: card, sourceDossier: dossier, masterPlan: plan }).sourceType, 'topic_source');
   assert.equal(chooseSourceMaterial({ genes: { sourceType: 'topic_source' }, topicSource: null, sourceDossier: dossier, masterPlan: plan }).sourceType, 'dossier');
-  assert.equal(chooseSourceMaterial({ genes: { sourceType: 'dossier' }, topicSource: card, sourceDossier: dossier, masterPlan: plan }).topicSource, null);
+  assert.equal(chooseSourceMaterial({ genes: { sourceType: 'dossier' }, topicSource: card, sourceDossier: dossier, masterPlan: plan }).sourceType, 'topic_source');
   assert.equal(chooseSourceMaterial({ genes: { sourceType: 'topic_source' }, topicSource: null, sourceDossier: null, masterPlan: plan }).sourceType, 'brand_only');
 });

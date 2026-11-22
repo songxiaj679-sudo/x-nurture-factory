@@ -464,15 +464,12 @@ function chooseSourceMaterial({ genes, topicSource, sourceDossier, masterPlan } 
   if (!eligible) {
     return { topicSource: card, sourceDossier: dossier, sourceType: card ? 'topic_source' : (dossier ? 'dossier' : 'brand_only') };
   }
-  const wanted = genes && genes.sourceType;
   if (!card) {
     return dossier
       ? { topicSource: null, sourceDossier: dossier, sourceType: 'dossier' }
       : { topicSource: null, sourceDossier: null, sourceType: 'brand_only' };
   }
-  if (wanted === 'dossier' && dossier) return { topicSource: null, sourceDossier: dossier, sourceType: 'dossier' };
-  if (wanted === 'topic_source' || !dossier) return { topicSource: card, sourceDossier: dossier, sourceType: 'topic_source' };
-  return { topicSource: null, sourceDossier: dossier, sourceType: 'dossier' };
+  return { topicSource: card, sourceDossier: dossier, sourceType: 'topic_source' };
 }
 
 function chooseGenesForPost({ posts = [], brandKnowledge = null, portfolioPlan = null, accountState = {}, timeSlot = 'evening', random = Math.random, constraints = {} } = {}) {

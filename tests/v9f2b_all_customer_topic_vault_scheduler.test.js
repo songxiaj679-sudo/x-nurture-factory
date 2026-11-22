@@ -26,7 +26,7 @@ test('weekly caps and gaps follow the plan', () => {
   const recent = [{ fetchedAt: new Date(now.getTime() - 4 * day).toISOString(), usedCount: 1 }];
   const yesterday = [{ fetchedAt: new Date(now.getTime() - day).toISOString(), usedCount: 1 }];
   assert.equal(topicVaultEligibility({ user: user({ planId: 'starter' }), cards: recent, now }).reason, 'ready');
-  assert.equal(topicVaultEligibility({ user: user({ planId: 'starter' }), cards: yesterday, now }).reason, 'interval');
+  assert.equal(topicVaultEligibility({ user: user({ planId: 'starter' }), cards: yesterday, now }).reason, 'ready');
   assert.equal(topicVaultEligibility({ user: user(), cards: yesterday, now }).reason, 'weekly_cap');
   const three = [1, 2, 3].map(index => ({ fetchedAt: new Date(now.getTime() - index * day).toISOString(), usedCount: 1 }));
   assert.equal(topicVaultEligibility({ user: user({ planId: 'pro' }), cards: three, now }).reason, 'weekly_cap');
