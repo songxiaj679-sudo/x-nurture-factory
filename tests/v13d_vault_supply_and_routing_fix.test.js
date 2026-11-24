@@ -29,9 +29,10 @@ test('an empty V13 stock collects after three hours when the weekly cap still ha
     plainTranslation: '入口の紙は予定と別に替わる。'
   }];
   assert.equal(topicVaultEligibility({ user: user(), cards: waiting, now }).reason, 'interval');
-  const full = [1, 2, 3].map(index => ({
+  const full = [1, 2, 3, 4, 5, 6, 7].map(index => ({
     fetchedAt: new Date(now.getTime() - index * hour).toISOString(),
-    usedCount: 1
+    usedCount: 1,
+    plainTranslation: '入口の紙は予定と別に替わる。'
   }));
   assert.equal(topicVaultEligibility({ user: user(), cards: full, now }).reason, 'weekly_cap');
 });

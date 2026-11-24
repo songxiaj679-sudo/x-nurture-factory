@@ -17,18 +17,18 @@ function user(extra = {}) {
 }
 
 test('weekly caps and gaps follow the plan', () => {
-  assert.deepEqual(WEEKLY_ARTICLE_CAP, { free: 1, starter: 2, pro: 3, business: 3 });
+  assert.deepEqual(WEEKLY_ARTICLE_CAP, { free: 1, starter: 2, pro: 3, business: 7 });
   assert.equal(MIN_GAP_MS.free, 7 * day);
   assert.equal(MIN_GAP_MS.starter, 3.5 * day);
   assert.equal(MIN_GAP_MS.pro, 2.3 * day);
   assert.equal(MIN_GAP_MS.business, 2.3 * day);
   assert.equal(topicVaultEligibility({ user: user(), cards: [], now }).ok, true);
   const recent = [{ fetchedAt: new Date(now.getTime() - 4 * day).toISOString(), usedCount: 1 }];
-  const yesterday = [{ fetchedAt: new Date(now.getTime() - day).toISOString(), usedCount: 1 }];
+  const yesterday = [{ fetchedAt: new Date(now.getTime() - day).toISOString(), usedCount: 1, plainTranslation: '入口の紙は遅れる。' }];
   assert.equal(topicVaultEligibility({ user: user({ planId: 'starter' }), cards: recent, now }).reason, 'ready');
   assert.equal(topicVaultEligibility({ user: user({ planId: 'starter' }), cards: yesterday, now }).reason, 'ready');
   assert.equal(topicVaultEligibility({ user: user(), cards: yesterday, now }).reason, 'weekly_cap');
-  const three = [1, 2, 3].map(index => ({ fetchedAt: new Date(now.getTime() - index * day).toISOString(), usedCount: 1 }));
+  const three = [1, 2, 3].map(index => ({ fetchedAt: new Date(now.getTime() - index * day).toISOString(), usedCount: 1, plainTranslation: '入口の紙は遅れる。' }));
   assert.equal(topicVaultEligibility({ user: user({ planId: 'pro' }), cards: three, now }).reason, 'weekly_cap');
 });
 

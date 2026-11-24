@@ -428,7 +428,7 @@ async function markTopicSourceUsed(db, userId, sourceId, now = new Date()) {
   }, { merge: true });
 }
 
-const WEEKLY_ARTICLE_CAP = { free: 1, starter: 2, pro: 3, business: 3 };
+const WEEKLY_ARTICLE_CAP = { free: 1, starter: 2, pro: 3, business: 7 };
 const MIN_GAP_MS = {
   free: 7 * 24 * 60 * 60 * 1000,
   starter: 3.5 * 24 * 60 * 60 * 1000,
@@ -459,17 +459,19 @@ function topicVaultEligibility({ user, cards = [], now = new Date(), budgetAllow
   const freshUnused = cards.filter(card => String(card && card.plainTranslation || '').trim() && Number(card.usedCount) === 0 && audienceFitForCard(card, brand) !== 'mismatch').length;
   const gap = freshUnused === 0 ? EMPTY_STOCK_GAP_MS : (MIN_GAP_MS[plan] || MIN_GAP_MS.free);
   const weekAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
-  const recent = cards.filter(card => {
+  const weeklyCount = cards.filter(card => {
     const at = Date.parse(card && card.fetchedAt || '');
-    return Number.isFinite(at) && at >= weekAgo;
-  });
-  if (recent.length >= cap) return { ok: false, reason: 'weekly_cap' };
+    if (!Number.isFinite(at) || at < weekAgo) return false;
+    if (!String(card && card.plainTranslation || '').trim()) return false;
+    return audienceFitForCard(card, brand) !== 'mismatch';
+  }).length;
+  if (weeklyCount >= cap) return { ok: false, reason: 'weekly_cap', plan, weeklyCap: cap, weeklyCount };
   const last = cards.reduce((max, card) => {
     const at = Date.parse(card && card.fetchedAt || '');
     return Number.isFinite(at) && at > max ? at : max;
   }, 0);
-  if (last && now.getTime() - last < gap) return { ok: false, reason: 'interval' };
-  return { ok: true, reason: 'ready', plan, weeklyCap: cap, minGapMs: gap };
+  if (last && now.getTime() - last < gap) return { ok: false, reason: 'interval', plan, weeklyCap: cap, weeklyCount, minGapMs: gap };
+  return { ok: true, reason: 'ready', plan, weeklyCap: cap, weeklyCount, minGapMs: gap };
 }
 
 async function runTopicSourceVaultSweep(db, options = {}) {

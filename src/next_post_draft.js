@@ -585,6 +585,11 @@ function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, 
   const noClock = isEn
     ? 'Do not invent a time of day or an elapsed time, such as evening or 30 minutes, unless that detail is already in the notes.'
     : '入力に無い時間帯や経過時間（夕方、夜、30分など）の場面は作らない。';
+  const noSeason = sourceLed
+    ? (isEn
+      ? 'Do not add a seasonal or annual event, such as year-end or a holiday, unless the source states it.'
+      : '一次原典に無い季節行事や年中行事（年末、お正月、連休など）は足さない。')
+    : '';
   const collision = tensionSeed && tensionSeed.text
     ? (isEn
       ? `Collision partner (${tensionSeed.source}): ${tensionSeed.text}. tension is one sentence of at most 130 characters where this partner runs against the source fact and this brand's stance. Set tensionReversesInput and passesBrandSwap true only when the sentence reverses the partner and would fail if another company in the same field said it. A paraphrase of the article conclusion is false for both. When the objection or the article already states a number or a concrete fact, use that fact as the core. Do not invent a number.`
@@ -610,6 +615,7 @@ ${freshClaim}
 ${noQuestion}
 ${collision}
 ${noClock}
+${noSeason}
 ${ownerSparkLine(ownerSpark, true)}
 ${stateLine}
 Time slot: ${timeSlot}
@@ -634,6 +640,7 @@ ${freshClaim}
 ${noQuestion}
 ${collision}
 ${noClock}
+${noSeason}
 ${ownerSparkLine(ownerSpark, false)}
 ${form}
 ${stateLine}
@@ -987,6 +994,11 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
     ? 'Phone layout. Put a blank line right after line 1, and another blank line every two or three sentences. A short list may use 1. 2. or quotes. Do not stack emoji. Do not use a disclosure mark in the body.'
     : '適度な空行を入れる。1行目の直後に空行を置き、2〜3文ごとに空行を入れる。控えめな装飾として「」か・か1. 2. を使ってよい。絵文字は連打しない。本文に▼は使わない。';
   const explainer = spokenExplainer(isEn, articleSource, articleDossier, masterPlan);
+  const noSeason = sourceLed
+    ? (isEn
+      ? 'Do not add a seasonal or annual event, such as year-end or a holiday, unless the source states it.'
+      : '一次原典に無い季節行事や年中行事（年末、お正月、連休など）は足さない。')
+    : '';
   const reactionLine = masterPlan && masterPlan.topicRing === 'ring3_product_bridge'
     ? ''
     : (isEn
@@ -1062,6 +1074,7 @@ ${phoneLayout}
 ${explainer}
 ${notManual}
 ${reactionLine}
+${noSeason}
 ${officialVoice}
 ${notes ? `Customer notes: ${notes}` : ''}
 ${blocked ? `Forbidden: ${blocked}` : ''}
@@ -1091,6 +1104,7 @@ ${phoneLayout}
 ${explainer}
 ${notManual}
 ${reactionLine}
+${noSeason}
 ${officialVoice}
 ${notes ? `実務メモ: ${notes}` : ''}
 ${blocked ? `禁止: ${blocked}` : ''}
