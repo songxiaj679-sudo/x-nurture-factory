@@ -388,12 +388,17 @@ function formatGuide(genes, isEn) {
     : '110字を超える投稿は、最初の1行のあとに空行を入れて区切る。一段落に固めない。';
 }
 
-function angleLine({ isEn, domainSlot, focusClaim, focusProblem, productName, bridge }) {
+function angleLine({ isEn, domainSlot, focusClaim, focusProblem, productName, bridge, sourceLed = false }) {
   if (domainSlot) {
     const name = productName || (isEn ? 'the product' : '製品名');
     const close = bridge
       ? (isEn ? ' A profile bridge may add one subtle closing pointer, never a feature list.' : 'プロフィールへ戻る一言だけ最後に添えてよい。機能説明にはしない。')
       : '';
+    if (sourceLed) {
+      return isEn
+        ? `Save the source fact and why it works. Do not add a checklist. Do NOT pitch or mention ${name} unless the fact needs it. Topic: ${JSON.stringify(focusProblem || '')}${close}`
+        : `保存する一点は一次原典の事実と、なぜそうなるか。確認手順は足さない。${name}は文脈に不可欠なとき以外は出さない。話題: ${JSON.stringify(focusProblem || '')}${close}`;
+    }
     return isEn
       ? `Teach one concrete point this reader would save: a distinction, a small adjustment, a check, or a common mix-up. Do NOT pitch or mention ${name} unless strictly necessary for context. Topic: ${JSON.stringify(focusProblem || '')}${close}`
       : `その読者が保存したくなる具体を一つ書く。見分け方、小さな工夫、確認手順、よくある思い違いのいずれか。${name}は文脈に不可欠なとき以外は出さない。話題: ${JSON.stringify(focusProblem || '')}${close}`;
@@ -553,12 +558,21 @@ function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, 
       ? `Explain specialist knowledge in everyday words a stranger can use and bookmark. Do not mention a product page, a registered URL, or a tool setup step. Topic ring ${masterPlan && masterPlan.topicRing || ''}. Domain: ${masterPlan && masterPlan.selectedTopicDomain || ''}.${articleNote ? ` External notes: ${articleNote}` : ''}`
       : `知らない人が保存したくなる実務を、平易な言葉で書く。製品ページ、登録URL、ツールの設定手順は書かない。話題リング ${masterPlan && masterPlan.topicRing || ''}。領域: ${masterPlan && masterPlan.selectedTopicDomain || ''}。${articleNote ? `外部メモ: ${articleNote}` : ''}`)
     : '';
+  const sourceLed = Boolean(articleSource && (articleSource.coreFact || articleSource.plainTranslation || articleSource.mechanism));
+  const payoffMenu = sourceLed
+    ? (isEn
+      ? 'A primary source is attached. readerPayoff and offer are only that fact, mechanism, and shift in view. Do not invent a check. underlyingMechanism is that mechanism in one sentence.'
+      : '一次原典がある。readerPayoff と offer は、その事実・仕組み・見方の転換だけ。確認手順は作らない。underlyingMechanism はその仕組みの1文。')
+    : (isEn
+      ? 'Choose the angle that fits this account, its field, and this reader: a distinction, a small adjustment, a check, or a common mix-up. Define underlyingMechanism as that one concrete point, with no academic field name.'
+      : 'このアカウントの業種と読者に合う切り口を選ぶ。見分け方、小さな工夫、確認、よくある思い違いの整理のいずれか。underlyingMechanism は学問名を出さず、その一点を1文で定義する。');
   const freshClaim = [angleLine({
     isEn,
     domainSlot,
     focusClaim: isolateLpContext === true ? null : focusClaim,
     focusProblem: isolateLpContext === true ? '' : focusProblem,
     bridge,
+    sourceLed,
     productName: isolateLpContext === true ? '' : (brandKnowledge && brandKnowledge.productName)
   }), playbookLine].filter(Boolean).join('\n');
   const noQuestion = decision && decision.endingMove !== 'genuine_tension'
@@ -587,7 +601,7 @@ ${spokenExplainer(true, articleSource, articleDossier, masterPlan)}
 ${notes ? `Customer field notes, treat as their own facts: ${notes}` : ''}
 ${blocked ? `Never use these words or topics: ${blocked}` : ''}
 Decide the single thing the page is offering, the reader only if the page names one, one scene, and how this account should sound from its earlier posts.
-Unless this post is an explicit promotion, do not make the product pitch the point. Choose the angle that fits this account, its field, and this reader: a distinction, a small adjustment, a check, or a common mix-up. Define underlyingMechanism as that one concrete point, with no academic field name.
+Unless this post is an explicit promotion, do not make the product pitch the point. ${payoffMenu}
 ${form}
 ${decided}
 ${freshClaim}
@@ -612,7 +626,7 @@ ${spokenExplainer(false, articleSource, articleDossier, masterPlan)}
 ${notes ? `お客様本人の実務メモ。本人が書いた一次事実として扱う: ${notes}` : ''}
 ${blocked ? `次の語や話題は絶対に使わない: ${blocked}` : ''}
 ページが渡しているものを1つに決める。相手はページに書いてあるときだけ。場面を1つ。声は、このアカウントの過去の投稿から決める。
-宣伝枠以外では自社製品の紹介を主目的にしない。このアカウントの業種と読者に合う切り口を選ぶ。見分け方、小さな工夫、確認、よくある思い違いの整理のいずれか。underlyingMechanism は学問名を出さず、その一点を1文で定義する。
+宣伝枠以外では自社製品の紹介を主目的にしない。${payoffMenu}
 ${decided}
 ${freshClaim}
 ${noQuestion}
@@ -956,12 +970,14 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
       ? `Explain this in everyday words. Do not mention a product page, a registered URL, or a tool setup step. Domain: ${masterPlan && masterPlan.selectedTopicDomain || ''}.${articleNote ? ` External notes: ${articleNote}` : ''}`
       : `製品ページ、登録URL、ツールの設定手順は書かない。領域: ${masterPlan && masterPlan.selectedTopicDomain || ''}。${articleNote ? `外部メモ: ${articleNote}` : ''}`)
     : '';
+  const sourceLed = Boolean(articleSource && (articleSource.coreFact || articleSource.plainTranslation || articleSource.mechanism));
   const freshClaim = [angleLine({
     isEn,
     domainSlot,
     focusClaim: isolateLpContext === true || domainSlot ? null : focusClaim,
     focusProblem: isolateLpContext === true ? '' : focusProblem,
     bridge,
+    sourceLed,
     productName: isolateLpContext === true ? '' : (brandKnowledge && brandKnowledge.productName)
   }), playbookLine, isolationLine, readabilityLine || ''].filter(Boolean).join('\n');
   const phoneLayout = isEn
@@ -1001,8 +1017,8 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
     : (preferCount === 2 ? (isEn ? ' This time prefer a 2-part post. Do not spill leftover text into a third part.' : ' 今回は2段構成を優先する。はみ出し分割は禁止。') : '');
   const replySplit = (accountState && accountState.delivery) === 'parent_self_reply' || (genes && genes.delivery) === 'parent_self_reply'
     ? (isEn
-      ? 'Parent plus self-reply. This split wins over any archetype line that puts the cause in the body. The first post stops at the scene or the odd feeling. The cause, the way to tell, and the check go in the self-replies. Choose two or three parts from the depth of the point. Do not spill an unfinished sentence into the next part. Two parts: scene, then the cause and one move. Three parts only when the third is its own practical step.'
-      : '親投稿と自己リプライ。この分担は、型が本文で原因まで書く指示より優先する。1本目は違和感や場面で止める。原因、見分け方、やり方、確認は自己リプライに置く。内容の深さに応じて2段か3段を選ぶ。文字数があふれたから3段目にこぼす分割は禁止。2段は1段目が場面、2段目が原因と1手。3段は1段目が場面、2段目が仕組み、3段目がすぐ試せる手順で、3段目が独立しているときだけ使う。') + preferLine
+      ? 'Parent plus self-reply. This split wins over a checklist. Post one is the assumption and the way in. Post two is the source fact and why it works. Do not restate post one or add a separate move. A third part only when it stands alone. Do not spill a sentence.'
+      : '親投稿と自己リプライ。この分担は確認手順の型より優先する。1段目は前提か違和感と核心の入口。2段目は一次原典の事実と仕組みで、構造が腑に落ちるところまで書く。1段目の言い換えと、取って付けた1手は禁止。3段目は独立したときだけ。文の途中では分割しない。') + preferLine
     : '';
   const officialVoice = voiceProfile && voiceProfile.accountRole === 'official_brand'
     ? (isEn
@@ -1167,7 +1183,8 @@ async function draftNextPostWithMeta({
     sharedLexicon: editorialContext && editorialContext.sharedLexicon,
     matureCount: editorialContext && editorialContext.matureCount,
     strategyLocked: editorialContext && editorialContext.strategyLocked,
-    shape
+    shape,
+    topicSource
   });
   const planGuide = { decision, editorialContext };
   const combinedPrompt = [userPrompt, rethinkFeedback, retargetContext].filter(Boolean).join('\n');
@@ -1386,7 +1403,7 @@ async function draftNextPostWithMeta({
     emitStage('draft_critic');
     try {
       const scored = parseJson(await billedDraft(
-        `${readerLine}\nScore each candidate from 0 to 100 for a human scrolling plain-text X. scrollStopHook 25 asks whether line 1 creates honest curiosity. saveUtility 25 asks whether the intended reader gains one concrete point worth saving, such as a distinction, a small adjustment, a check, or a cleared-up mix-up. strangerClarity 25 asks whether the layout can be scanned in half a second and whether the subject opened on line 1 continues through the ending. Score below 60 when a general reader problem jumps into an unexplained product rule, or when the closing sentence contradicts the example just given. craftAndTruth 25 asks for a natural voice in that field and zero invented stats. Judge the intended reader, not whether the draft merely avoids sounding like a model. Thin generalities, lecture-like cadence, mixed polite and plain endings, a second tweet that only restates the first, and academic labels such as "according to X studies" score below 60. Endings such as "何が変わると感じますか", "仕組みがここにある", "what changes for you", or "the mechanism is right here" also score below 60. Robotic brochure lines such as "チームはこれを解明し", "効率的な運用が可能です", "持続可能な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" or "根拠に基づく判断が重要です" score at most 55. A score of 72 or higher requires one concrete point that reader would save. strangerClarity below 14 or scrollStopHook below 12 fails even when the total is high. Broken English grammar (e.g. missing articles like "create schedule" or "The rule is input..."), tiny slogan stubs under 65 characters, or product usage-manual dumps ("feed a URL into the tool...") when not a promo score below 55. Put the concrete fix in weakness, for example: name the cause or mechanism instead of a surface generality. Return JSON ${criticScoreShape()}.\n${criticGround}${JSON.stringify(accepted)}`,
+        `${readerLine}\nScore each candidate from 0 to 100 for a human scrolling plain-text X. scrollStopHook 25 asks whether line 1 creates honest curiosity. saveUtility 25 asks whether the source fact changes how the reader sees the structure. A bolted-on step, or a caveat that cancels the point such as ただし, scores below 60. strangerClarity 25 asks whether the layout can be scanned in half a second and whether the subject opened on line 1 continues through the ending. Score below 60 when a general reader problem jumps into an unexplained product rule, or when the closing sentence contradicts the example just given. craftAndTruth 25 asks for a natural voice in that field and zero invented stats. Judge the intended reader, not whether the draft merely avoids sounding like a model. Thin generalities, lecture-like cadence, mixed polite and plain endings, a second tweet that only restates the first, and academic labels such as "according to X studies" score below 60. Endings such as "何が変わると感じますか", "仕組みがここにある", "what changes for you", or "the mechanism is right here" also score below 60. Robotic brochure lines such as "チームはこれを解明し", "効率的な運用が可能です", "持続可能な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" or "根拠に基づく判断が重要です" score at most 55. A score of 72 or higher requires one concrete point that reader would save. strangerClarity below 14 or scrollStopHook below 12 fails even when the total is high. Broken English grammar (e.g. missing articles like "create schedule" or "The rule is input..."), tiny slogan stubs under 65 characters, or product usage-manual dumps ("feed a URL into the tool...") when not a promo score below 55. Put the concrete fix in weakness, for example: name the cause or mechanism instead of a surface generality. Return JSON ${criticScoreShape()}.\n${criticGround}${JSON.stringify(accepted)}`,
         {
           role: 'critic',
           tier: tier === 'fast' ? 'fast' : tier,
@@ -1478,7 +1495,7 @@ async function draftNextPostWithMeta({
       } else if (retryPool.length && apiCalls < callCap) {
         chosen = null;
         const repairScore = parseJson(await billedDraft(
-          `${readerLine}\nScore each repaired candidate from 0 to 100. Accept only a draft with one concrete point the intended reader would save, not a brochure. Lines such as "チームはこれを解明し", "効率的な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" score at most 55. A score of 72 or higher requires that concrete point. strangerClarity below 14 or scrollStopHook below 12 fails. Return JSON ${criticScoreShape()}.\n${criticGround}${JSON.stringify(retryPool)}`,
+          `${readerLine}\nScore each repaired candidate from 0 to 100. Accept a draft where the source fact changes how the reader sees the structure. A bolted-on step or a cancelling ただし scores below 60. Lines such as "チームはこれを解明し", "効率的な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" score at most 55. A score of 72 or higher requires that structural point. strangerClarity below 14 or scrollStopHook below 12 fails. Return JSON ${criticScoreShape()}.\n${criticGround}${JSON.stringify(retryPool)}`,
           {
             role: 'critic',
             tier: tier === 'fast' ? 'fast' : tier,

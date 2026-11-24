@@ -58,7 +58,7 @@ test('the spoken pair is one industry-neutral example and the locked lines stay'
   assert.equal(prompt.includes('OAuth'), false);
   assert.match(prompt, /readerLine/);
   assert.match(prompt, /delivery\) === 'parent_self_reply'/);
-  assert.match(prompt, /型が本文で原因まで書く指示より優先する/);
+  assert.match(prompt, /2段目は一次原典の事実と仕組み/);
   const ja = systemRules(false);
   const en = systemRules(true);
   assert.match(ja, /英語の直訳のような硬い言い回し/);

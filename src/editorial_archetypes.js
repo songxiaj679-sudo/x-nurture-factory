@@ -88,8 +88,8 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
     : '';
   const splitLine = delivery === 'parent_self_reply'
     ? (isEn
-      ? 'Parent plus self-reply. This split wins over any archetype line that puts the cause in the body. The first post stops at the scene or the odd feeling. The cause, the way to tell, and the check go in the self-replies.'
-      : '親投稿と自己リプライ。この分担は、型が本文で原因まで書く指示より優先する。1本目は違和感や場面で止める。原因、見分け方、やり方、確認は自己リプライに置く。')
+      ? 'Parent plus self-reply. This split wins over a checklist. Post one is the assumption and the way in. Post two is the source fact and why it works. Do not restate post one.'
+      : '親投稿と自己リプライ。この分担は確認手順の型より優先する。1段目は前提か違和感と核心の入口。2段目は一次原典の事実と仕組み。1段目の言い換えは禁止。')
     : '';
   const lines = {
     before_after_rewrite: isEn
@@ -105,8 +105,8 @@ function archetypePromptLines({ archetype, topic, signals, isEn, thread = false,
       ? 'Archetype live_trend_brief. Line 1 opens an honest curiosity gap. After a blank line, give one plain stance and one way to judge it, in the layout you chose. Do not quote a post or attach a number.'
       : '型は live_trend_brief。1行目は続きが気になる誠実な引き。空行のあと、平易な立場と見極める基準を、選んだレイアウトで書く。投稿の引用や数値は付けない。衝撃や続きはプロフへ、は禁止。',
     contrarian_sharp: isEn
-      ? 'Archetype contrarian_sharp. One lazy belief, one sharp correction, one concrete check. Stay under 240 characters. Put the correction in its own breath after a blank line, using the layout you chose.'
-      : '型は contrarian_sharp。怠い通念、鋭い訂正、具体的な確認を短く書く。180文字未満。訂正は空行のあとに、選んだレイアウトで置く。'
+      ? 'Archetype contrarian_sharp. One lazy belief, then a sharp correction that lands on the mechanism. Stay under 240 characters. Put the correction after a blank line.'
+      : '型は contrarian_sharp。怠い通念を鋭く訂正し、仕組みの核心で締める。180文字未満。訂正は空行のあとに置く。'
   };
   return [lines[archetype] || '', choice, threadLine, splitLine, recentLine, card ? (isEn ? `Illustrative reader card, not a case study: ${card}` : `読者向けの見本カード。導入事例ではない: ${card}`) : '', live].filter(Boolean).join('\n');
 }

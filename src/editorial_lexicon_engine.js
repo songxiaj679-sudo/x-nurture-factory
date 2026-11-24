@@ -23,7 +23,7 @@ const SHARED_LEXICON = {
     {
       id: 'thread_restatement',
       why: '2本目が1本目の言い換えだと、新しい情報がゼロになる',
-      fix: '例外、反例、確認手順のどれか一つだけを足す',
+      fix: '2本目は仕組みを新しく書く。1本目の言い換えはしない',
       samples: []
     },
     {
@@ -160,6 +160,8 @@ function decideEditorialPlan(input = {}) {
       : '常体（だ・である）で統一し、です・ますを混ぜない。');
 
   let endings = ['verdict_cut', 'condition_edge', 'concrete_check', 'genuine_tension'];
+  const sourceLed = Boolean(input.topicSource && (input.topicSource.coreFact || input.topicSource.plainTranslation || input.topicSource.mechanism));
+  if (sourceLed) endings = endings.filter(id => id !== 'condition_edge');
   if (recent.slice(0, 2).some(endsAsQuestion)) endings = endings.filter(id => id !== 'genuine_tension');
   const previousEnding = recent[0] ? inferEnding(recent[0]) : '';
   const endingPool = endings.filter(id => id !== previousEnding);
@@ -191,8 +193,8 @@ function decideEditorialPlan(input = {}) {
   const autoRetiredFromRecent = [...new Set([...(domain.retiredPhrases || []), ...repeatedTokens(recent), ...craftHits])].slice(0, 12);
   const threadSecondMove = input.shape && input.shape.thread
     ? (isEn
-      ? 'Tweet two must add one new exception, counterexample, or concrete check. Do not restate tweet one.'
-      : '2本目は、1本目が成り立たない例外条件・具体的な失敗ケース・次の確認手順のどれか1つだけを新しく書く。1本目の要約や言い換えは禁止。')
+      ? 'Tweet two explains the source fact and why it works. Do not restate tweet one or add a separate check.'
+      : '2本目は一次事実と、なぜそうなるかを書く。1本目の言い換えは禁止。別の確認手順は足さない。')
     : '';
 
   return { registerLock, registerInstruction, endingMove, cognitiveMove, autoRetiredFromRecent, threadSecondMove, weights, guidanceMode: weights.phase };
