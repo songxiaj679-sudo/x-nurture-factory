@@ -11,6 +11,9 @@ const CLICHE_OPENER = /という見方があります|とよく言われます|�
 const FAKE_RESULT = /導入後|売上が|フォロワーが増えた|導入事例|顧客が|customers gained/i;
 const LP_META = /登録ページ|同一サイト内の案内|ページに書かれた機能|保存したアカウント像|saved page|registered page/i;
 const BROKEN_EN = /^(?:The rule is|Feed one URL\b)|\bcreate schedule\b|\binput the URL\b/i;
+function numberTokenPattern() {
+  return /(?:¥|￥|\$)?\d[\d,]*(?:\.\d+)?\s*(?:%|％|倍|割|年|ヶ月|ヵ月|日|時間|時半?|分|秒|万|億|人|社|件|円)?/g;
+}
 
 function grams(text, lang) {
   const clean = String(text || '').normalize('NFKC').toLowerCase();
@@ -50,24 +53,25 @@ function allowedNumbers(context) {
     ...(knowledge.verifiedPricing || []),
     ...claims.flatMap(claim => claim.verifiedNumbers || [])
   ];
-  const notePattern = /(?:¥|￥|\$)?\d[\d,]*(?:\.\d+)?\s*(?:%|％|倍|円|日|時間|人|件)?/g;
-  const promptNumbers = String(context.userPrompt || '').match(notePattern) || [];
-  const contextNoteNumbers = String(context.brandContextNotes || '').match(notePattern) || [];
+  const promptNumbers = String(context.userPrompt || '').match(numberTokenPattern()) || [];
+  const contextNoteNumbers = String(context.brandContextNotes || '').match(numberTokenPattern()) || [];
   const topic = context.topicSource || {};
   const groundedText = [
     context.ownerSpark && context.ownerSpark.text,
     context.audiencePushback,
     context.pushback,
     topic.title,
+    topic.sourceName,
     topic.coreFact,
     topic.whyItMatters,
     topic.mechanism,
     topic.readerQuestion,
     topic.plainTranslation,
     topic.actionableTakeaway,
-    topic.commonMyth
+    topic.commonMyth,
+    topic.evidence
   ].filter(Boolean).join('\n');
-  const groundedNumbers = groundedText.match(notePattern) || [];
+  const groundedNumbers = groundedText.match(numberTokenPattern()) || [];
   const state = context.accountState || {};
   if (Number.isSafeInteger(state.followers)) values.push(String(state.followers));
   if (Number.isSafeInteger(state.following)) values.push(String(state.following));
@@ -84,7 +88,7 @@ function digitCore(token) {
 
 function verifyNumericGrounding(text, context) {
   const withoutUrls = String(text || '').replace(/https?:\/\/\S+/g, ' ');
-  const found = withoutUrls.match(/(?:¥|￥|\$)?\d[\d,]*(?:\.\d+)?\s*(?:%|％|倍|割|年|ヶ月|ヵ月|日|時間|時半?|分|秒|万|億|人|社|件|円)?/g) || [];
+  const found = withoutUrls.match(numberTokenPattern()) || [];
   const allowed = allowedNumbers(context).flatMap(digitCores).filter(Boolean);
   const bad = [];
   for (const token of found) {
@@ -135,7 +139,10 @@ function runDeterministicAudit(candidate, context = {}) {
   }
   const replyFloor = lang === 'en' ? 55 : 10;
   if (tweets.slice(1).some(text => typeof text !== 'string' || text.trim().length < replyFloor)) reasons.push('too_short');
-  if (context.accountState && !fitsAccountState(tweets, context.accountState, { allowPromoReply: promo })) {
+  if (context.accountState && !fitsAccountState(tweets, context.accountState, {
+    allowPromoReply: promo,
+    delivery: context.delivery || context.accountState.delivery || ''
+  })) {
     reasons.push('shape_mismatch');
   }
   try {

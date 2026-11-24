@@ -24,6 +24,29 @@ function sourceIdFor(url) {
   return crypto.createHash('sha256').update(normalizeSourceUrl(url)).digest('hex').slice(0, 32);
 }
 
+const GROUNDING_FIELDS = ['title', 'sourceName', 'coreFact', 'whyItMatters', 'mechanism', 'readerQuestion', 'plainTranslation', 'actionableTakeaway', 'commonMyth', 'evidence'];
+
+function topicSourceGroundingSnapshot(card) {
+  if (!card || typeof card !== 'object') return null;
+  const snapshot = {};
+  for (const key of GROUNDING_FIELDS) {
+    const text = stripUrls(card[key]).slice(0, 240);
+    if (text) snapshot[key] = text;
+  }
+  return Object.keys(snapshot).length ? snapshot : null;
+}
+
+async function topicSourceForAudit(db, job) {
+  const stored = topicSourceGroundingSnapshot(job && job.topicSourceGrounding);
+  if (stored) return stored;
+  if (!db || !job || job.sourceType !== 'topic_source' || !job.userId) return null;
+  const id = String(job.topicSourceId || '').trim() || (job.verifiedReferenceUrl ? sourceIdFor(job.verifiedReferenceUrl) : '');
+  if (!id) return null;
+  const snap = await db.collection('saas_users').doc(job.userId).collection('topic_sources').doc(id).get();
+  if (!snap.exists) return null;
+  return topicSourceGroundingSnapshot(snap.data() || {});
+}
+
 function stripUrls(value) {
   return String(value || '').replace(/https?:\/\/\S+/gi, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -558,6 +581,8 @@ module.exports = {
   isPrimarySource,
   safeArticleUrl,
   verifiedReferenceUrlForJob,
+  topicSourceGroundingSnapshot,
+  topicSourceForAudit,
   planVerifiedReference,
   keepGroundedNumbers,
   sourceIdFor,

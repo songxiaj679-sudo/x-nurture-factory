@@ -634,6 +634,7 @@ async function executeAutopilotJob(jobId, options = {}) {
 
     if (!job.isHumanOverride) {
       const accountState = job.accountStateSnapshot || describeAccountState({ ok: false }, userDoc.data());
+      const topicSource = await require('./topic_source_vault').topicSourceForAudit(db, job);
       const audit = runDeterministicAudit({ tweets: postTexts }, {
         lang: isEn ? 'en' : 'ja',
         ngTopics: userDoc.data().ngTopics,
@@ -641,6 +642,8 @@ async function executeAutopilotJob(jobId, options = {}) {
         userPrompt: userDoc.data().userPrompt,
         brandContextNotes: userDoc.data().brandContextNotes,
         accountState,
+        topicSource,
+        delivery: job.delivery || '',
         portfolioPlan: { allowPromoUrl: Boolean(job.allowPromoUrl || isPromotion) },
         timeSlot: job.timeSlot,
         recentTexts: (!scheduledContent.isJit && !options.forceJit) ? [] : []
@@ -786,6 +789,11 @@ async function executeAutopilotJob(jobId, options = {}) {
         }
       }
       const visualCardAttached = mediaIds.length > 0;
+      if (job.sourceType === 'topic_source' && job.topicSourceId) {
+        try {
+          await require('./topic_source_vault').markTopicSourceUsed(db, job.userId, job.topicSourceId, new Date());
+        } catch (_usedErr) {}
+      }
       await jobRef.update({
         status: 'posted',
         referenceReplyStatus,

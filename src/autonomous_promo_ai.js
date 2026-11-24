@@ -3433,6 +3433,8 @@ async function prepareNextPost(userId, options = {}) {
     topicRing: masterPlan.topicRing || '',
     selectedTopicDomain: masterPlan.selectedTopicDomain || '',
     sourceType: drafted.sourceType || 'brand_only',
+    topicSourceId: topicSource && topicSource.sourceId || null,
+    topicSourceGrounding: require('./topic_source_vault').topicSourceGroundingSnapshot(topicSource),
     verifiedReferenceUrl: require('./topic_source_vault').verifiedReferenceUrlForJob({
       sourceType: drafted.sourceType || 'brand_only',
       ownerSparkUsed: drafted.ownerSparkUsed === true,
@@ -3491,6 +3493,8 @@ async function prepareNextPost(userId, options = {}) {
       subscription: accountState.subscription,
       searchVisible: accountState.searchVisible,
       maxChars: accountState.maxChars,
+      delivery: accountState.delivery || '',
+      postShape: accountState.postShape || '',
       recordedAt: new Date().toISOString()
     },
     updatedAt: new Date()
@@ -3517,11 +3521,6 @@ async function prepareNextPost(userId, options = {}) {
         }, { merge: true });
       } catch (_activationErr) {}
     }
-  }
-  if (topicSource && topicSource.sourceId) {
-    try {
-      await require('./topic_source_vault').markTopicSourceUsed(db, userId, topicSource.sourceId, new Date());
-    } catch (_usedErr) {}
   }
   await cancelOtherPendingJobs(userId, targetUrl, pageSummary.pageVersion, jobId);
   const audits = Array.isArray(qualityAudit) ? qualityAudit : [];
