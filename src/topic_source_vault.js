@@ -212,7 +212,7 @@ async function crawlAllowed({ db, userId, user, now }) {
   return true;
 }
 
-async function buildCard({ markdown, sourceUrl, sourceName, outputLang, completeJson, now }) {
+async function buildCard({ markdown, sourceUrl, sourceName, outputLang, completeJson, now, brandKnowledge = null }) {
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const ask = completeJson || require('./grok_client').completeJson;
   const prompt = lang === 'en'
@@ -243,9 +243,15 @@ async function buildCard({ markdown, sourceUrl, sourceName, outputLang, complete
     commonMyth: field(parsed.commonMyth, 120),
     fetchedAt: (now instanceof Date ? now : new Date()).toISOString(),
     usedCount: 0,
-    lastUsedAt: null
+    lastUsedAt: null,
+    audienceFit: 'fit',
+    excludedReason: ''
   };
   if (!card.coreFact || !card.mechanism || (!card.plainTranslation && !card.actionableTakeaway)) return null;
+  if (audienceFitForCard(card, brandKnowledge) === 'mismatch') {
+    card.audienceFit = 'mismatch';
+    card.excludedReason = 'reader_practice_gap';
+  }
   return card;
 }
 
@@ -321,10 +327,15 @@ async function collectTopicSourceForUser({
     sourceName: chosen.sourceName,
     outputLang,
     completeJson,
-    now
+    now,
+    brandKnowledge
   });
   if (!card) {
     mark('card_null', { raw, kept, statuses });
+    return null;
+  }
+  if (card.audienceFit === 'mismatch') {
+    mark('audience_mismatch', { raw, kept, statuses });
     return null;
   }
   card.sourceId = sourceIdFor(chosen.url);
@@ -346,9 +357,39 @@ async function collectTopicSourceForUser({
   return card;
 }
 
-function selectReusableTopicCard(rows, lang = 'ja') {
+const SOCIAL_SUBJECTS = [
+  /デマ|偽情報|誤情報|低信頼性|misinformation|disinformation/i,
+  /選挙|election/i,
+  /公衆衛生|public health|パンデミック/i
+];
+
+function cardSubjectText(card) {
+  return ['title', 'readerQuestion', 'coreFact', 'plainTranslation', 'commonMyth', 'mechanism', 'whyItMatters']
+    .map(key => String(card && card[key] || ''))
+    .join('\n');
+}
+
+function readerPracticeText(brandKnowledge) {
+  if (!brandKnowledge || typeof brandKnowledge !== 'object') return '';
+  const problems = Array.isArray(brandKnowledge.domainProblems) ? brandKnowledge.domainProblems : [];
+  return [brandKnowledge.icpSummary, brandKnowledge.oneLineMechanism, ...problems].map(item => String(item || '')).join('\n');
+}
+
+function audienceFitForCard(card, brandKnowledge) {
+  if (!card) return 'fit';
+  if (card.audienceFit === 'mismatch' || card.excludedReason) return 'mismatch';
+  const subject = cardSubjectText(card);
+  const cardHits = SOCIAL_SUBJECTS.map((rule, index) => (rule.test(subject) ? index : -1)).filter(index => index >= 0);
+  if (!cardHits.length) return 'fit';
+  const readerHits = SOCIAL_SUBJECTS.map((rule, index) => (rule.test(readerPracticeText(brandKnowledge)) ? index : -1)).filter(index => index >= 0);
+  if (cardHits.some(index => readerHits.includes(index))) return 'fit';
+  return 'mismatch';
+}
+
+function selectReusableTopicCard(rows, lang = 'ja', brandKnowledge = null) {
   const usable = (Array.isArray(rows) ? rows : []).filter(row => {
     if (!row || (row.outputLang || 'ja') !== lang || !row.coreFact || !row.mechanism) return false;
+    if (audienceFitForCard(row, brandKnowledge) === 'mismatch') return false;
     return Boolean(String(row.plainTranslation || '').trim()) || Number(row.usedCount) === 0;
   });
   usable.sort((left, right) => {
@@ -370,7 +411,9 @@ async function pickTopicSourceForPost(db, userId, { outputLang = 'ja' } = {}) {
     const data = doc.data() || {};
     rows.push({ ...data, sourceId: doc.id });
   });
-  return selectReusableTopicCard(rows, lang);
+  const userSnap = await db.collection('saas_users').doc(userId).get();
+  const brandKnowledge = userSnap.exists ? (userSnap.data() || {}).brandKnowledge : null;
+  return selectReusableTopicCard(rows, lang, brandKnowledge);
 }
 
 async function markTopicSourceUsed(db, userId, sourceId, now = new Date()) {
@@ -408,12 +451,12 @@ function topicVaultEligibility({ user, cards = [], now = new Date(), budgetAllow
   const brand = user.brandKnowledge;
   const hasUrl = Boolean(String(user.targetUrl || (brand && brand.sourceUrl) || '').trim());
   if (!hasUrl || !brand || typeof brand !== 'object') return { ok: false, reason: 'missing_brand' };
-  const unused = cards.filter(card => Number(card && card.usedCount) === 0).length;
+  const unused = cards.filter(card => Number(card && card.usedCount) === 0 && audienceFitForCard(card, brand) !== 'mismatch').length;
   if (unused >= UNUSED_CARD_CAP) return { ok: false, reason: 'unused_full' };
   if (budgetAllowed === false) return { ok: false, reason: 'budget' };
   const plan = topicPlan(user);
   const cap = WEEKLY_ARTICLE_CAP[plan] || WEEKLY_ARTICLE_CAP.free;
-  const freshUnused = cards.filter(card => String(card && card.plainTranslation || '').trim() && Number(card.usedCount) === 0).length;
+  const freshUnused = cards.filter(card => String(card && card.plainTranslation || '').trim() && Number(card.usedCount) === 0 && audienceFitForCard(card, brand) !== 'mismatch').length;
   const gap = freshUnused === 0 ? EMPTY_STOCK_GAP_MS : (MIN_GAP_MS[plan] || MIN_GAP_MS.free);
   const weekAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
   const recent = cards.filter(card => {
@@ -575,6 +618,7 @@ module.exports = {
   collectTopicSourceForUser,
   pickTopicSourceForPost,
   selectReusableTopicCard,
+  audienceFitForCard,
   markTopicSourceUsed,
   formatTopicSourceAsDossier,
   selectArticleUrls,

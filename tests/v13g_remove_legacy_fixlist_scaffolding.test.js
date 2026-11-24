@@ -24,7 +24,7 @@ test('a primary source brief keeps the finding and does not order a review ritua
     domainSlot: true,
     decision: { endingMove: 'verdict_cut' }
   });
-  assert.match(brief, /事実・仕組み・見方の転換だけ/);
+  assert.match(brief, /原典の主題を投稿のテーマにしない/);
   assert.equal(brief.includes('見分け方、小さな工夫、確認、よくある思い違い'), false);
   const plain = briefPrompt({
     isEn: false,
