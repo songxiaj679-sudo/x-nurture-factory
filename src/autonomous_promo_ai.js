@@ -3629,6 +3629,8 @@ function jobInstant(value) {
 
 async function ensureNextPost(userId, options = {}) {
   if (!userId || ensureRunning.has(userId)) return { ok: false, reason: 'already_running' };
+  const paused = require('./provider_error').pauseError();
+  if (paused) return { ok: false, reason: paused.code, cooldown: true };
   ensureRunning.add(userId);
   try {
     const userDoc = await db.collection('saas_users').doc(userId).get();
@@ -3700,13 +3702,11 @@ async function ensureNextPost(userId, options = {}) {
       }, { merge: true });
       return result;
     } catch (err) {
-      await userDoc.ref.set({
-        ensureNextPostFailures: failures + 1,
-        ensureNextPostFailureDate: today,
-        lastEnsureNextError: String(err.message || 'unknown').slice(0, 240),
-        lastEnsureNextRejectReasons: Array.isArray(err.rejectReasons) ? err.rejectReasons.slice(0, 6) : [],
-        lastEnsureNextErrorAt: new Date().toISOString()
-      }, { merge: true });
+      const decision = require('./provider_error').ensureFailureDecision(err, { failures, lang: 'ja' });
+      const update = { ...decision.update, lastEnsureNextErrorAt: new Date().toISOString() };
+      if (decision.lock) update.ensureNextPostFailureDate = today;
+      await userDoc.ref.set(update, { merge: true });
+      if (!decision.lock) return { ok: false, reason: err.code || update.lastEnsureNextErrorCode || 'provider_error' };
       throw err;
     }
   } finally {

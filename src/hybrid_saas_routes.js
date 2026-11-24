@@ -3710,6 +3710,16 @@ function registerHybridSaasRoutes(app, options = {}) {
             lastError: uData.lastEnsureNextError || null,
             rejectReasons: Array.isArray(uData.lastEnsureNextRejectReasons) ? uData.lastEnsureNextRejectReasons : []
           };
+          const providerPause = require('./provider_error').providerHealth();
+          if (providerPause) {
+            nextPostState.providerPause = {
+              active: true,
+              class: providerPause.class,
+              provider: providerPause.provider,
+              http: providerPause.status || 0,
+              cooldownUntil: providerPause.until
+            };
+          }
           let coachingKnowledge = null;
           let sharedLexicon = null;
           try {

@@ -27,6 +27,10 @@ function retryable(error) {
   return /429|5\d\d|529|timeout|aborted|Timeout/i.test(message);
 }
 
+function writerFailure(error, providerHint) {
+  return require('./provider_error').classifyProviderError(error, providerHint);
+}
+
 function axisOrNull(row, key) {
   if (!row || row[key] == null || row[key] === '') return null;
   const value = Number(row[key]);
@@ -172,12 +176,21 @@ async function completeWriter({
     pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: true, reason: '', cachedTokens: written.cachedTokens });
     return { ok: true, provider: 'anthropic', model, text: written.text, parsed: written.parsed, cachedTokens: written.cachedTokens };
   } catch (error) {
-    console.warn(`[LLM Router] anthropic writer failed: ${String(error.message || '').slice(0, 180)}`);
-    pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: false, reason: error.message, cachedTokens: null });
+    const classified = writerFailure(error, 'anthropic');
+    const hardStop = classified && (classified.class === 'provider_billing_error' || classified.class === 'provider_auth_error');
+    console.warn(`[LLM Router] anthropic writer failed: ${hardStop ? classified.class : String(error.message || '').slice(0, 180)}`);
+    pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: false, reason: hardStop ? classified.class : 'anthropic_error', cachedTokens: null });
+    if (hardStop) throw require('./provider_error').providerStop(error, 'anthropic');
     if (!retryable(error) && !/tool_use_missing/i.test(error.message || '')) throw error;
-    const grok = await grokText({ prompt, systemPrompt, timeoutMs, reasoningEffort: 'low', tier });
-    pushAudit(qualityAudit, { role: 'writer', provider: 'xai', model: grok.modelName, ms: Date.now() - started, ok: true, reason: 'anthropic_fallback', cachedTokens: null });
-    return { ok: true, provider: 'xai', model: grok.modelName, text: grok.text, parsed: null, cachedTokens: null };
+    try {
+      const grok = await grokText({ prompt, systemPrompt, timeoutMs, reasoningEffort: 'low', tier });
+      pushAudit(qualityAudit, { role: 'writer', provider: 'xai', model: grok.modelName, ms: Date.now() - started, ok: true, reason: 'anthropic_fallback', cachedTokens: null });
+      return { ok: true, provider: 'xai', model: grok.modelName, text: grok.text, parsed: null, cachedTokens: null };
+    } catch (fallbackError) {
+      const stop = require('./provider_error').providerStop(fallbackError, 'xai');
+      if (stop) throw stop;
+      throw fallbackError;
+    }
   }
 }
 

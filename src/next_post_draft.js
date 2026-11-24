@@ -9,6 +9,7 @@ const { resolveEditorialStance } = require('./lp_knowledge_extractor');
 const { containsJapaneseScript } = require('./measured_pair');
 const { decideEditorialPlan, editorialDirective, recordSharedRejectionSignal } = require('./editorial_lexicon_engine');
 const { evolutionPatchFor } = require('./prompt_evolution');
+const { pauseError, providerStop } = require('./provider_error');
 
 function recordAudit(audit, entry) {
   if (Array.isArray(audit)) audit.push(entry);
@@ -1141,6 +1142,8 @@ async function draftNextPostWithMeta({
   ownerSpark = null,
   editorialStanceOverride = null
 }) {
+  const paused = pauseError();
+  if (paused) throw paused;
   accountState = { ...(accountState || {}), delivery: (genes && genes.delivery) || (accountState && accountState.delivery) || '' };
   const isEn = String(lang).toLowerCase().startsWith('en');
   const evolutionPatch = evolutionPatchFor(promptEvolution, evolutionVersion);
@@ -1249,6 +1252,8 @@ async function draftNextPostWithMeta({
       qualityAudit
     }), page, isEn), { seed: tensionSeed, topicSource, brandKnowledge, ownerSpark: activeSpark, userDoc: stanceUser, isEn });
   } catch (err) {
+    const stop = providerStop(err);
+    if (stop) throw stop;
     brief = sanitizeBriefTension(fallbackBrief(page, isEn), { seed: tensionSeed, topicSource, brandKnowledge, ownerSpark: activeSpark, userDoc: stanceUser, isEn });
   }
 
@@ -1325,7 +1330,9 @@ async function draftNextPostWithMeta({
       hookDuelUsed = duel.hookDuelUsed === true;
       winningHooks = duel.hooks || [];
       rejectedHooks = duel.rejected || [];
-    } catch (_hookErr) {
+    } catch (hookErr) {
+      const stop = providerStop(hookErr);
+      if (stop) throw stop;
       hookDuelUsed = false;
       winningHooks = [];
       rejectedHooks = [];
@@ -1347,6 +1354,8 @@ async function draftNextPostWithMeta({
       qualityAudit
     }));
   } catch (err) {
+    const stop = providerStop(err);
+    if (stop) throw stop;
     console.warn(`[NextPostDraft] candidates failed: ${String(err && err.message || err).slice(0, 180)}`);
     candidates = [];
   }
@@ -1498,6 +1507,8 @@ async function draftNextPostWithMeta({
         chosen = null;
       }
     } catch (err) {
+      const stop = providerStop(err);
+      if (stop) throw stop;
       console.warn(`[NextPostDraft] repair failed: ${String(err && err.message || err).slice(0, 180)}`);
       if (err && err.code === 'critic_unparseable') criticSummary = 'critic_unparseable';
       if (repairCount > 0) {
