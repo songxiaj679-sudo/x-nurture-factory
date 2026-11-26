@@ -50,10 +50,10 @@ test('the critic fails a polished source summary that never reaches the reader',
   assert.match(critic, /保存したくなる具体/);
   assert.match(critic, /1行目の主語が結びまで続く/);
   const source = fs.readFileSync('src/next_post_draft.js', 'utf8');
-  const score = source.slice(source.indexOf('Score each candidate from 0 to 100'), source.indexOf("role: 'critic'"));
-  assert.match(score, /scrollStopHook 25 is at most 10/);
-  assert.match(score, /one-minute tactic/);
-  assert.match(score, /scores below 60/);
+  const score = source.slice(source.indexOf('function lightReviewPrompt'), source.indexOf('function localDraftGate'));
+  assert.match(score, /factual/);
+  assert.match(score, /natural/);
+  assert.match(score, /complete/);
   const repair = source.slice(source.indexOf('const repairHint'), source.indexOf('repairedCandidates = readCandidates'));
   assert.match(repair, /Rebuild the entrance as the reader belief/);
   assert.match(repair, /one practical priority/);

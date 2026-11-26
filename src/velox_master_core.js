@@ -96,17 +96,20 @@ function decideNextPostMission({
   audienceKnowledge = null,
   recentJobs = [],
   portfolioPlan = null,
+  hasTargetUrl = true,
   random = Math.random
 } = {}) {
   const ordered = recentJobsOf(recentJobs).map(row => row.job);
   const phase = phaseFor(accountState, ordered);
-  const promo = Boolean(portfolioPlan && (portfolioPlan.allowPromoUrl === true || portfolioPlan.portfolioRole === 'explicit_promo_offer'));
+  const promo = Boolean(hasTargetUrl && portfolioPlan && (portfolioPlan.allowPromoUrl === true || portfolioPlan.portfolioRole === 'explicit_promo_offer'));
   const recentMissions = ordered.slice(0, 6).map(missionOf).filter(Boolean);
   let mission = 'trust_value_external';
-  if (promo) mission = 'product_bridge';
-  else if (recentMissions[0] === 'product_bridge') mission = 'trust_value_external';
-  else if (random() < bridgeShare(phase) && recentMissions.filter(item => item === 'product_bridge').length < bridgeCap(phase)) {
-    mission = 'product_bridge';
+  if (hasTargetUrl) {
+    if (promo) mission = 'product_bridge';
+    else if (recentMissions[0] === 'product_bridge') mission = 'trust_value_external';
+    else if (random() < bridgeShare(phase) && recentMissions.filter(item => item === 'product_bridge').length < bridgeCap(phase)) {
+      mission = 'product_bridge';
+    }
   }
   const isolateLpContext = mission === 'trust_value_external';
   const lastRing = ordered.map(job => job && job.topicRing).find(Boolean);

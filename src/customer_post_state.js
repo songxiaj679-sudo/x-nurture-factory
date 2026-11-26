@@ -72,6 +72,18 @@ function formatAccountState(state, lang = 'ja') {
     : `アカウントの状態。フォロワー: ${count(state.followers)}。フォロー: ${count(state.following)}。課金: ${pay}。検索: ${search}。${shapeText} 1本の上限は${state.maxChars}文字。`;
 }
 
+function xWeightedLength(text) {
+  const raw = String(text || '');
+  const urls = raw.match(/https?:\/\/[^\s]+/gi) || [];
+  const rest = raw.replace(/https?:\/\/[^\s]+/gi, '');
+  let weight = urls.length * 23;
+  for (const ch of rest) {
+    const cp = ch.codePointAt(0);
+    weight += (cp <= 0x007f || (cp >= 0xff61 && cp <= 0xff9f)) ? 1 : 2;
+  }
+  return weight;
+}
+
 function fitsAccountState(tweets, state, options = {}) {
   if (!Array.isArray(tweets) || tweets.length === 0) return false;
   const shape = writingShape(state || {}, { delivery: options.delivery || (state && state.delivery) || '' });
@@ -80,7 +92,8 @@ function fitsAccountState(tweets, state, options = {}) {
   if (tweets.length > maxCount) return false;
   const delivery = options.delivery || (state && state.delivery) || '';
   if (delivery === 'parent_self_reply' && tweets.length < shape.minCount) return false;
-  return tweets.every(text => typeof text === 'string' && text.trim() && text.length <= state.maxChars);
+  const checkWeight = state && state.subscription !== 'premium';
+  return tweets.every(text => typeof text === 'string' && text.trim() && text.length <= state.maxChars && (!checkWeight || xWeightedLength(text) <= 280));
 }
 
 module.exports = {
@@ -89,5 +102,6 @@ module.exports = {
   describeAccountState,
   formatAccountState,
   fitsAccountState,
-  writingShape
+  writingShape,
+  xWeightedLength
 };

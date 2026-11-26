@@ -17,7 +17,7 @@ function recordAudit(audit, entry) {
 
 function grokShouldRetry(err) {
   const message = String(err && err.message || '');
-  return err && err.code !== 'NO_XAI_KEY' && /429|5\d\d|timeout|aborted|Timeout/i.test(message);
+    return err && (err.code === 'output_truncated' || (err.code !== 'NO_XAI_KEY' && /429|5\d\d|timeout|aborted|Timeout|output_truncated/i.test(message)));
 }
 
 function useLiveRouter() {
@@ -149,14 +149,29 @@ function pageBriefLine({ isEn, page, hypothesisText, isolateLpContext, masterPla
     : `ページのメモであり、本文の目次ではない: ${hypothesisText}\nページ: ${JSON.stringify(page)}`;
 }
 
-function fallbackBrief(page, isEn) {
-  const offer = clip(page.title || page.description || page.body, 180);
+function fallbackOfferFromContext({ brandKnowledge = null, userPrompt = '', focusTopic = null } = {}) {
+  const topicText = focusTopic && (focusTopic.topic || focusTopic.checkCriteria || focusTopic.readerPain || focusTopic.commonTrap || focusTopic.topicDomain);
+  const problem = brandKnowledge && Array.isArray(brandKnowledge.domainProblems) ? brandKnowledge.domainProblems.find(Boolean) : '';
+  return clip(
+    topicText
+    || (brandKnowledge && (brandKnowledge.oneLineMechanism || brandKnowledge.icpSummary))
+    || problem
+    || userPrompt,
+    180
+  );
+}
+
+function fallbackBrief(page, isEn, options = {}) {
+  const pageOffer = clip((page && (page.title || page.description || page.body)) || '', 180);
+  const contextOffer = fallbackOfferFromContext(options);
+  const hasLp = options.hasTargetUrl !== false && options.isolateLpContext !== true;
+  const offer = pageOffer || contextOffer || (hasLp ? (isEn ? 'the offer named on the page' : 'ページに書いてある提供') : '');
   return {
-    offer: offer || (isEn ? 'the offer named on the page' : 'ページに書いてある提供'),
-    reader: '',
-    scene: '',
+    offer,
+    reader: clip(options.brandKnowledge && options.brandKnowledge.icpSummary, 140),
+    scene: clip(options.focusTopic && (options.focusTopic.readerPain || options.focusTopic.commonTrap || options.focusTopic.topic) || '', 180),
     voice: '',
-    thisPost: '',
+    thisPost: contextOffer || pageOffer || '',
     doNot: isEn ? 'Do not list features.' : '機能を並べない。'
   };
 }
@@ -269,6 +284,17 @@ function usableAxisWeights(weights) {
 }
 
 function judgeCriticRow(row, { repaired = false, axisWeights = null } = {}) {
+  const flag = key => String(row && row[key] || '').toLowerCase();
+  if (row && (row.factual || row.natural || row.complete)) {
+    const ok = ['factual', 'natural', 'complete'].every(key => flag(key) === 'pass');
+    return {
+      accept: ok,
+      degraded: false,
+      reason: ok ? '' : `light_review:${String(row.reason || 'fail').slice(0, 160)}`,
+      axis: '',
+      row
+    };
+  }
   const score = Number(row && row.score);
   if (!row || !Number.isFinite(score)) return { accept: false, degraded: false, reason: 'critic_unparseable', row: null };
   const axis = key => (row[key] == null || row[key] === '' ? null : Number(row[key]));
@@ -299,7 +325,14 @@ function judgeCriticRow(row, { repaired = false, axisWeights = null } = {}) {
 }
 
 function pickCriticDecision(scores, options) {
-  const rows = (Array.isArray(scores) ? scores : []).filter(row => row && Number.isFinite(Number(row.score)));
+  const all = (Array.isArray(scores) ? scores : []).filter(Boolean);
+  const light = all.filter(row => row.factual || row.natural || row.complete);
+  if (light.length) {
+    const accepted = light.map(row => judgeCriticRow(row, options)).filter(item => item.accept);
+    if (accepted.length) return accepted[0];
+    return judgeCriticRow(light[0], options);
+  }
+  const rows = all.filter(row => Number.isFinite(Number(row.score)));
   const ranked = rows.slice().sort((a, b) => Number(b.score) - Number(a.score));
   const accepted = ranked.map(row => judgeCriticRow(row, options)).filter(item => item.accept);
   if (accepted.length) return accepted[0];
@@ -419,6 +452,16 @@ function cardApplies(topicSource, masterPlan) {
 
 function dossierPresent(sourceDossier) {
   return Boolean(sourceDossier) && typeof sourceDossier === 'object' && Object.keys(sourceDossier).some(key => sourceDossier[key]);
+}
+
+function searchKeywordLine(sourceDossier, isEn) {
+  const words = sourceDossier && Array.isArray(sourceDossier.searchKeywords)
+    ? sourceDossier.searchKeywords.map(item => String(item || '').trim()).filter(Boolean).slice(0, 2)
+    : [];
+  if (!words.length) return '';
+  return isEn
+    ? `Use this current search term once, inside a natural sentence. Do not add another keyword, a number, or a quote: ${words[0]}`
+    : `本文にこの検索語を、自然な文の中で1回だけ入れる。2語目、数値、引用は足さない: ${words[0]}`;
 }
 
 function resolveSourceType(topicSource, sourceDossier, masterPlan) {
@@ -548,6 +591,7 @@ function briefPrompt({ isEn, page, recent, hypothesisText, stateLine, timeSlot, 
   const sparkOn = Boolean(ownerSpark && String(ownerSpark.text || '').trim());
   const articleSource = sparkOn ? null : topicSource;
   const articleDossier = sparkOn ? null : sourceDossier;
+  const keywordLine = searchKeywordLine(articleDossier, isEn);
   const articleNote = externalNotes(articleDossier, articleSource, isEn, masterPlan);
   const decided = editorialDirective(decision, editorialContext, isEn);
   const playbookLine = isolateLpContext === true
@@ -602,6 +646,7 @@ ${grounded}
 ${learned}
 ${questionLine}
 ${signalLine}
+${keywordLine}
 ${archetypeLine || ''}
 ${isolationLine}
 ${spokenExplainer(true, articleSource, articleDossier, masterPlan)}
@@ -628,6 +673,7 @@ ${grounded}
 ${learned}
 ${questionLine}
 ${signalLine}
+${keywordLine}
 ${archetypeLine || ''}
 ${isolationLine}
 ${spokenExplainer(false, articleSource, articleDossier, masterPlan)}
@@ -650,26 +696,27 @@ ${pageBriefLine({ isEn: false, page, hypothesisText, isolateLpContext, masterPla
 JSONだけ返す。{"offer":"","reader":"","scene":"","voice":"","thisPost":"","doNot":"","readerPayoff":"","hookAngle":"","everydayAssumption":"","underlyingMechanism":"","tension":"","tensionReversesInput":false,"passesBrandSwap":false}`;
 }
 
-function readBrief(raw, page, isEn) {
+function readBrief(raw, page, isEn, options = {}) {
+  const fallback = fallbackBrief(page, isEn, options);
   try {
     const parsed = JSON.parse(String(raw).replace(/```json/gi, '').replace(/```/g, '').trim());
     return {
-      offer: clip(parsed.offer, 180) || fallbackBrief(page, isEn).offer,
-      reader: clip(parsed.reader, 140),
-      scene: clip(parsed.scene, 180),
+      offer: clip(parsed.fact || parsed.offer, 180) || fallback.offer,
+      reader: clip(parsed.reader, 140) || fallback.reader,
+      scene: clip(parsed.whyNow || parsed.scene, 180) || fallback.scene,
       voice: clip(parsed.voice, 140),
-      thisPost: clip(parsed.thisPost, 180),
+      thisPost: clip(parsed.fact || parsed.thisPost, 180) || fallback.thisPost,
       doNot: clip(parsed.doNot, 180),
-      readerPayoff: clip(parsed.readerPayoff, 180),
+      readerPayoff: clip(parsed.whyNow || parsed.readerPayoff, 180),
+      underlyingMechanism: clip(parsed.evidence || parsed.underlyingMechanism, 180),
       hookAngle: clip(parsed.hookAngle, 140),
       everydayAssumption: clip(parsed.everydayAssumption, 180),
-      underlyingMechanism: clip(parsed.underlyingMechanism, 180),
       tension: charLimit(parsed.tension, isEn ? 130 : 70),
       tensionReversesInput: parsed.tensionReversesInput === true,
       passesBrandSwap: parsed.passesBrandSwap === true
     };
   } catch (err) {
-    return fallbackBrief(page, isEn);
+    return fallback;
   }
 }
 
@@ -960,6 +1007,7 @@ function candidatePrompt({ isEn, brief, shape, promo, accountState, brandKnowled
   const sparkOn = Boolean(ownerSpark && String(ownerSpark.text || '').trim());
   const articleSource = sparkOn ? null : topicSource;
   const articleDossier = sparkOn ? null : sourceDossier;
+  const keywordLine = searchKeywordLine(articleDossier, isEn);
   const notes = String(brandContextNotes || '').slice(0, 800);
   const blocked = String(Array.isArray(ngTopics) ? ngTopics.join('、') : (ngTopics || '')).slice(0, 400);
   const payoff = brief && brief.readerPayoff
@@ -1065,6 +1113,7 @@ ${hookLine}
 ${evolvedLine}
 ${oneVoice}
 ${Array.isArray(liveSignals) && liveSignals.length ? `Qualitative public context, never a quote or a stat: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
+${keywordLine}
 Do not include a URL.${promo ? ' Do not add the disclosure. The program adds it.' : ''}
 ${readerLine}
 ${craftOnce}
@@ -1095,6 +1144,7 @@ ${hookLine}
 ${evolvedLine}
 ${oneVoice}
 ${Array.isArray(liveSignals) && liveSignals.length ? `公開の話題。引用も数値も作らない: ${JSON.stringify(liveSignals.slice(0, 3))}` : ''}
+${keywordLine}
 URLは入れない。${promo ? '【PR】表記はプログラムが付ける。' : ''}
 ${readerLine}
 ${craftOnce}
@@ -1130,6 +1180,159 @@ function attachPromoReply(tweets, lang, targetUrl) {
     : (body.startsWith('【PR】') ? body : `【PR】${body}`);
   const reply = lang === 'en' ? `[Ad] Details: ${targetUrl}` : `【PR】詳細はこちら: ${targetUrl}`;
   return [disclosed, reply];
+}
+
+function simpleSystemPrompt(isEn, contentMode = 'business') {
+  if (contentMode === 'lifestyle') {
+    return isEn
+      ? 'You write one natural, relatable everyday X post matching the persona note. Keep these three rules: 1. Never invent numbers, stats, URLs, or fake claims. 2. Sound like a real person sharing a small daily thought or feeling—not a business manual or ad. 3. Keep one consistent tone and finish cleanly without stock AI phrases.'
+      : 'あなたは指定されたペルソナとして、Xのタイムラインにそのまま流して自然な日常・共感の日本語投稿を書く。守ることは3つだけ。1. 根拠のない数値・実績・URL・宣伝は入れない。2. ビジネス解説や宣伝コピーにせず、日常の気づきや素直な気持ちとして書く。3. 一貫した口調を保ち、「実は」「結論」「〜ではないでしょうか」「〜と思いがちです」「画期的」などの定型AI句を避けて自然に言い終える。';
+  }
+  return isEn
+    ? 'You write one natural X post a practitioner would publish. Follow only these four rules: 1. Never invent a number, result, URL, or product behavior that is not in the supplied fact. 2. Do not paraphrase a homepage or a manual. Write one working note. 3. Avoid stock AI phrases such as "actually", "in conclusion", "isn\'t it", "people tend to think", "efficiency", and "groundbreaking", and do not hide the concrete thing behind a vague label. 4. Open with a line that earns the next line, then a blank line, then two or three short blocks. Do not repeat the same sentence. Do not end with a question unless the fact itself is a question.'
+    : 'あなたは日本の実務家として、Xのタイムラインにそのまま流して違和感のない自然な日本語投稿を書く。守ることは4つだけ。1. 渡された事実にない数値・実績・URL・仕様は作らない。2. ホームページの宣伝コピーや説明書の要約にせず、現場で手を動かしている人の気づきとして書く。3. 「実は」「結論」「〜ではないでしょうか」「〜と思いがちです」「効率化」「画期的」「〜という見方はうまくいきにくいです」「開発側がおすすめしたいのは」と、中身のない言い換えを避ける。4. 1行目で関心を掴み、その直後に空行を入れて2〜3ブロックにする。同じ文や同じ結論を繰り返さない。無理に質問で締めない。';
+}
+
+function voiceIsPolite(voiceProfile, recent, isEn, voiceRegister = '') {
+  const explicit = String(voiceRegister || '').trim().toLowerCase();
+  if (explicit === 'polite') return true;
+  if (explicit === 'plain') return false;
+  const register = String(voiceProfile && voiceProfile.register || '');
+  if (isEn) return !/plain|casual|blunt/i.test(register);
+  if (/です|ます|丁寧|polite/i.test(register)) return true;
+  if (/常体|だ・|plain|casual/i.test(register)) return false;
+  const sample = (Array.isArray(recent) ? recent : []).join('\n');
+  const polite = (sample.match(/です|ます/g) || []).length;
+  const plain = (sample.match(/(?:だ|である|だった)。/g) || []).length;
+  if (polite || plain) return polite >= plain;
+  return voiceProfile && voiceProfile.accountRole === 'official_brand';
+}
+
+function voiceExamples(isEn, polite) {
+  if (isEn) {
+    return polite
+      ? [
+        'The handoff fails when two people edit the same line.\n\nLeave one owner on that line before you send it. The rest of the page can wait.',
+        'A late invoice usually comes from a vague line item, not from the total.\n\nWrite what you delivered and when. The amount is easier to check after that.',
+        'I check the account name on the permission screen before I click allow.\n\nThe browser can still be signed into a different account.'
+      ]
+      : [
+        'The handoff breaks when two people edit the same line.\n\nOne owner on that line. The rest of the page can wait.',
+        'A late invoice usually starts in a vague line item.\n\nWrite what you delivered and when. Then the amount is easy to check.',
+        'Check the account name on the permission screen before you allow it.\n\nThe browser may still be on a different account.'
+      ];
+  }
+  return polite
+    ? [
+      '同じ行を二人で直すと、渡し漏れが出ます。\n\n送る前に、その行の担当を一人にします。ほかの欄は後で足せます。',
+      '請求が戻る原因は、合計より明細の書き方です。\n\n何をいつ渡したかを1行先に書きます。金額の確認はその後です。',
+      '許可を押す前に、画面のアカウント名を見ます。\n\nブラウザが別のアカウントのままだと、つなぐ先がずれます。'
+    ]
+    : [
+      '同じ行を二人で直すと、渡し漏れが出る。\n\n送る前に、その行の担当を一人にする。ほかの欄は後で足せる。',
+      '請求が戻る原因は、合計より明細の書き方だ。\n\n何をいつ渡したかを1行先に書く。金額の確認はその後でいい。',
+      '許可を押す前に、画面のアカウント名を見る。\n\nブラウザが別のアカウントのままだと、つなぐ先がずれる。'
+    ];
+}
+
+function sourceFactLines(brandKnowledge, topicSource, page) {
+  const rows = [];
+  const push = value => {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (text && !rows.includes(text)) rows.push(text);
+  };
+  (brandKnowledge && brandKnowledge.verifiedClaims || []).slice(0, 6).forEach(claim => push(claim && (claim.mechanism || claim.proofQuote)));
+  (brandKnowledge && brandKnowledge.domainProblems || []).slice(0, 4).forEach(push);
+  (brandKnowledge && brandKnowledge.domainPlaybooks || []).slice(0, 1).forEach(card => push(card && (card.checkCriteria || card.topic)));
+  push(brandKnowledge && brandKnowledge.oneLineMechanism);
+  push(topicSource && topicSource.coreFact);
+  push(topicSource && topicSource.plainTranslation);
+  push(page && page.description);
+  return rows.slice(0, 8);
+}
+
+function recentHistoryLine(recent, isEn) {
+  const rows = (Array.isArray(recent) ? recent : []).map(text => String(text || '').trim()).filter(Boolean);
+  if (!rows.length) {
+    return isEn
+      ? 'No past posts yet. Never write a system status such as "nothing has been posted yet" into the post.'
+      : '過去投稿はまだありません（「まだ投稿がない」といったシステム状態は本文に絶対に書かないこと）。';
+  }
+  return JSON.stringify(rows);
+}
+
+function factSelectionPrompt({ isEn, page, recent, userPrompt, brandKnowledge, topicSource, hypothesisText, liveSignals, contentMode = 'business' }) {
+  const facts = sourceFactLines(brandKnowledge, topicSource, page);
+  const memory = (recent || []).slice(0, 5).map(text => String(text).slice(0, 80));
+  const signals = Array.isArray(liveSignals) && liveSignals.length ? JSON.stringify(liveSignals.slice(0, 3)) : '';
+  const history = recentHistoryLine(memory, isEn);
+  if (contentMode === 'lifestyle') {
+    return isEn
+      ? `Pick one small everyday theme or relatable moment matching this persona note. Do not write the post yet.\nNote: ${String(userPrompt || '').slice(0, 240)}\n${signals ? `Signals: ${signals}\n` : ''}Recent posts: ${history}\nReturn JSON only: {"fact":"","reader":"","whyNow":"","evidence":""}`
+      : `このアカウント像（メモ）に合う、身近で共感しやすい日常のテーマを1つだけ選ぶ。本文はまだ書かない。ビジネスの説教や宣伝は選ばない。\nメモ: ${String(userPrompt || '').slice(0, 240)}\n${signals ? `反応: ${signals}\n` : ''}過去投稿: ${history}\nJSONだけ返す。{"fact":"","reader":"","whyNow":"","evidence":""}`;
+  }
+  return isEn
+    ? `Pick exactly one concrete fact for a single X post. Copy one bullet. Do not merge bullets and do not write the post. Do not negate or extend a fact. If the notes say both inputs are allowed, do not claim that using both is a mistake. If the note names one fact, choose that fact.\nFacts:\n${facts.map(item => `- ${item}`).join('\n')}\nNote: ${String(userPrompt || '').slice(0, 240)}\nContext: ${String(hypothesisText || '').slice(0, 240)}\n${signals ? `Signals: ${signals}\n` : ''}Recent posts: ${history}\nReturn JSON only: {"fact":"","reader":"","whyNow":"","evidence":""}`
+    : `今回の1投稿で扱う具体的な事実を1つだけ選ぶ。箇条書きの1行をそのままfactに入れる。2つの箇条書きを足さない。本文は書かない。渡された事実を否定したり、仕様を逆にしたりしない。両方入力できると書いてあるものを、両方入れると失敗する、とは書かない。メモが1点を指定していたら、その1点を選ぶ。\n事実:\n${facts.map(item => `- ${item}`).join('\n')}\nメモ: ${String(userPrompt || '').slice(0, 240)}\n補足: ${String(hypothesisText || '').slice(0, 240)}\n${signals ? `反応: ${signals}\n` : ''}過去投稿: ${history}\nJSONだけ返す。{"fact":"","reader":"","whyNow":"","evidence":""}`;
+}
+
+function simpleWritePrompt({ isEn, brief, shape, promo, accountState, voiceProfile, recentTexts, userPrompt, contentMode = 'business', voiceRegister = '' }) {
+  const polite = voiceIsPolite(voiceProfile, recentTexts, isEn, voiceRegister);
+  const fact = (brief && (brief.thisPost || brief.offer)) || '';
+  const whyNow = (brief && (brief.scene || brief.readerPayoff)) || '';
+  const count = shape && shape.maxCount === 3 ? (isEn ? '2 or 3 posts' : '2本か3本') : `${shape && shape.count || 1}`;
+  const limit = Math.max(40, Number(accountState && accountState.maxChars) || 280);
+  const examples = voiceExamples(isEn, polite).map((item, index) => `${index + 1}\n${item}`).join('\n\n');
+  const official = voiceProfile && voiceProfile.accountRole === 'official_brand'
+    ? (isEn ? 'This is the product team. Do not write "I tried this yesterday" and do not write "the developers recommend". Leave the subject unstated.' : '公式アカウントでも個人の日記（私が昨日〜）にしない。「開発側が」とは書かず、主語を省いた実務メモにする。')
+    : '';
+  const tone = polite
+    ? (isEn ? 'Tone: calm practitioner, full sentences.' : '口調: です・ます。敬体だけ。常体を混ぜない。')
+    : (isEn ? 'Tone: blunt working note. One register.' : '口調: 常体の言い切り・自然な話し言葉。です・ますを混ぜない。');
+  const openings = recentHistoryLine((recentTexts || []).slice(0, 5).map(text => String(text).split('\n')[0].slice(0, 40)), isEn);
+  if (contentMode === 'lifestyle') {
+    return isEn
+      ? `Write ${count} casual, relatable X post(s) as JSON {"candidates":[{"id":"a","tweets":[]}]}. Each tweet is at most ${limit} characters (aim for 70-180 chars). Theme: ${fact}\nMood/Moment: ${whyNow}\nPersona note: ${String(userPrompt || '').slice(0, 240)}\n${tone}\nDo not include a URL or invented numbers.\nRecent openings to avoid: ${openings}`
+      : `JSONで1案返す。{"candidates":[{"id":"a","tweets":[]}]}。本数は${count}。各本は${limit}文字以内（60〜140字目安）。無理にビジネス教訓にせず、身近で共感できる自然な一言として書く。テーマ: ${fact}\n空気感・きっかけ: ${whyNow}\nアカウント像: ${String(userPrompt || '').slice(0, 240)}\n${tone}\nURLや根拠のない数値は入れない。\n避ける直近の書き出し: ${openings}`;
+  }
+  return isEn
+    ? `Write ${count} X post(s) as JSON {"candidates":[{"id":"a","tweets":[]}]}. One candidate is enough. Each tweet is at most ${limit} characters. Use only this fact, and do not mention the other notes: ${fact}\nReader friction: ${whyNow}\nOpen from that friction, not from a procedure list.\nWrite in English only. Do not output hiragana, katakana, kanji.\n${tone}\n${official}\nCopy only the rhythm of these examples. Do not copy their topics.\n${examples}\n${promo ? 'Do not add the disclosure mark. The program adds it.' : 'Do not include a URL.'}\nRecent openings to avoid: ${openings}`
+    : `JSONで1案返す。{"candidates":[{"id":"a","tweets":[]}]}。本数は${count}。各本は${limit}文字以内。日本語は110〜180字を目安に、1行目の共感・違和感、具体的な事実、実務上のひとこと、の3ブロックで収める。使う事実はこの1つだけ。ほかの仕様には触れない: ${fact}\n読者のつまずき・本音: ${whyNow}\n1行目は単なる手順メモではなく、この読者のつまずき・本音から自然に書き出す。\n${tone}\n${official}\n見本はリズム用なので、長さは見本よりこの目安に合わせる。題材は使わない。\n${examples}\n${promo ? '【PR】はプログラムが付ける。' : 'URLは入れない。'}\n避ける直近の書き出し: ${openings}`;
+}
+
+function lightReviewPrompt({ isEn, readerLine, fact, candidates, repaired = false, contentMode = 'business' }) {
+  if (contentMode === 'lifestyle') {
+    const ask = isEn
+      ? `light_review${repaired ? '_repair' : ''}. Mark each candidate pass or fail on three points: factual (no invented stats, URLs, or product ads), natural (sounds like a real person's casual X post, not corporate copy), complete (finishes cleanly in one tone). Return JSON {"scores":[{"id":"a","factual":"pass","natural":"pass","complete":"pass","reason":""}]}.`
+      : `light_review${repaired ? '_repair' : ''}。各案を3点だけ pass か fail で返す。factualは根拠のない数値・URL・宣伝が混ざっていないか。naturalはビジネス解説や宣伝文ではなく、普通の人がXに書く自然な日常・共感の投稿か。completeは文の途中で切れず、口調が一貫しているか。JSONだけ返す。{"scores":[{"id":"a","factual":"pass","natural":"pass","complete":"pass","reason":""}]}。`;
+    return `${readerLine || ''}\n${ask}\nTheme: ${fact || ''}\n${JSON.stringify(candidates)}`;
+  }
+  const ask = isEn
+    ? `light_review${repaired ? '_repair' : ''}. Mark each candidate pass or fail on exactly three points: factual (no invented number, result, URL, or a claim that contradicts the fact), natural (a person could post this on X; not an ad template), complete (the post finishes, one register, no cut-off sentence). Return JSON {"scores":[{"id":"a","factual":"pass","natural":"pass","complete":"pass","reason":""}]}. reason is one short line only when a point fails.`
+    : `light_review${repaired ? '_repair' : ''}。各案を3点だけ pass か fail で返す。factualは、Factに書いていない機能・数値・実績・URLを本文が足していないか、Factと逆の説明をしていないか。Factが1点なら、別の機能を足した案はfail。naturalは宣伝文や定型句ではなく、人がXに出す文章か。completeは最後まで書いてあり、敬体と常体が混ざらず、文の途中で切れていないか。JSONだけ返す。{"scores":[{"id":"a","factual":"pass","natural":"pass","complete":"pass","reason":""}]}。reasonは不合格のとき1行。`;
+  return `${readerLine || ''}\n${ask}\nFact: ${fact || ''}\n${JSON.stringify(candidates)}`;
+}
+
+function localDraftGate(tweets, isEn, options = {}) {
+  const lifestyle = options && options.contentMode === 'lifestyle';
+  const rows = (Array.isArray(tweets) ? tweets : []).map(text => String(text || '').trim()).filter(Boolean);
+  const joined = rows.join('\n');
+  const reasons = [];
+  if (joined.length > 0 && joined.length < 20) reasons.push('too_short');
+  if (!lifestyle && !isEn && joined.length >= 110 && !/\n\s*\n/.test(joined)) reasons.push('needs_line_breaks');
+  if (!lifestyle && isEn && joined.length >= 180 && !/\n\s*\n/.test(joined)) reasons.push('needs_line_breaks');
+  if (/という見方はうまくいきにくい|開発側がおすすめしたいのは|ではないでしょうか|と思いがちです|画期的|everydayAssumption|underlyingMechanism/.test(joined)) reasons.push('banned_phrase');
+  const endOk = text => {
+    if (lifestyle) return !/[、,をがにはでと]$/.test(text);
+    return isEn ? /[.!?)"'\]]\s*$/.test(text) : /[。！？!?）」』]$/.test(text);
+  };
+  if (rows.some(text => text.length >= 40 && !endOk(text))) reasons.push('cut_off');
+  const sentences = joined.split(/[。！？\n]/).map(text => text.trim()).filter(text => text.length >= 16);
+  if (new Set(sentences).size !== sentences.length) reasons.push('duplicate_sentence_in_post');
+  const polite = (joined.match(/です|ます/g) || []).length;
+  const plain = (joined.match(/(?:だ|である)。/g) || []).length;
+  if (!isEn && polite > 0 && plain > 0) reasons.push('mixed_register');
+  return { ok: reasons.length === 0, reasons };
 }
 
 async function draftNextPostWithMeta({
@@ -1173,8 +1376,11 @@ async function draftNextPostWithMeta({
   evolutionVersion = 'baseline',
   hookPayload = null,
   ownerSpark = null,
-  editorialStanceOverride = null
+  editorialStanceOverride = null,
+  contentMode = 'business',
+  voiceRegister = ''
 }) {
+  const mode = ['business', 'lifestyle', 'news'].includes(String(contentMode || '').toLowerCase()) ? String(contentMode).toLowerCase() : 'business';
   const paused = pauseError();
   if (paused) throw paused;
   accountState = { ...(accountState || {}), delivery: (genes && genes.delivery) || (accountState && accountState.delivery) || '' };
@@ -1270,26 +1476,40 @@ async function draftNextPostWithMeta({
     if (typeof onStage !== 'function') return;
     try { onStage(stage); } catch (_err) {}
   };
-  let brief = fallbackBrief(page, isEn);
+  const hasTargetUrl = Boolean(String(targetUrl || '').trim()) || Boolean(pageSummary && pageSummary.pageVersion && pageSummary.pageVersion !== 'persona-only' && (pageSummary.title || pageSummary.description || pageSummary.snippet || pageSummary.text));
+  const noExternalSeed = !dossierPresent(sourceDossier) && !cardApplies(topicSource, masterPlan);
+  const factKnowledge = (isolateLpContext && (hasTargetUrl || !noExternalSeed)) ? null : brandKnowledge;
+  const briefOptions = { hasTargetUrl, isolateLpContext, brandKnowledge: factKnowledge || brandKnowledge, userPrompt: combinedPrompt, focusTopic };
+  let brief = fallbackBrief(page, isEn, briefOptions);
   try {
     emitStage('draft_brief');
     const briefBudget = stageBudget(deadlineAt, tier === 'fast' ? 18000 : 45000, timeoutMs);
-    brief = sanitizeBriefTension(readBrief(await billedDraft(briefPrompt({
-      isEn, page, recent, hypothesisText: isolateLpContext ? '' : hypothesisText, stateLine, timeSlot, shape, accountState, userPrompt: combinedPrompt, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, questions, liveSignals, archetypeLine, focusClaim: isolateLpContext ? null : focusClaim, tensionSeed, ownerSpark: activeSpark, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide
+    brief = sanitizeBriefTension(readBrief(await billedDraft(factSelectionPrompt({
+      isEn, page, recent, hypothesisText: isolateLpContext ? '' : hypothesisText, stateLine, timeSlot, shape, accountState, userPrompt: combinedPrompt, brandKnowledge: factKnowledge, voiceProfile, genes, portfolioPlan, questions, liveSignals, archetypeLine, focusClaim: isolateLpContext ? null : focusClaim, tensionSeed, ownerSpark: activeSpark, contentMode: mode, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide
     }), {
       tier,
       timeoutMs: briefBudget || Math.min(timeoutMs, 18000),
       retryTimeoutMs: Math.min(timeoutMs, 12000),
-      systemPrompt: systemRules(isEn),
+      systemPrompt: simpleSystemPrompt(isEn, mode),
       schemaName: 'draft_brief',
-      maxTokens: 2000,
+      maxTokens: 2048,
       routeState,
       qualityAudit
-    }), page, isEn), { seed: tensionSeed, topicSource, brandKnowledge, ownerSpark: activeSpark, userDoc: stanceUser, isEn });
+    }), page, isEn, briefOptions), { seed: tensionSeed, topicSource, brandKnowledge, ownerSpark: activeSpark, userDoc: stanceUser, isEn });
   } catch (err) {
     const stop = providerStop(err);
     if (stop) throw stop;
-    brief = sanitizeBriefTension(fallbackBrief(page, isEn), { seed: tensionSeed, topicSource, brandKnowledge, ownerSpark: activeSpark, userDoc: stanceUser, isEn });
+    brief = sanitizeBriefTension(fallbackBrief(page, isEn, briefOptions), { seed: tensionSeed, topicSource, brandKnowledge, ownerSpark: activeSpark, userDoc: stanceUser, isEn });
+  }
+  if (mode !== 'lifestyle'
+    && !sourceFactLines(factKnowledge, topicSource, page).length
+    && !String((brief && (brief.thisPost || brief.offer)) || '').trim()
+    && !String(combinedPrompt || '').trim()
+    && !focusTopic
+    && noExternalSeed) {
+    const err = new PostConstraintError('投稿の題材となる事実やペルソナ方針が不足しているため安全停止しました。');
+    err.rejectReasons = ['missing_fact_and_persona'];
+    throw err;
   }
 
   const candidateSchema = {
@@ -1377,14 +1597,14 @@ async function draftNextPostWithMeta({
   try {
     emitStage('draft_candidates');
     const candidateBudget = stageBudget(deadlineAt, tier === 'fast' ? 18000 : 60000, timeoutMs);
-    candidates = readCandidates(await billedDraft(candidatePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, focusClaim: isolateLpContext ? null : focusClaim, liveSignals, archetypeLine, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide, winningHooks, evolutionPatch, ownerSpark: activeSpark, stanceUser }), {
+    candidates = readCandidates(await billedDraft(simpleWritePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, voiceProfile, recentTexts: recent, userPrompt: combinedPrompt, contentMode: mode, voiceRegister }), {
       tier,
       timeoutMs: candidateBudget || Math.min(timeoutMs, 35000),
       retryTimeoutMs: Math.min(timeoutMs, 15000),
-      systemPrompt: systemRules(isEn),
+      systemPrompt: simpleSystemPrompt(isEn, mode),
       schemaName: 'draft_candidates',
       inputSchema: candidateSchema,
-      maxTokens: 4000,
+      maxTokens: 4096,
       routeState,
       qualityAudit
     }));
@@ -1398,11 +1618,12 @@ async function draftNextPostWithMeta({
   const formatName = genes && (genes.format || genes.formatSingle);
   const hasReadableBreaks = candidate => (candidate.tweets || []).some(text => /\n\s*\n/.test(String(text || '')));
   const needsBreaks = candidate => {
-    if (formatName === 'micro_punch') return false;
+    if (mode === 'lifestyle' || formatName === 'micro_punch') return false;
     const joined = (candidate.tweets || []).join('');
     return isEn ? joined.length >= 180 : joined.length >= 110;
   };
   const passesDraft = candidate => runDeterministicAudit(candidate, selectionContext).ok
+    && localDraftGate(candidate.tweets, isEn, { contentMode: mode }).ok
     && !closesAsLectureQuestion(candidate.tweets, decision)
     && !leaksCraftExemplar(candidate.tweets)
     && !detectOverflowSplit(candidate.tweets, isEn)
@@ -1421,13 +1642,13 @@ async function draftNextPostWithMeta({
     emitStage('draft_critic');
     try {
       const scored = parseJson(await billedDraft(
-        `${readerLine}\nScore each candidate from 0 to 100 for a human scrolling plain-text X. scrollStopHook 25 is at most 10, and the total is below 60, when line 1 is the paper's subject, such as rumors, elections, public health, or the researchers' own situation, instead of the reader's working belief, or when the body explains the paper and only the last sentence says the same applies to the reader's own work. saveUtility 25 asks whether the reader gets one practical priority. A polished summary of the source, missing the reader's belief or that priority, scores below 60 and keeps saveUtility and scrollStopHook low. Do not lower a score, or write a weakness, because a one-minute tactic or an immediate checklist is missing. A bolted-on step or a cancelling ただし also scores below 60. strangerClarity 25 asks whether the layout can be scanned in half a second and whether the subject opened on line 1 continues through the ending. Score below 60 when a general reader problem jumps into an unexplained product rule, or when the closing sentence contradicts the example just given. craftAndTruth 25 asks for a natural voice in that field and zero invented stats. Judge the intended reader, not whether the draft merely avoids sounding like a model. Thin generalities, lecture-like cadence, mixed polite and plain endings, a second tweet that only restates the first, and academic labels such as "according to X studies" score below 60. Endings such as "何が変わると感じますか", "仕組みがここにある", "what changes for you", or "the mechanism is right here" also score below 60. Robotic brochure lines such as "チームはこれを解明し", "効率的な運用が可能です", "持続可能な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" or "根拠に基づく判断が重要です" score at most 55. A score of 72 or higher requires one concrete point that reader would save. strangerClarity below 14 or scrollStopHook below 12 fails even when the total is high. Broken English grammar (e.g. missing articles like "create schedule" or "The rule is input..."), tiny slogan stubs under 65 characters, or product usage-manual dumps ("feed a URL into the tool...") when not a promo score below 55. Put the concrete fix in weakness, for example: name the cause or mechanism instead of a surface generality. Return JSON ${criticScoreShape()}.\n${criticGround}${JSON.stringify(accepted)}`,
+        lightReviewPrompt({ isEn, readerLine, fact: brief && (brief.thisPost || brief.offer), candidates: accepted, contentMode: mode }),
         {
           role: 'critic',
           tier: tier === 'fast' ? 'fast' : tier,
           timeoutMs: stageBudget(deadlineAt, 12000, timeoutMs) || Math.min(timeoutMs, 12000),
           retryTimeoutMs: Math.min(timeoutMs, 8000),
-          systemPrompt: criticSystemRules(isEn),
+          systemPrompt: simpleSystemPrompt(isEn, mode),
           routeState,
           qualityAudit
         }
@@ -1469,6 +1690,7 @@ async function draftNextPostWithMeta({
     const reasons = [...new Set([
       criticSummary,
       ...candidates.flatMap(candidate => runDeterministicAudit(candidate, selectionContext).reasons),
+      ...candidates.flatMap(candidate => localDraftGate(candidate.tweets, isEn, { contentMode: mode }).reasons),
       ...candidates.filter(candidate => closesAsLectureQuestion(candidate.tweets, decision)).map(() => 'lecture_question'),
       ...(candidates.some(candidate => needsBreaks(candidate) && !hasReadableBreaks(candidate)) ? ['needs_line_breaks'] : []),
       ...(candidates.some(candidate => detectOverflowSplit(candidate.tweets, isEn)) ? ['overflow_split'] : [])
@@ -1486,23 +1708,27 @@ async function draftNextPostWithMeta({
         : `Do not merely rephrase the ending. Strengthen the underlying mechanism and a concrete contrast, and cut lecture-style prefaces. Lowest axis: ${criticAxes && (criticAxes.strangerClarity != null || criticAxes.scrollStopHook != null) ? `strangerClarity ${criticAxes.strangerClarity}, scrollStopHook ${criticAxes.scrollStopHook}.` : ''}`) : '',
       reasons.includes('lecture_question') ? `Do not end with a question. Close with ${decision.endingMove}. ${decision.registerInstruction}` : '',
       reasons.includes('needs_line_breaks') ? 'CRITICAL: Insert a blank line between the opening line and the next point. Do not return one dense paragraph. micro_punch is the only format that may stay as a single short block.' : '',
+      reasons.includes('cut_off') ? 'The previous draft stopped mid-sentence. Finish the last sentence.' : '',
+      reasons.includes('banned_phrase') ? 'Remove stock phrases such as と思いがちです and 開発側がおすすめしたいのは.' : '',
+      reasons.includes('mixed_register') ? 'Use one register only. Do not mix です/ます with だ/である.' : '',
       reasons.includes('overflow_split') ? 'Do not split an unfinished sentence into the next post. Each part must end as a complete sentence and carry its own point. Drop a short leftover third part.' : '',
       reasons.includes('duplicate_sentence_in_post') ? 'Do not repeat the same sentence or phrase inside this post. State the point once and stop.' : '',
       reasons.includes('shape_mismatch') ? `CRITICAL: Each tweet exceeded ${accountState?.maxChars || 140} characters or exceeded ${shape.maxCount || shape.count} tweet(s). Compress every tweet to under ${Math.max(50, (accountState?.maxChars || 140) - 24)} characters (at most 2 short sentences per tweet).` : '',
+      reasons.includes('x_weight_exceeded') ? 'CRITICAL: Total X weighted length (full-width=2, half-width=1, URL=23) exceeded 280. Shorten the text.' : '',
       reasons.some(r => String(r).startsWith('compliance:claim_needs_evidence')) ? 'Remove absolute or superlative claim words such as 唯一 / 必ず / 絶対 / 確実 / No.1 / always / guarantee.' : '',
       `Keep register ${decision.registerLock} and end with ${decision.endingMove}. ${decision.registerInstruction}`
     ].filter(Boolean).join('\n');
     try {
       const repaired = parseJson(await billedDraft(
-        `${candidatePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, brandKnowledge: promptKnowledge, voiceProfile, genes, portfolioPlan, focusClaim: isolateLpContext ? null : focusClaim, liveSignals, archetypeLine, ...slotGuide, ...sharedGuide, ...planGuide, ...promptGuide, winningHooks, evolutionPatch, ownerSpark: activeSpark, stanceUser })}\n${repairHint}`,
+        `${simpleWritePrompt({ isEn, brief, shape, promo, accountState: accountState || { maxChars: 140 }, voiceProfile, recentTexts: recent, userPrompt: combinedPrompt, contentMode: mode, voiceRegister })}\n${repairHint}`,
         {
           tier: tier === 'fast' ? 'fast' : tier,
           timeoutMs: stageBudget(deadlineAt, 35000, timeoutMs) || Math.min(timeoutMs, 35000),
           retryTimeoutMs: Math.min(timeoutMs, 15000),
-          systemPrompt: systemRules(isEn),
+          systemPrompt: simpleSystemPrompt(isEn, mode),
           schemaName: 'draft_candidates',
           inputSchema: candidateSchema,
-          maxTokens: 4000,
+          maxTokens: 4096,
           routeState,
           qualityAudit
         }
@@ -1515,13 +1741,13 @@ async function draftNextPostWithMeta({
       } else if (retryPool.length && apiCalls < callCap) {
         chosen = null;
         const repairScore = parseJson(await billedDraft(
-          `${readerLine}\nScore each repaired candidate from 0 to 100. A polished summary missing the reader belief or one practical priority scores below 60 and keeps saveUtility and scrollStopHook low. A bolted-on step or a cancelling ただし scores below 60. Lines such as "チームはこれを解明し", "効率的な運用が可能です", or "一つの仕組みで管理できるように設計" score below 60. Platitudes such as "判断軸となります" score at most 55. A score of 72 or higher requires that structural point. strangerClarity below 14 or scrollStopHook below 12 fails. Return JSON ${criticScoreShape()}.\n${criticGround}${JSON.stringify(retryPool)}`,
+          lightReviewPrompt({ isEn, readerLine, fact: brief && (brief.thisPost || brief.offer), candidates: retryPool, repaired: true, contentMode: mode }),
           {
             role: 'critic',
             tier: tier === 'fast' ? 'fast' : tier,
             timeoutMs: stageBudget(deadlineAt, 15000, timeoutMs) || Math.min(timeoutMs, 15000),
             retryTimeoutMs: Math.min(timeoutMs, 10000),
-            systemPrompt: criticSystemRules(isEn),
+            systemPrompt: simpleSystemPrompt(isEn, mode),
             routeState,
             qualityAudit
           }
@@ -1534,7 +1760,7 @@ async function draftNextPostWithMeta({
           criticDegraded = repairDecision.degraded === true;
           criticAxes = repairBest;
         } else if (repairBest) {
-          criticSummary = `critic_below_72:${repairBest.score}`;
+          criticSummary = repairDecision.reason || `critic_below_72:${repairBest.score}`;
           criticAxes = repairBest;
         } else {
           criticDegraded = true;
@@ -1621,4 +1847,4 @@ async function draftNextPostText(params) {
   return drafted.tweets;
 }
 
-module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType, detectOverflowSplit, generateAdversarialHooks, filterAdversarialHooks, planHookBudget, hookDuelPrompt, hookAngleForChoice, selectPushbackSeed, sanitizeBriefTension, finalizeSelectedHookAngle, criticStanceLine, mergeOwnerSparks, pickOwnerSpark, markOwnerSparkUsed, ownerSparkLine };
+module.exports = { draftNextPostText, draftNextPostWithMeta, generateDraft, attachPromoReply, readBrief, briefPrompt, candidatePrompt, readerVisibleFact, closesAsLectureQuestion, selectFreshClaimIndex, selectFocusPlaybook, leaksCraftExemplar, stageBudget, systemRules, criticSystemRules, judgeCriticRow, pickCriticDecision, resolveSourceType, detectOverflowSplit, generateAdversarialHooks, filterAdversarialHooks, planHookBudget, hookDuelPrompt, hookAngleForChoice, selectPushbackSeed, sanitizeBriefTension, finalizeSelectedHookAngle, criticStanceLine, mergeOwnerSparks, pickOwnerSpark, markOwnerSparkUsed, ownerSparkLine, simpleSystemPrompt, factSelectionPrompt, simpleWritePrompt, lightReviewPrompt, localDraftGate, voiceIsPolite };

@@ -83,10 +83,10 @@ test('a domain value slot teaches a domain problem instead of pitching the produ
       }
     });
     assert.equal(tweets[0], structured);
-    assert.match(candidatePrompt, /保存と短期の表示ゆれを分けて見る/);
-    assert.match(candidatePrompt, /文脈に不可欠なとき以外は出さない/);
-    assert.match(candidatePrompt, /1行のフック/);
+    assert.match(candidatePrompt, /判断の境界/);
+    assert.match(candidatePrompt, /使う事実はこの1つだけ/);
     assert.doesNotMatch(candidatePrompt, /今回の主軸はこの未消化の柱/);
+    assert.doesNotMatch(candidatePrompt, /VELOX AIは3ページを読んで投稿を作る/);
   } finally {
     restore();
     delete require.cache[draftPath];

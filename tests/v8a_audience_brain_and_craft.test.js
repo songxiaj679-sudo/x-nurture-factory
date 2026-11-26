@@ -201,7 +201,9 @@ test('graduated critic keeps 72, degrades 60 to 71 after repair, and rejects und
   const legacy = usableScores({ scores: [{ id: 'a', score: 81, weakness: 'ok' }] });
   assert.equal(legacy[0].score, 81);
   assert.equal(legacy[0].strangerClarity, null);
-  assert.deepEqual(criticJsonSchema.properties.scores.items.required, ['id', 'scrollStopHook', 'saveUtility', 'strangerClarity', 'craftAndTruth', 'score', 'weakness']);
+  assert.deepEqual(criticJsonSchema.properties.scores.items.required, ['id', 'factual', 'natural', 'complete', 'reason']);
+  const light = usableScores({ scores: [{ id: 'a', factual: 'pass', natural: 'fail', complete: 'pass', reason: '定型' }] });
+  assert.equal(light[0].natural, 'fail');
   const { judgeCriticRow } = require('../src/next_post_draft');
   assert.equal(judgeCriticRow({ id: 'a', score: 80, strangerClarity: 10, scrollStopHook: 20 }, { repaired: true }).accept, false);
   assert.equal(judgeCriticRow({ id: 'a', score: 40, weakness: 'thin' }, { repaired: true }).accept, false);
@@ -216,7 +218,7 @@ test('graduated critic keeps 72, degrades 60 to 71 after repair, and rejects und
     async completeText({ prompt }) {
       call += 1;
       if (call === 1) return { modelName: 'brief', text: JSON.stringify({ offer: '確認', underlyingMechanism: '確認場所が固定される', everydayAssumption: 'その場で考えれば足りる' }) };
-      if (String(prompt).includes('Score each')) {
+      if (String(prompt).includes('light_review')) {
         const score = call < 5 ? 66 : 68;
         return { modelName: 'critic', text: JSON.stringify({ scores: [{ id: 'a', score, weakness: 'soft', strangerClarity: 16, scrollStopHook: 14, saveUtility: 12, craftAndTruth: 13 }] }) };
       }

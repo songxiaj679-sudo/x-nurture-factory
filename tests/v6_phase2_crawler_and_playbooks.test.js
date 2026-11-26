@@ -116,7 +116,7 @@ test('a domain slot gives the writer one playbook and a domain customer reason',
     checkCriteria: 'その場で元資料を開けるか見る',
     boundaryCondition: '資料が無い日は数字を外す'
   };
-  const long = '確認場所を先に固定すると、次の判断が毎回同じ入口から始まる。入口が変わるたびに手順も選び直され、現場の確認がその場でぶれる。先に残した一点だけを次の作業へ渡すと、翌日も同じ型で見直せる。';
+  const long = '確認場所を先に固定すると、次の判断が毎回同じ入口から始まる。\n\n入口が変わるたびに手順も選び直され、現場の確認がその場でぶれる。先に残した一点だけを次の作業へ渡すと、翌日も同じ型で見直せる。';
   const filename = require.resolve('../src/grok_client');
   const previous = require.cache[filename];
   require.cache[filename] = { id: filename, filename, loaded: true, exports: {
@@ -146,8 +146,10 @@ test('a domain slot gives the writer one playbook and a domain customer reason',
       },
       accountState: { maxChars: 280, postShape: 'single', singleOnly: true, lang: 'ja' }
     });
-    assert.match(prompts[1], /使う判断カードはこの1件だけ/);
-    assert.match(prompts[1], /その場で元資料を開けるか見る/);
+    assert.match(prompts[0], /その場で元資料を開けるか見る/);
+    assert.doesNotMatch(prompts[0], /¥4,980/);
+    assert.match(prompts[1], /使う事実はこの1つだけ/);
+    assert.match(prompts[1], /入口を固定する/);
     assert.doesNotMatch(prompts[1], /¥4,980/);
     assert.equal(drafted.tweets[0], long);
     const choice = { hypothesis: extractDomainHypotheses({ icpSummary: '確認を残す担当者', domainPlaybooks: [playbook] }, { title: '確認' })[0] };

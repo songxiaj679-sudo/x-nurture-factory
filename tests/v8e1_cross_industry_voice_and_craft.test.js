@@ -62,6 +62,6 @@ test('an isolated draft still receives the reader persona and not the product pa
   assert.match(draft, /readerLine/);
   assert.match(draft, /isolateLpContext \? null : brandKnowledge/);
   assert.match(source, /function candidatePrompt\([\s\S]*readerLine/);
-  assert.match(source, /\$\{readerLine\}\\nScore each candidate/);
-  assert.match(source, /\$\{readerLine\}\\nScore each repaired candidate/);
+  assert.match(source, /lightReviewPrompt\(\{ isEn, readerLine/);
+  assert.match(source, /repaired: true/);
 });

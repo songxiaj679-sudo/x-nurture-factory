@@ -23,8 +23,13 @@ function isPaidAccount(user = {}) {
   return status === 'active' && user.planId !== 'free' && user.planId !== 'free_trial';
 }
 
-function slotsForPlan(plan) {
-  return PLAN_SLOTS[plan] ? PLAN_SLOTS[plan].slice() : [];
+function slotsForPlan(plan, userOrCap = null) {
+  const base = PLAN_SLOTS[plan] ? PLAN_SLOTS[plan].slice() : [];
+  const rawCap = typeof userOrCap === 'number'
+    ? userOrCap
+    : (userOrCap && userOrCap.maxPostsPerDay != null ? Number(userOrCap.maxPostsPerDay) : NaN);
+  if (Number.isInteger(rawCap) && rawCap >= 1) return base.slice(0, rawCap);
+  return base;
 }
 
 function localDateKey(date, timeZone) {
@@ -36,17 +41,17 @@ function localDateKey(date, timeZone) {
   }).format(date);
 }
 
-function nextPlanSlot({ plan, takenSlots = [], now = new Date(), slotAt }) {
-  const slots = slotsForPlan(plan);
+function nextPlanSlot({ plan, takenSlots = [], now = new Date(), slotAt, maxPostsPerDay = null }) {
+  const slots = slotsForPlan(plan, maxPostsPerDay);
   if (slots.length === 0 || typeof slotAt !== 'function') return null;
   const taken = new Set(takenSlots.filter(slot => slots.includes(slot)));
+  if (taken.size >= slots.length) return null;
   const upcoming = slots.find(slot => {
     if (taken.has(slot)) return false;
     const at = slotAt(slot, 0);
     return at instanceof Date && !Number.isNaN(at.getTime()) && at.getTime() > now.getTime() + 15 * 60 * 1000;
   });
   if (upcoming) return { timeSlot: upcoming, dayOffset: 0 };
-  if (taken.size >= slots.length) return null;
   return { timeSlot: slots[0], dayOffset: 1 };
 }
 

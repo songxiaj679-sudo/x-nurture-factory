@@ -163,7 +163,7 @@ async function completeText({
       }
     }
     if (!data) throw lastError || new Error('x_search_failed');
-    return { text: outputTextFromResponses(data), modelName: model };
+    return { text: outputTextFromResponses(data), modelName: model, usage: data.usage || null };
   }
   const model = String(modelOverride || '').trim() || modelForTier(tier);
   const body = {
@@ -177,10 +177,14 @@ async function completeText({
   else if (!nonReasoning && reasoningEffort) body.reasoning_effort = reasoningEffort;
   if (json) body.response_format = { type: 'json_object' };
   const data = await postJson(CHAT_URL, body, timeoutMs);
-  const text = data.choices && data.choices[0] && data.choices[0].message
-    ? data.choices[0].message.content
-    : '';
-  return { text: String(text || '').trim(), modelName: model };
+  const choice = data.choices && data.choices[0];
+  if (choice && choice.finish_reason === 'length') {
+    const error = new Error('output_truncated');
+    error.code = 'output_truncated';
+    throw error;
+  }
+  const text = choice && choice.message ? choice.message.content : '';
+  return { text: String(text || '').trim(), modelName: model, usage: data.usage || null };
 }
 
 async function completeJson(options) {

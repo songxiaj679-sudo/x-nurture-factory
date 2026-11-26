@@ -168,6 +168,50 @@ function degradedPostText(playbook = {}, options = {}) {
   return text;
 }
 
+const MODEL_PRICING_PER_1M = {
+  anthropic_sonnet: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 3.75 },
+  anthropic_haiku: { input: 0.8, output: 4.0, cacheRead: 0.08, cacheWrite: 1.0 },
+  openai_gpt41: { input: 2.0, output: 8.0, cacheRead: 0.5, cacheWrite: 2.0 },
+  openai_mini: { input: 0.4, output: 1.6, cacheRead: 0.1, cacheWrite: 0.4 },
+  xai_fast: { input: 0.2, output: 0.5, cacheRead: 0.05, cacheWrite: 0.2 },
+  xai_quality: { input: 3.0, output: 15.0, cacheRead: 0.75, cacheWrite: 3.0 }
+};
+
+function pricingForModel(provider, model) {
+  const name = String(model || '').toLowerCase();
+  if (provider === 'anthropic') {
+    return /haiku/i.test(name) ? MODEL_PRICING_PER_1M.anthropic_haiku : MODEL_PRICING_PER_1M.anthropic_sonnet;
+  }
+  if (provider === 'openai') {
+    return /mini|nano/i.test(name) ? MODEL_PRICING_PER_1M.openai_mini : MODEL_PRICING_PER_1M.openai_gpt41;
+  }
+  if (/fast|non-reasoning|mini/i.test(name)) return MODEL_PRICING_PER_1M.xai_fast;
+  return MODEL_PRICING_PER_1M.xai_quality;
+}
+
+function estimateLlmCostUsd({
+  provider = 'xai',
+  model = '',
+  inputTokens = 0,
+  outputTokens = 0,
+  cacheReadTokens = 0,
+  cacheWriteTokens = 0
+} = {}) {
+  const inTok = Math.max(0, Number(inputTokens) || 0);
+  const outTok = Math.max(0, Number(outputTokens) || 0);
+  const readTok = Math.max(0, Number(cacheReadTokens) || 0);
+  const writeTok = Math.max(0, Number(cacheWriteTokens) || 0);
+  if (!inTok && !outTok && !readTok && !writeTok) return null;
+  const price = pricingForModel(provider, model);
+  const usd = (
+    (inTok * price.input)
+    + (outTok * price.output)
+    + (readTok * price.cacheRead)
+    + (writeTok * price.cacheWrite)
+  ) / 1000000;
+  return Math.round(usd * 1000000) / 1000000;
+}
+
 function reviewDegradedDraft(text, context = {}) {
   const { inspectPostCompliance } = require('./post_policy_guard');
   const { runDeterministicAudit } = require('./draft_verifier');
@@ -201,5 +245,7 @@ module.exports = {
   usageSummary,
   degradedPostText,
   reviewDegradedDraft,
-  recordTenantLlmBreakdown
+  recordTenantLlmBreakdown,
+  estimateLlmCostUsd,
+  MODEL_PRICING_PER_1M
 };

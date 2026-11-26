@@ -26,14 +26,14 @@ test('archetype prompts choose a layout and do not force the old marks', () => {
 test('critic scoring asks for coherence and does not name fixed marks', () => {
   const source = fs.readFileSync('src/next_post_draft.js', 'utf8');
   const critic = source.slice(source.indexOf('function criticSystemRules'), source.indexOf('function criticScoreShape'));
-  const scoreCall = source.slice(source.indexOf('Score each candidate from 0 to 100'), source.indexOf('role: \'critic\''));
+  const scoreCall = source.slice(source.indexOf('function lightReviewPrompt'), source.indexOf('function localDraftGate'));
   assert.match(critic, /1行目の主語が結びまで/);
-  assert.match(scoreCall, /subject opened on line 1/);
-  assert.match(scoreCall, /unexplained product rule/);
-  assert.match(scoreCall, /closing sentence contradicts the example/);
+  assert.match(scoreCall, /factual/);
+  assert.match(scoreCall, /natural/);
+  assert.match(scoreCall, /complete/);
   assert.equal(scoreCall.includes('×/○'), false);
   assert.equal(scoreCall.includes('①②③'), false);
-  assert.match(scoreCall, /strangerClarity below 14 or scrollStopHook below 12/);
+  assert.match(scoreCall, /pass or fail|pass か fail/);
 });
 
 test('retarget isolation uses the mission result without editing the mission function', () => {

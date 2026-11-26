@@ -64,7 +64,7 @@ test('trust building stays external, blocks back to back product posts, and rota
   assert.equal(['before_after_rewrite', 'actionable_checklist'].includes(rotated.archetype), false);
 });
 
-test('isolated drafts omit the page, claims, and playbook, and one survivor still reaches the critic', async () => {
+test('isolated drafts omit the page and playbook, keep persona facts when no card exists, and one survivor still reaches the critic', async () => {
   const prompts = [];
   const text = '確認場所を先に残す。\n\n入口が変わると、次の手順もその場で選び直される。残す文と捨てる文を先に分ける。声に出して一度読み、足りない一点だけを足す。';
   const restore = withStub('../src/grok_client', {
@@ -72,7 +72,7 @@ test('isolated drafts omit the page, claims, and playbook, and one survivor stil
     async completeText({ prompt }) {
       prompts.push(prompt);
       if (prompts.length === 1) return { modelName: 'brief', text: JSON.stringify({ offer: '確認', thisPost: '入口' }) };
-      if (String(prompt).includes('Score each')) {
+      if (String(prompt).includes('light_review')) {
         return { modelName: 'critic', text: JSON.stringify({ scores: [{ id: 'a', score: 80, weakness: '', strangerClarity: 18, scrollStopHook: 16, saveUtility: 18, craftAndTruth: 18 }] }) };
       }
       return { modelName: 'draft', text: JSON.stringify({ candidates: [{ id: 'a', tweets: [text] }] }) };
@@ -93,13 +93,13 @@ test('isolated drafts omit the page, claims, and playbook, and one survivor stil
       userPrompt: '読み手の作業を短く書く',
       accountState: { maxChars: 280, postShape: 'single', singleOnly: true }
     });
-    const writerPrompts = prompts.filter(prompt => !prompt.includes('Score each')).join('\n');
+    const writerPrompts = prompts.filter(prompt => !prompt.includes('light_review')).join('\n');
     assert.equal(writerPrompts.includes('UNIQUE_PAGE_BODY'), false);
     assert.equal(writerPrompts.includes('UNIQUE_PAGE_HEAD'), false);
-    assert.equal(writerPrompts.includes('UNIQUE_CLAIM_TOKEN'), false);
-    assert.equal(writerPrompts.includes('UNIQUE_MECHANISM'), false);
+    assert.equal(writerPrompts.includes('UNIQUE_CLAIM_TOKEN'), true);
+    assert.equal(writerPrompts.includes('UNIQUE_MECHANISM'), true);
     assert.equal(writerPrompts.includes('UNIQUE_PLAYBOOK'), false);
-    assert.equal(prompts.some(prompt => prompt.includes('Score each')), true);
+    assert.equal(prompts.some(prompt => prompt.includes('light_review')), true);
     assert.equal(drafted.finalCriticScore, 80);
   } finally {
     restore();

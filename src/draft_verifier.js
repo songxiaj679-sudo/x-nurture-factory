@@ -1,6 +1,6 @@
 'use strict';
 
-const { fitsAccountState } = require('./customer_post_state');
+const { fitsAccountState, xWeightedLength } = require('./customer_post_state');
 const { assertPostThreadUnambiguous } = require('./post_constraint_guard');
 const { inspectPostCompliance } = require('./post_policy_guard');
 const { containsJapaneseScript } = require('./measured_pair');
@@ -144,6 +144,9 @@ function runDeterministicAudit(candidate, context = {}) {
     delivery: context.delivery || context.accountState.delivery || ''
   })) {
     reasons.push('shape_mismatch');
+    if (context.accountState.subscription !== 'premium' && tweets.some(text => xWeightedLength(text) > 280)) {
+      reasons.push('x_weight_exceeded');
+    }
   }
   try {
     assertPostThreadUnambiguous(tweets, { lang, timeSlot: context.timeSlot });

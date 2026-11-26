@@ -21,7 +21,7 @@ const { queryRelevantEpisodes, formatEpisodesForPrompt } = require('./episodic_m
 const { restoreMandatoryDirectives } = require('./meta_prompt_optimizer');
 const { fetchPublicText } = require('./url_fetch_guard');
 const { containsJapaneseScript } = require('./measured_pair');
-const { extractPageHypotheses, hypothesisForPlaybook, chooseHypothesis, formatHypothesis, pageVersionHash, chooseGenesForPost, chooseSourceMaterial, selectPlaybookByPerformance } = require('./bandit_optimization_engine');
+const { extractPageHypotheses, hypothesisForPlaybook, chooseHypothesis, formatHypothesis, pageVersionHash, chooseGenesForPost, chooseSourceMaterial, selectPlaybookByPerformance, accountLearningHold } = require('./bandit_optimization_engine');
 const { sanitizePostOrReplyText, decryptCredentials, fetchMyAccountState } = require('./official_api_client');
 const { describeAccountState, formatAccountState } = require('./customer_post_state');
 const { draftNextPostText, draftNextPostWithMeta, selectFocusPlaybook, pickOwnerSpark, markOwnerSparkUsed } = require('./next_post_draft');
@@ -362,6 +362,7 @@ async function retargetNextPendingJob(userId) {
           recentPostedJobs: posts
         });
         const personaText = String(user.userPrompt || '').trim();
+        const learningHold = accountLearningHold(posts);
         if (((pageSummary && pageSummary.ok) || personaText) && !next.earlyBodyRewriteAt) {
           const previousGenes = latestEarly && latestEarly.genes || {};
           const recoveryMode = detectAlgorithmRecovery(posts, accountState.followers);
@@ -380,11 +381,11 @@ async function retargetNextPendingJob(userId) {
             posts,
             brandKnowledge: extracted && extracted.brandKnowledge,
             portfolioPlan,
-            accountState,
+            accountState: { ...accountState, recentAvgImpressions: user.recentAvgImpressions },
             timeSlot: next.timeSlot || 'evening',
             constraints: action === 'deepen_winner'
-              ? { lockClaim: previousGenes.claimSemanticKey, avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType }, promotedDynamicArms: user.promotedDynamicArms || [] }
-              : { avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType, claimSemanticKey: previousGenes.claimSemanticKey }, promotedDynamicArms: user.promotedDynamicArms || [] }
+              ? { lockClaim: previousGenes.claimSemanticKey, avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType }, promotedDynamicArms: learningHold ? [] : (user.promotedDynamicArms || []) }
+              : { avoid: { angle: previousGenes.angle, hookType: previousGenes.hookType, claimSemanticKey: previousGenes.claimSemanticKey }, promotedDynamicArms: learningHold ? [] : (user.promotedDynamicArms || []) }
           });
           const qualityAudit = [];
           const audienceCache = user.audienceQuestionsCache;
@@ -439,11 +440,12 @@ async function retargetNextPendingJob(userId) {
             brandKnowledge: hasPage ? extracted.brandKnowledge : null,
             audienceKnowledge: audienceCraft.audienceKnowledge,
             recentJobs: posts,
-            portfolioPlan: safePlan
+            portfolioPlan: safePlan,
+            hasTargetUrl: Boolean(hasPage && targetMatch)
           });
           const isolated = masterPlan.isolateLpContext === true;
           const evolutionVersion = chooseEvolutionAssignment({
-            evolution: user.promptEvolution,
+            evolution: learningHold ? null : user.promptEvolution,
             jobs: posts,
             topicRing: masterPlan.topicRing,
             isWildcard: genes.isWildcard === true
@@ -456,6 +458,8 @@ async function retargetNextPendingJob(userId) {
             masterPlan,
             focusPlaybook: isolated ? null : rewritePlaybook,
             lang: accountState.lang,
+            contentMode: user.contentMode || 'business',
+            voiceRegister: user.voiceRegister || '',
             accountState,
             hypothesisText: formatHypothesis(choice, accountState.lang),
             pageSummary: hasPage ? pageSummary : {
@@ -475,8 +479,8 @@ async function retargetNextPendingJob(userId) {
             targetUrl: hasPage && targetMatch ? targetMatch[0] : '',
             recentPosts: rememberedPostTexts(posts, accountState.lang),
             genes,
-            criticAxisWeights: user.criticAxisWeights || null,
-            promptEvolution: user.promptEvolution || null,
+            criticAxisWeights: learningHold ? null : (user.criticAxisWeights || null),
+            promptEvolution: learningHold ? null : (user.promptEvolution || null),
             evolutionVersion,
             retargetContext: action === 'deepen_winner'
               ? (accountState.lang === 'en'
@@ -2895,6 +2899,7 @@ function rememberFrozenOutcome(jobId, snapshot, context = {}) {
 
 async function syncPromotedArms(database, userId, jobId, existing, outcome24h, context) {
   if (!database || !userId || !Number.isFinite(Number(outcome24h && outcome24h.residualReward))) return;
+  if (accountLearningHold(context && context.posts)) return;
   const traceSnap = await database.collection('generation_traces').where('userId', '==', userId).limit(200).get();
   const rows = traceSnap.docs.map(doc => ({ jobId: doc.id, ...(doc.data() || {}) }));
   const patch = { jobId: String(jobId), ...existing, outcome24h, wildcardRecipe: existing.wildcardRecipe || context.wildcardRecipe || null };
@@ -3041,8 +3046,9 @@ async function prepareNextPost(userId, options = {}) {
     const cached = user.contextRadarCache;
     const cacheUsable = cached && cached.signals && !radarLooksInternal(cached);
     const cacheFresh = cacheUsable && cached.expiresAt && new Date(cached.expiresAt).getTime() > Date.now();
-    if (cacheUsable) contextSignals = cached.signals;
-    if (!cacheFresh) {
+    if (cacheUsable && cacheFresh) {
+      contextSignals = cached.signals;
+    } else {
       const lens = industryQuery({
         category: extracted.brandKnowledge && extracted.brandKnowledge.category,
         icpSummary: extracted.brandKnowledge && extracted.brandKnowledge.icpSummary,
@@ -3050,20 +3056,32 @@ async function prepareNextPost(userId, options = {}) {
         productName: extracted.brandKnowledge && extracted.brandKnowledge.productName,
         handle: user.xUsername
       });
-      fetchSituationalContext({
-        category: lens,
-        icpSummary: '',
-        terminology: [],
-        lang: accountState.lang,
-        cachedRadar: null,
-        db,
-        xSearch: true,
-        xSearchOnly: true,
-        excludedXHandles: [user.xUsername].filter(Boolean)
-      }).then(fresh => {
-        if (!fresh || radarLooksInternal(fresh)) return null;
-        return db.collection('saas_users').doc(userId).set({ contextRadarCache: fresh }, { merge: true });
-      }).catch(err => console.warn(`[Context Radar] ${err.message}`));
+      let timer;
+      const fresh = await Promise.race([
+        fetchSituationalContext({
+          category: lens,
+          icpSummary: '',
+          terminology: [],
+          lang: accountState.lang,
+          cachedRadar: null,
+          db,
+          xSearch: true,
+          xSearchOnly: true,
+          timeoutMs: 12000,
+          excludedXHandles: [user.xUsername].filter(Boolean)
+        }),
+        new Promise(resolve => {
+          timer = setTimeout(() => resolve(null), 15000);
+        })
+      ]);
+      clearTimeout(timer);
+      if (fresh && !radarLooksInternal(fresh)) {
+        contextSignals = fresh.signals;
+        db.collection('saas_users').doc(userId).set({ contextRadarCache: fresh }, { merge: true })
+          .catch(err => console.warn(`[Context Radar] ${err.message}`));
+      } else if (cacheUsable) {
+        contextSignals = cached.signals;
+      }
     }
   } catch (radarErr) {
     console.warn(`[Context Radar] ${radarErr.message}`);
@@ -3080,13 +3098,14 @@ async function prepareNextPost(userId, options = {}) {
     recoveryMode,
     lang: accountState.lang
   });
+  const learningHold = accountLearningHold(posts);
   const genes = chooseGenesForPost({
     posts,
     brandKnowledge: extracted.brandKnowledge,
     portfolioPlan,
-    accountState,
+    accountState: { ...accountState, recentAvgImpressions: user.recentAvgImpressions },
     timeSlot,
-    constraints: { promotedDynamicArms: user.promotedDynamicArms || [] }
+    constraints: { promotedDynamicArms: learningHold ? [] : (user.promotedDynamicArms || []) }
   });
   const domainSlot = !(portfolioPlan && portfolioPlan.allowPromoUrl) && (!portfolioPlan || portfolioPlan.portfolioRole !== 'explicit_promo_offer');
   const focusPlaybook = domainSlot
@@ -3247,14 +3266,15 @@ async function prepareNextPost(userId, options = {}) {
     brandKnowledge: extracted.brandKnowledge,
     audienceKnowledge: audienceCraft.audienceKnowledge,
     recentJobs: posts,
-    portfolioPlan
+    portfolioPlan,
+    hasTargetUrl: Boolean(targetUrl)
   });
   let sourceDossier = null;
   let topicSource = null;
   let dossierLive = false;
-  if (masterPlan.isolateLpContext && (masterPlan.topicRing === 'ring1_craft' || masterPlan.topicRing === 'ring2_broad_adjacent')) {
+  if (user.vaultEnabled !== false && masterPlan.isolateLpContext && (masterPlan.topicRing === 'ring1_craft' || masterPlan.topicRing === 'ring2_broad_adjacent')) {
     try {
-      topicSource = await require('./topic_source_vault').pickTopicSourceForPost(db, userId, { outputLang: accountState.lang });
+      topicSource = await require('./topic_source_vault').pickTopicSourceForPost(db, userId, { outputLang: accountState.lang, user });
     } catch (_topicErr) {
       topicSource = null;
     }
@@ -3287,7 +3307,7 @@ async function prepareNextPost(userId, options = {}) {
     const pendingWeek = await db.collection('autopilot_jobs').where('userId', '==', userId).where('status', '==', 'pending').limit(20).get();
     pendingWeek.forEach(doc => weekJobs.push({ id: doc.id, ...(doc.data() || {}) }));
   } catch (_weekErr) {}
-  const wildcard = selectWeeklyWildcard({
+  const wildcard = learningHold ? null : selectWeeklyWildcard({
     accountState,
     masterPlan,
     jobs: weekJobs,
@@ -3301,7 +3321,7 @@ async function prepareNextPost(userId, options = {}) {
     mapElitesCellId = [draftGenes.angle, draftGenes.hookType, draftGenes.format, voiceProfile && voiceProfile.stagePosture].filter(Boolean).join('|').slice(0, 120);
   }
   const evolutionVersion = chooseEvolutionAssignment({
-    evolution: user.promptEvolution,
+    evolution: learningHold ? null : user.promptEvolution,
     jobs: posts,
     topicRing: masterPlan.topicRing,
     isWildcard: draftGenes.isWildcard === true
@@ -3343,6 +3363,8 @@ async function prepareNextPost(userId, options = {}) {
     timeoutMs: 180000,
     maxDraftCalls: dossierLive ? 4 : 5,
     lang: accountState.lang,
+    contentMode: user.contentMode || 'business',
+    voiceRegister: user.voiceRegister || '',
     accountState,
     hypothesisText: formatHypothesis(choice, accountState.lang),
     pageSummary,
@@ -3355,8 +3377,8 @@ async function prepareNextPost(userId, options = {}) {
     targetUrl,
     recentPosts: rememberedPostTexts(posts, accountState.lang),
     genes: draftGenes,
-    criticAxisWeights: user.criticAxisWeights || null,
-    promptEvolution: user.promptEvolution || null,
+    criticAxisWeights: learningHold ? null : (user.criticAxisWeights || null),
+    promptEvolution: learningHold ? null : (user.promptEvolution || null),
     evolutionVersion,
     contextSignals: (questions.length || pushback) ? { questions, signals: contextSignals, pushback } : contextSignals,
     retargetContext,
@@ -3526,6 +3548,9 @@ async function prepareNextPost(userId, options = {}) {
   const audits = Array.isArray(qualityAudit) ? qualityAudit : [];
   const writerAudit = audits.find(row => row && row.role === 'writer' && row.ok);
   const criticAudits = audits.filter(row => row && row.role === 'critic');
+  const sumAudit = (key) => audits.reduce((acc, row) => acc + (Number(row && row[key]) || 0), 0);
+  const hasCost = audits.some(row => Number.isFinite(Number(row && row.cost)));
+  const totalCostUsd = hasCost ? Math.round(sumAudit('cost') * 1000000) / 1000000 : null;
   const trace = {
     jobId,
     userId,
@@ -3533,6 +3558,7 @@ async function prepareNextPost(userId, options = {}) {
     portfolioRole: portfolioPlan.portfolioRole,
     timeSlot,
     lang: accountState.lang,
+    contentMode: user.contentMode || 'business',
     elapsedMs: Date.now() - generationStartedAt,
     focusPlaybookId: focusPlaybook && focusPlaybook.id || '',
     archetype: drafted.archetype || masterPlan.archetype || audienceCraft.archetype || '',
@@ -3542,6 +3568,8 @@ async function prepareNextPost(userId, options = {}) {
     topicRing: masterPlan.topicRing || '',
     selectedTopicDomain: masterPlan.selectedTopicDomain || '',
     sourceType: drafted.sourceType || 'brand_only',
+    dossierLive,
+    vaultUsed: Boolean(topicSource),
     segmentCount: drafted.segmentCount || (Array.isArray(tweets) ? tweets.length : 1),
     delivery: drafted.delivery || (draftGenes && draftGenes.delivery) || 'single',
     isWildcard: draftGenes.isWildcard === true,
@@ -3565,6 +3593,10 @@ async function prepareNextPost(userId, options = {}) {
     initialCriticScore: drafted.initialCriticScore,
     finalCriticScore: drafted.finalCriticScore,
     repairCount: drafted.repairCount || 0,
+    totalCostUsd,
+    totalInputTokens: sumAudit('inputTokens'),
+    totalOutputTokens: sumAudit('outputTokens'),
+    totalCachedTokens: sumAudit('cachedTokens'),
     hasVisualCard: visualCard.eligible === true,
     outcome24h: null,
     qualityAudit: audits
@@ -3674,6 +3706,7 @@ async function ensureNextPost(userId, options = {}) {
     const next = nextPlanSlot({
       plan,
       takenSlots,
+      maxPostsPerDay: user.maxPostsPerDay,
       now: new Date(),
       slotAt: (slot, dayOffset) => {
         const [hour, minute] = SLOT_CLOCK[slot] || [12, 0];

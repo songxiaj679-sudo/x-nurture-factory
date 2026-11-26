@@ -105,7 +105,7 @@ test('a repair after three audit failures still receives a numeric critic score'
     async completeText(options) {
       calls.push(String(options.prompt || ''));
       if (calls.length === 1) return { modelName: 'brief', text: JSON.stringify({ offer: '確認', readerPayoff: '直す場所を1つにする' }) };
-      if (String(options.prompt || '').includes('Score each')) {
+      if (String(options.prompt || '').includes('light_review')) {
         return { modelName: 'critic', text: JSON.stringify({ scores: [{ id: 'a', score: 84, weakness: '同業でも言える点検の並びが残っている', scrollStopHook: 20, saveUtility: 21, strangerClarity: 22, craftAndTruth: 21 }] }) };
       }
       if (calls.length === 2) return { modelName: 'draft', text: JSON.stringify({ candidates: [{ id: 'a', tweets: [dense] }, { id: 'b', tweets: [dense] }, { id: 'c', tweets: [dense] }] }) };
@@ -124,7 +124,7 @@ test('a repair after three audit failures still receives a numeric critic score'
       userPrompt: '確認を短く書く',
       accountState: { maxChars: 280, postShape: 'single', singleOnly: true }
     });
-    assert.equal(calls.some(prompt => prompt.includes('Score each repaired candidate')), true);
+    assert.equal(calls.some(prompt => prompt.includes('light_review_repair')), true);
     assert.equal(drafted.repairCount >= 1, true);
     assert.equal(drafted.finalCriticScore, 84);
     assert.equal(drafted.criticAxes.weakness.includes('同業でも言える'), true);

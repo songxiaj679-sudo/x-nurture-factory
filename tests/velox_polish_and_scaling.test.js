@@ -90,7 +90,7 @@ test('english draft repairs japanese_in_english into an english-only post', asyn
       if (callCount === 2) {
         return { modelName: 'grok-mock', text: JSON.stringify({ candidates: [{ id: 'a', tweets: [japanese] }, { id: 'b', tweets: [`「${japanese}」`] }] }) };
       }
-      if (String(prompt || '').includes('Score each')) {
+      if (String(prompt || '').includes('light_review')) {
         return { modelName: 'grok-repair-critic-mock', text: JSON.stringify({ scores: [{ id: 'a', score: 84, weakness: 'the checkpoint is still generic', scrollStopHook: 20, saveUtility: 21, strangerClarity: 22, craftAndTruth: 21 }] }) };
       }
       return { modelName: 'grok-repair-mock', text: JSON.stringify({ candidates: [{ id: 'a', tweets: [english] }] }) };

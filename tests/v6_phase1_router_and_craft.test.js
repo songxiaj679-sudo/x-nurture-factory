@@ -200,8 +200,8 @@ test('profile bridge is a domain slot and a long post without a blank line is re
       brandKnowledge: { productName: 'VELOX', domainProblems: ['確認の入口が毎回変わる'] },
       accountState: { maxChars: 280, postShape: 'single', singleOnly: true, lang: 'ja' }
     });
-    assert.match(prompts[1], /文脈に不可欠なとき以外は出さない/);
-    assert.match(prompts[1], /プロフィールへ戻る一言/);
+    assert.match(prompts[1], /使う事実はこの1つだけ/);
+    assert.match(prompts[1], /入口を固定する/);
     assert.doesNotMatch(prompts[1], /今回の主軸はこの未消化の柱/);
     assert.match(prompts[2], /needs_line_breaks/);
     assert.match(drafted.tweets[0], /\n\n/);
@@ -242,12 +242,11 @@ test('a craft-exemplar leak is rejected and the stage budget stays inside the de
   }
 });
 
-test('radar refresh does not block drafting and the query drops the product name', () => {
+test('radar refresh waits inside a timeout and the query drops the product name', () => {
   const source = fs.readFileSync(path.join(__dirname, '../src/autonomous_promo_ai.js'), 'utf8');
   const start = source.indexOf('let contextSignals = null;');
   const block = source.slice(start, source.indexOf('const portfolioPlan = planSlotPortfolio', start));
-  assert.equal(block.includes('await fetchSituationalContext'), false);
-  assert.equal(block.includes('Promise.race'), false);
+  assert.equal(/await Promise\.race\(\s*\[\s*fetchSituationalContext\(/.test(block), true);
   const { industryQuery } = require('../src/context_radar');
   const query = industryQuery({
     category: 'VELOX AI の投稿審査',

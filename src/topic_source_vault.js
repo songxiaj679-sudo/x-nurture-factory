@@ -375,9 +375,11 @@ function readerPracticeText(brandKnowledge) {
   return [brandKnowledge.icpSummary, brandKnowledge.oneLineMechanism, ...problems].map(item => String(item || '')).join('\n');
 }
 
-function audienceFitForCard(card, brandKnowledge) {
+function audienceFitForCard(card, brandKnowledge, options = {}) {
   if (!card) return 'fit';
   if (card.audienceFit === 'mismatch' || card.excludedReason) return 'mismatch';
+  const contentMode = String((options && options.contentMode) || (brandKnowledge && brandKnowledge.contentMode) || 'business').toLowerCase();
+  if (contentMode === 'news') return 'fit';
   const subject = cardSubjectText(card);
   const cardHits = SOCIAL_SUBJECTS.map((rule, index) => (rule.test(subject) ? index : -1)).filter(index => index >= 0);
   if (!cardHits.length) return 'fit';
@@ -386,10 +388,10 @@ function audienceFitForCard(card, brandKnowledge) {
   return 'mismatch';
 }
 
-function selectReusableTopicCard(rows, lang = 'ja', brandKnowledge = null) {
+function selectReusableTopicCard(rows, lang = 'ja', brandKnowledge = null, options = {}) {
   const usable = (Array.isArray(rows) ? rows : []).filter(row => {
     if (!row || (row.outputLang || 'ja') !== lang || !row.coreFact || !row.mechanism) return false;
-    if (audienceFitForCard(row, brandKnowledge) === 'mismatch') return false;
+    if (audienceFitForCard(row, brandKnowledge, options) === 'mismatch') return false;
     return Boolean(String(row.plainTranslation || '').trim()) || Number(row.usedCount) === 0;
   });
   usable.sort((left, right) => {
@@ -402,8 +404,14 @@ function selectReusableTopicCard(rows, lang = 'ja', brandKnowledge = null) {
   return usable[0] || null;
 }
 
-async function pickTopicSourceForPost(db, userId, { outputLang = 'ja' } = {}) {
+async function pickTopicSourceForPost(db, userId, { outputLang = 'ja', user = null } = {}) {
   if (!db || !userId) return null;
+  let userData = user;
+  if (!userData) {
+    const userSnap = await db.collection('saas_users').doc(userId).get();
+    userData = userSnap.exists ? (userSnap.data() || {}) : {};
+  }
+  if (userData && userData.vaultEnabled === false) return null;
   const snap = await db.collection('saas_users').doc(userId).collection('topic_sources').limit(20).get();
   const lang = outputLang === 'en' ? 'en' : 'ja';
   const rows = [];
@@ -411,9 +419,8 @@ async function pickTopicSourceForPost(db, userId, { outputLang = 'ja' } = {}) {
     const data = doc.data() || {};
     rows.push({ ...data, sourceId: doc.id });
   });
-  const userSnap = await db.collection('saas_users').doc(userId).get();
-  const brandKnowledge = userSnap.exists ? (userSnap.data() || {}).brandKnowledge : null;
-  return selectReusableTopicCard(rows, lang, brandKnowledge);
+  const brandKnowledge = userData ? userData.brandKnowledge : null;
+  return selectReusableTopicCard(rows, lang, brandKnowledge, { contentMode: userData && userData.contentMode });
 }
 
 async function markTopicSourceUsed(db, userId, sourceId, now = new Date()) {
@@ -445,25 +452,31 @@ function topicPlan(user) {
 
 function topicVaultEligibility({ user, cards = [], now = new Date(), budgetAllowed = true } = {}) {
   if (!user || user.autopilotPaused === true || user.isActive === false) return { ok: false, reason: 'inactive' };
+  if (user.vaultEnabled === false) return { ok: false, reason: 'vault_disabled' };
   const status = String(user.planStatus || '').toLowerCase();
   const stripe = String(user.stripeSubscriptionStatus || '').toLowerCase();
   if (status === 'cancelled' || status === 'canceled' || stripe === 'canceled') return { ok: false, reason: 'cancelled' };
   const brand = user.brandKnowledge;
   const hasUrl = Boolean(String(user.targetUrl || (brand && brand.sourceUrl) || '').trim());
-  if (!hasUrl || !brand || typeof brand !== 'object') return { ok: false, reason: 'missing_brand' };
-  const unused = cards.filter(card => Number(card && card.usedCount) === 0 && audienceFitForCard(card, brand) !== 'mismatch').length;
+  const hasBrandContext = Boolean(brand && typeof brand === 'object' && (
+    String(brand.icpSummary || '').trim()
+    || (Array.isArray(brand.domainProblems) && brand.domainProblems.length > 0)
+  ));
+  if (!brand || typeof brand !== 'object' || (!hasUrl && !hasBrandContext)) return { ok: false, reason: 'missing_brand' };
+  const fitOpts = { contentMode: user.contentMode };
+  const unused = cards.filter(card => Number(card && card.usedCount) === 0 && audienceFitForCard(card, brand, fitOpts) !== 'mismatch').length;
   if (unused >= UNUSED_CARD_CAP) return { ok: false, reason: 'unused_full' };
   if (budgetAllowed === false) return { ok: false, reason: 'budget' };
   const plan = topicPlan(user);
   const cap = WEEKLY_ARTICLE_CAP[plan] || WEEKLY_ARTICLE_CAP.free;
-  const freshUnused = cards.filter(card => String(card && card.plainTranslation || '').trim() && Number(card.usedCount) === 0 && audienceFitForCard(card, brand) !== 'mismatch').length;
+  const freshUnused = cards.filter(card => String(card && card.plainTranslation || '').trim() && Number(card.usedCount) === 0 && audienceFitForCard(card, brand, fitOpts) !== 'mismatch').length;
   const gap = freshUnused === 0 ? EMPTY_STOCK_GAP_MS : (MIN_GAP_MS[plan] || MIN_GAP_MS.free);
   const weekAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
   const weeklyCount = cards.filter(card => {
     const at = Date.parse(card && card.fetchedAt || '');
     if (!Number.isFinite(at) || at < weekAgo) return false;
     if (!String(card && card.plainTranslation || '').trim()) return false;
-    return audienceFitForCard(card, brand) !== 'mismatch';
+    return audienceFitForCard(card, brand, fitOpts) !== 'mismatch';
   }).length;
   if (weeklyCount >= cap) return { ok: false, reason: 'weekly_cap', plan, weeklyCap: cap, weeklyCount };
   const last = cards.reduce((max, card) => {
@@ -479,8 +492,17 @@ async function runTopicSourceVaultSweep(db, options = {}) {
   const cap = Number.isInteger(options.customerCap) ? options.customerCap : SWEEP_CUSTOMER_CAP;
   const listed = options.listUsers
     ? await options.listUsers()
-    : await db.collection('saas_users').orderBy('__name__').limit(40).get();
-  const docs = listed && listed.docs ? listed.docs : [];
+    : await db.collection('saas_users').limit(200).get();
+  const rawDocs = listed && listed.docs ? listed.docs : [];
+  const docs = options.listUsers
+    ? rawDocs
+    : rawDocs.slice().sort((a, b) => {
+        const ua = typeof a.data === 'function' ? (a.data() || {}) : (a.data || {});
+        const ub = typeof b.data === 'function' ? (b.data() || {}) : (b.data || {});
+        const ta = Date.parse(ua.lastVaultSweepAt || '') || 0;
+        const tb = Date.parse(ub.lastVaultSweepAt || '') || 0;
+        return ta - tb;
+      });
   let scanned = 0;
   let collected = 0;
   let skipped = 0;
@@ -526,6 +548,9 @@ async function runTopicSourceVaultSweep(db, options = {}) {
         now,
         trace
       });
+      if (db && typeof db.collection === 'function') {
+        db.collection('saas_users').doc(userId).set({ lastVaultSweepAt: now.toISOString() }, { merge: true }).catch(() => {});
+      }
       if (card) collected += 1;
       else {
         skipped += 1;

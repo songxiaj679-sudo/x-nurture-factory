@@ -14,7 +14,43 @@ function rejectsForcedToolChoice(error) {
 }
 
 function pushAudit(audit, entry) {
-  if (Array.isArray(audit)) audit.push({ cost: null, cachedTokens: null, ...entry });
+  if (Array.isArray(audit)) {
+    audit.push({
+      cost: null,
+      cachedTokens: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheWriteTokens: null,
+      ...entry
+    });
+  }
+}
+
+function usageSummaryForAudit(provider, model, usage) {
+  if (!usage || typeof usage !== 'object') {
+    return {
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheWriteTokens: null,
+      cachedTokens: null,
+      cost: null
+    };
+  }
+  const inputTokens = Number(usage.input_tokens ?? usage.prompt_tokens ?? 0) || 0;
+  const outputTokens = Number(usage.output_tokens ?? usage.completion_tokens ?? 0) || 0;
+  const cacheReadTokens = Number(
+    usage.cache_read_input_tokens
+    ?? (usage.prompt_tokens_details && usage.prompt_tokens_details.cached_tokens)
+    ?? (usage.input_tokens_details && usage.input_tokens_details.cached_tokens)
+    ?? 0
+  ) || 0;
+  const cacheWriteTokens = Number(usage.cache_creation_input_tokens ?? 0) || 0;
+  const cachedTokens = cacheReadTokens || cacheWriteTokens || null;
+  const { estimateLlmCostUsd } = require('./tenant_ai_budget');
+  const cost = estimateLlmCostUsd({ provider, model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens });
+  return { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, cachedTokens, cost };
 }
 
 function keyValue(name) {
@@ -40,6 +76,16 @@ function axisOrNull(row, key) {
 function usableScores(parsed) {
   const rows = parsed && Array.isArray(parsed.scores) ? parsed.scores : null;
   if (!rows || !rows.length) return null;
+  const light = rows.filter(row => row && String(row.id || '').trim() && ['factual', 'natural', 'complete'].every(key => /^(pass|fail)$/i.test(String(row[key] || ''))));
+  if (light.length === rows.length) {
+    return light.map(row => ({
+      id: String(row.id).trim(),
+      factual: String(row.factual).toLowerCase(),
+      natural: String(row.natural).toLowerCase(),
+      complete: String(row.complete).toLowerCase(),
+      reason: String(row.reason || '')
+    }));
+  }
   const clean = rows.filter(row => row && String(row.id || '').trim() && Number.isFinite(Number(row.score)) && Number(row.score) >= 0 && Number(row.score) <= 100);
   if (clean.length !== rows.length) return null;
   return clean.map(row => ({
@@ -63,15 +109,13 @@ const criticJsonSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['id', 'scrollStopHook', 'saveUtility', 'strangerClarity', 'craftAndTruth', 'score', 'weakness'],
+        required: ['id', 'factual', 'natural', 'complete', 'reason'],
         properties: {
           id: { type: 'string' },
-          scrollStopHook: { type: 'number' },
-          saveUtility: { type: 'number' },
-          strangerClarity: { type: 'number' },
-          craftAndTruth: { type: 'number' },
-          score: { type: 'number' },
-          weakness: { type: 'string' }
+          factual: { type: 'string', enum: ['pass', 'fail'] },
+          natural: { type: 'string', enum: ['pass', 'fail'] },
+          complete: { type: 'string', enum: ['pass', 'fail'] },
+          reason: { type: 'string' }
         }
       }
     }
@@ -152,12 +196,17 @@ async function completeWriter({
         messages: [{ role: 'user', content: prompt }]
       }
     });
+    if (data.stop_reason === 'max_tokens') {
+      const error = new Error('output_truncated');
+      error.code = 'output_truncated';
+      throw error;
+    }
     const tool = (data.content || []).find(block => block && block.type === 'tool_use');
     if (tool && tool.input) {
-      return { text: JSON.stringify(tool.input), parsed: tool.input, cachedTokens: data.usage && (data.usage.cache_read_input_tokens || data.usage.cache_creation_input_tokens) || null };
+      return { text: JSON.stringify(tool.input), parsed: tool.input, usage: data.usage || null, cachedTokens: data.usage && (data.usage.cache_read_input_tokens || data.usage.cache_creation_input_tokens) || null };
     }
     const prose = (data.content || []).filter(block => block && block.type === 'text').map(block => block.text || '').join('\n').trim();
-    if (prose && prose.includes('{')) return { text: prose, parsed: null, cachedTokens: data.usage && (data.usage.cache_read_input_tokens || data.usage.cache_creation_input_tokens) || null };
+    if (prose && prose.includes('{')) return { text: prose, parsed: null, usage: data.usage || null, cachedTokens: data.usage && (data.usage.cache_read_input_tokens || data.usage.cache_creation_input_tokens) || null };
     throw new Error('anthropic_tool_use_missing');
   };
   try {
@@ -173,7 +222,8 @@ async function completeWriter({
         written = await requestWriter({ type: 'auto' });
       }
     }
-    pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: true, reason: '', cachedTokens: written.cachedTokens });
+    const auditUsage = usageSummaryForAudit('anthropic', model, written.usage);
+    pushAudit(qualityAudit, { role: 'writer', provider: 'anthropic', model, ms: Date.now() - started, ok: true, reason: '', ...auditUsage, cachedTokens: written.cachedTokens ?? auditUsage.cachedTokens });
     return { ok: true, provider: 'anthropic', model, text: written.text, parsed: written.parsed, cachedTokens: written.cachedTokens };
   } catch (error) {
     const classified = writerFailure(error, 'anthropic');
@@ -184,8 +234,9 @@ async function completeWriter({
     if (!retryable(error) && !/tool_use_missing/i.test(error.message || '')) throw error;
     try {
       const grok = await grokText({ prompt, systemPrompt, timeoutMs, reasoningEffort: 'low', tier });
-      pushAudit(qualityAudit, { role: 'writer', provider: 'xai', model: grok.modelName, ms: Date.now() - started, ok: true, reason: 'anthropic_fallback', cachedTokens: null });
-      return { ok: true, provider: 'xai', model: grok.modelName, text: grok.text, parsed: null, cachedTokens: null };
+      const grokUsage = usageSummaryForAudit('xai', grok.modelName, grok.usage);
+      pushAudit(qualityAudit, { role: 'writer', provider: 'xai', model: grok.modelName, ms: Date.now() - started, ok: true, reason: 'anthropic_fallback', ...grokUsage });
+      return { ok: true, provider: 'xai', model: grok.modelName, text: grok.text, parsed: null, cachedTokens: grokUsage.cachedTokens };
     } catch (fallbackError) {
       const stop = require('./provider_error').providerStop(fallbackError, 'xai');
       if (stop) throw stop;
@@ -206,7 +257,8 @@ async function scoreWithGrok({ prompt, systemPrompt, timeoutMs, qualityAudit }) 
   });
   let parsed = null;
   try { parsed = require('./grok_client').extractJson(grok.text); } catch (_err) { parsed = null; }
-  pushAudit(qualityAudit, { role: 'critic', provider: 'xai', model: grok.modelName, ms: Date.now() - started, ok: Boolean(usableScores(parsed)), reason: 'fast', cachedTokens: null });
+  const grokUsage = usageSummaryForAudit('xai', grok.modelName, grok.usage);
+  pushAudit(qualityAudit, { role: 'critic', provider: 'xai', model: grok.modelName, ms: Date.now() - started, ok: Boolean(usableScores(parsed)), reason: 'fast', ...grokUsage });
   return { provider: 'xai', model: grok.modelName, parsed, effort: 'fast' };
 }
 
@@ -240,7 +292,8 @@ async function scoreWithOpenAI({ prompt, systemPrompt, timeoutMs, jsonSchema, sc
   });
   const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
   const parsed = JSON.parse(text || '{}');
-  pushAudit(qualityAudit, { role: 'critic', provider: 'openai', model, ms: Date.now() - started, ok: Boolean(usableScores(parsed)), reason: '', cachedTokens: null });
+  const openaiUsage = usageSummaryForAudit('openai', model, data.usage);
+  pushAudit(qualityAudit, { role: 'critic', provider: 'openai', model, ms: Date.now() - started, ok: Boolean(usableScores(parsed)), reason: '', ...openaiUsage });
   return { provider: 'openai', model, parsed };
 }
 
